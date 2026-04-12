@@ -1,0 +1,3 @@
+./auth_service.go
+./operation_service.go
+./query_service.go

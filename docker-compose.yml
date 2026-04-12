@@ -1,0 +1,80 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: erplite-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: erplite
+      POSTGRES_USER: erplite
+      POSTGRES_PASSWORD: erplite_dev_pass
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - '15432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U erplite -d erplite']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: erplite-redis
+    restart: unless-stopped
+    ports:
+      - '16379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: erplite-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: development
+      APP_PORT: '8080'
+      DATABASE_URL: postgres://erplite:erplite_dev_pass@db:5432/erplite?sslmode=disable
+      REDIS_ADDR: redis:6379
+      JWT_SECRET: dev_jwt_secret_change_in_prod
+      JWT_TTL_MINUTES: '480'
+      SCAN_WINDOW_SEC: '5'
+      CORS_ALLOWED_HOST: http://localhost:5173
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin123
+    ports:
+      - '8080:8080'
+    volumes:
+      - ./backend:/app
+      - backend_go_cache:/go/pkg/mod
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: erplite-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE: http://localhost:8080
+      VITE_WS_BASE: ws://localhost:8080
+    ports:
+      - '5173:5173'
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+
+volumes:
+  db_data:
+  backend_go_cache:
+  frontend_node_modules:

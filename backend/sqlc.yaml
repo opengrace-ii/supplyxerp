@@ -1,0 +1,15 @@
+version: "2"
+sql:
+  - schema: "internal/db/migrations/001_init.sql"
+    queries: "internal/db/query/"
+    engine: "postgresql"
+    gen:
+      go:
+        package: "dbgen"
+        out: "internal/db/dbgen"
+        emit_json_tags: true
+        emit_interface: true
+        emit_empty_slices: true
+        overrides:
+          - db_type: uuid
+            go_type: github.com/google/uuid.UUID

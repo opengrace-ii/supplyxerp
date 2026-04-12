@@ -1,0 +1,12 @@
+./audit_repository.go
+./barcode_repository.go
+./base.go
+./event_repository.go
+./guard_repository.go
+./hu_repository.go
+./pricing_repository.go
+./product_repository.go
+./trace_repository.go
+./user_repository.go
+./util.go
+./warehouse_task_repository.go

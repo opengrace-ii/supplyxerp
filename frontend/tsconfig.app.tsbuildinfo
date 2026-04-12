@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/api/client.ts","./src/hooks/useEventStream.ts","./src/pages/DashboardPage.tsx","./src/pages/LoginPage.tsx","./src/types/index.ts"],"version":"5.9.3"}
