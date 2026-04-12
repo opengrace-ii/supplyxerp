@@ -15,7 +15,7 @@ WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetTenantByID(ctx context.Context, id int64) (Tenant, error) {
-	row := q.db.QueryRowContext(ctx, getTenantByID, id)
+	row := q.db.QueryRow(ctx, getTenantByID, id)
 	var i Tenant
 	err := row.Scan(
 		&i.ID,
@@ -33,7 +33,7 @@ WHERE slug = $1 LIMIT 1
 `
 
 func (q *Queries) GetTenantBySlug(ctx context.Context, slug string) (Tenant, error) {
-	row := q.db.QueryRowContext(ctx, getTenantBySlug, slug)
+	row := q.db.QueryRow(ctx, getTenantBySlug, slug)
 	var i Tenant
 	err := row.Scan(
 		&i.ID,
@@ -51,7 +51,7 @@ WHERE username = $1 LIMIT 1
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByUsername, username)
+	row := q.db.QueryRow(ctx, getUserByUsername, username)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -73,7 +73,7 @@ WHERE ur.user_id = $1
 `
 
 func (q *Queries) GetUserRoles(ctx context.Context, userID int64) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, getUserRoles, userID)
+	rows, err := q.db.Query(ctx, getUserRoles, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -85,9 +85,6 @@ func (q *Queries) GetUserRoles(ctx context.Context, userID int64) ([]string, err
 			return nil, err
 		}
 		items = append(items, name)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

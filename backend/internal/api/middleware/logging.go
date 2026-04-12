@@ -4,9 +4,10 @@ import (
 	"log/slog"
 	"time"
 
-	"erplite/backend/internal/domain"
 	"github.com/gin-gonic/gin"
 )
+
+const CtxTraceKey = "trace_id"
 
 func StructuredLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -29,10 +30,12 @@ func StructuredLogger() gin.HandlerFunc {
 			tenantID = 1 // Hardcoding standard tenant for now
 		}
 
-		traceIDRaw, exists := c.Get(string(domain.CtxTraceKey))
+		traceIDRaw, found := c.Get(CtxTraceKey)
 		traceID := ""
-		if exists, ok := traceIDRaw.(string); ok {
-			traceID = exists
+		if found {
+			if tid, ok := traceIDRaw.(string); ok {
+				traceID = tid
+			}
 		}
 
 		slog.Info("HTTP Request",

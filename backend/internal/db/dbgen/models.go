@@ -5,216 +5,213 @@
 package dbgen
 
 import (
-	"database/sql"
-	"time"
-
 	"github.com/google/uuid"
-	"github.com/sqlc-dev/pqtype"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type AuditLog struct {
-	ID             int64                 `json:"id"`
-	TenantID       sql.NullInt64         `json:"tenant_id"`
-	ActorID        sql.NullInt64         `json:"actor_id"`
-	Action         string                `json:"action"`
-	EntityType     string                `json:"entity_type"`
-	EntityPublicID uuid.NullUUID         `json:"entity_public_id"`
-	PayloadBefore  pqtype.NullRawMessage `json:"payload_before"`
-	PayloadAfter   pqtype.NullRawMessage `json:"payload_after"`
-	CreatedAt      sql.NullTime          `json:"created_at"`
+	ID             int64              `json:"id"`
+	TenantID       pgtype.Int8        `json:"tenant_id"`
+	ActorID        pgtype.Int8        `json:"actor_id"`
+	Action         string             `json:"action"`
+	EntityType     string             `json:"entity_type"`
+	EntityPublicID pgtype.UUID        `json:"entity_public_id"`
+	PayloadBefore  []byte             `json:"payload_before"`
+	PayloadAfter   []byte             `json:"payload_after"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 type Barcode struct {
-	ID         int64         `json:"id"`
-	TenantID   sql.NullInt64 `json:"tenant_id"`
-	Code       string        `json:"code"`
-	EntityType string        `json:"entity_type"`
-	EntityID   int64         `json:"entity_id"`
-	IsActive   sql.NullBool  `json:"is_active"`
-	CreatedAt  sql.NullTime  `json:"created_at"`
+	ID         int64              `json:"id"`
+	TenantID   pgtype.Int8        `json:"tenant_id"`
+	Code       string             `json:"code"`
+	EntityType string             `json:"entity_type"`
+	EntityID   int64              `json:"entity_id"`
+	IsActive   pgtype.Bool        `json:"is_active"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 }
 
 type Batch struct {
-	ID          int64          `json:"id"`
-	TenantID    sql.NullInt64  `json:"tenant_id"`
-	ProductID   sql.NullInt64  `json:"product_id"`
-	BatchNumber sql.NullString `json:"batch_number"`
-	ExpiryDate  sql.NullTime   `json:"expiry_date"`
-	CreatedAt   sql.NullTime   `json:"created_at"`
+	ID          int64              `json:"id"`
+	TenantID    pgtype.Int8        `json:"tenant_id"`
+	ProductID   pgtype.Int8        `json:"product_id"`
+	BatchNumber pgtype.Text        `json:"batch_number"`
+	ExpiryDate  pgtype.Date        `json:"expiry_date"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
 type BlockedOperation struct {
-	ID        int64                 `json:"id"`
-	TenantID  sql.NullInt64         `json:"tenant_id"`
-	Reason    string                `json:"reason"`
-	Context   pqtype.NullRawMessage `json:"context"`
-	CreatedAt sql.NullTime          `json:"created_at"`
+	ID        int64              `json:"id"`
+	TenantID  pgtype.Int8        `json:"tenant_id"`
+	Reason    string             `json:"reason"`
+	Context   []byte             `json:"context"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type BomLine struct {
 	ID                int64          `json:"id"`
-	ProductionOrderID sql.NullInt64  `json:"production_order_id"`
-	ProductID         sql.NullInt64  `json:"product_id"`
-	RequiredQty       sql.NullString `json:"required_qty"`
-	ConsumedQty       sql.NullString `json:"consumed_qty"`
-	Unit              sql.NullString `json:"unit"`
+	ProductionOrderID pgtype.Int8    `json:"production_order_id"`
+	ProductID         pgtype.Int8    `json:"product_id"`
+	RequiredQty       pgtype.Numeric `json:"required_qty"`
+	ConsumedQty       pgtype.Numeric `json:"consumed_qty"`
+	Unit              pgtype.Text    `json:"unit"`
 }
 
 type ExecutionTrace struct {
-	ID        int64         `json:"id"`
-	TraceID   uuid.UUID     `json:"trace_id"`
-	TenantID  sql.NullInt64 `json:"tenant_id"`
-	Operation string        `json:"operation"`
-	CreatedAt sql.NullTime  `json:"created_at"`
+	ID        int64              `json:"id"`
+	TraceID   uuid.UUID          `json:"trace_id"`
+	TenantID  pgtype.Int8        `json:"tenant_id"`
+	Operation string             `json:"operation"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type ExecutionTraceStep struct {
-	ID        int64                 `json:"id"`
-	TraceID   uuid.UUID             `json:"trace_id"`
-	AgentName string                `json:"agent_name"`
-	Action    string                `json:"action"`
-	Status    string                `json:"status"`
-	Payload   pqtype.NullRawMessage `json:"payload"`
-	StepOrder int32                 `json:"step_order"`
-	CreatedAt sql.NullTime          `json:"created_at"`
+	ID        int64              `json:"id"`
+	TraceID   uuid.UUID          `json:"trace_id"`
+	AgentName string             `json:"agent_name"`
+	Action    string             `json:"action"`
+	Status    string             `json:"status"`
+	Payload   []byte             `json:"payload"`
+	StepOrder int32              `json:"step_order"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type HandlingUnit struct {
-	ID           int64         `json:"id"`
-	PublicID     uuid.NullUUID `json:"public_id"`
-	TenantID     sql.NullInt64 `json:"tenant_id"`
-	ParentHuID   sql.NullInt64 `json:"parent_hu_id"`
-	ProductID    sql.NullInt64 `json:"product_id"`
-	BatchID      sql.NullInt64 `json:"batch_id"`
-	LocationID   sql.NullInt64 `json:"location_id"`
-	Quantity     string        `json:"quantity"`
-	Unit         string        `json:"unit"`
-	Status       string        `json:"status"`
-	LabelVersion int32         `json:"label_version"`
-	CreatedAt    sql.NullTime  `json:"created_at"`
-	UpdatedAt    sql.NullTime  `json:"updated_at"`
+	ID           int64              `json:"id"`
+	PublicID     pgtype.UUID        `json:"public_id"`
+	TenantID     pgtype.Int8        `json:"tenant_id"`
+	ParentHuID   pgtype.Int8        `json:"parent_hu_id"`
+	ProductID    pgtype.Int8        `json:"product_id"`
+	BatchID      pgtype.Int8        `json:"batch_id"`
+	LocationID   pgtype.Int8        `json:"location_id"`
+	Quantity     pgtype.Numeric     `json:"quantity"`
+	Unit         string             `json:"unit"`
+	Status       string             `json:"status"`
+	LabelVersion int32              `json:"label_version"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
 type InspectionLot struct {
-	ID          int64                 `json:"id"`
-	TenantID    sql.NullInt64         `json:"tenant_id"`
-	TriggerType sql.NullString        `json:"trigger_type"`
-	HuID        sql.NullInt64         `json:"hu_id"`
-	Status      sql.NullString        `json:"status"`
-	Results     pqtype.NullRawMessage `json:"results"`
-	CreatedAt   sql.NullTime          `json:"created_at"`
+	ID          int64              `json:"id"`
+	TenantID    pgtype.Int8        `json:"tenant_id"`
+	TriggerType pgtype.Text        `json:"trigger_type"`
+	HuID        pgtype.Int8        `json:"hu_id"`
+	Status      pgtype.Text        `json:"status"`
+	Results     []byte             `json:"results"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
 type InventoryEvent struct {
-	ID             sql.NullInt64         `json:"id"`
-	TenantID       sql.NullInt64         `json:"tenant_id"`
-	EventType      string                `json:"event_type"`
-	HuID           sql.NullInt64         `json:"hu_id"`
-	ChildHuID      sql.NullInt64         `json:"child_hu_id"`
-	FromLocationID sql.NullInt64         `json:"from_location_id"`
-	ToLocationID   sql.NullInt64         `json:"to_location_id"`
-	Quantity       sql.NullString        `json:"quantity"`
-	Unit           sql.NullString        `json:"unit"`
-	ActorUserID    sql.NullInt64         `json:"actor_user_id"`
-	ReferenceDoc   sql.NullString        `json:"reference_doc"`
-	Metadata       pqtype.NullRawMessage `json:"metadata"`
-	CreatedAt      sql.NullTime          `json:"created_at"`
+	ID             pgtype.Int8        `json:"id"`
+	TenantID       pgtype.Int8        `json:"tenant_id"`
+	EventType      string             `json:"event_type"`
+	HuID           pgtype.Int8        `json:"hu_id"`
+	ChildHuID      pgtype.Int8        `json:"child_hu_id"`
+	FromLocationID pgtype.Int8        `json:"from_location_id"`
+	ToLocationID   pgtype.Int8        `json:"to_location_id"`
+	Quantity       pgtype.Numeric     `json:"quantity"`
+	Unit           pgtype.Text        `json:"unit"`
+	ActorUserID    pgtype.Int8        `json:"actor_user_id"`
+	ReferenceDoc   pgtype.Text        `json:"reference_doc"`
+	Metadata       []byte             `json:"metadata"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 type InventoryEvents2025 struct {
-	ID             sql.NullInt64         `json:"id"`
-	TenantID       sql.NullInt64         `json:"tenant_id"`
-	EventType      string                `json:"event_type"`
-	HuID           sql.NullInt64         `json:"hu_id"`
-	ChildHuID      sql.NullInt64         `json:"child_hu_id"`
-	FromLocationID sql.NullInt64         `json:"from_location_id"`
-	ToLocationID   sql.NullInt64         `json:"to_location_id"`
-	Quantity       sql.NullString        `json:"quantity"`
-	Unit           sql.NullString        `json:"unit"`
-	ActorUserID    sql.NullInt64         `json:"actor_user_id"`
-	ReferenceDoc   sql.NullString        `json:"reference_doc"`
-	Metadata       pqtype.NullRawMessage `json:"metadata"`
-	CreatedAt      sql.NullTime          `json:"created_at"`
+	ID             pgtype.Int8        `json:"id"`
+	TenantID       pgtype.Int8        `json:"tenant_id"`
+	EventType      string             `json:"event_type"`
+	HuID           pgtype.Int8        `json:"hu_id"`
+	ChildHuID      pgtype.Int8        `json:"child_hu_id"`
+	FromLocationID pgtype.Int8        `json:"from_location_id"`
+	ToLocationID   pgtype.Int8        `json:"to_location_id"`
+	Quantity       pgtype.Numeric     `json:"quantity"`
+	Unit           pgtype.Text        `json:"unit"`
+	ActorUserID    pgtype.Int8        `json:"actor_user_id"`
+	ReferenceDoc   pgtype.Text        `json:"reference_doc"`
+	Metadata       []byte             `json:"metadata"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 type InventoryEvents2026 struct {
-	ID             sql.NullInt64         `json:"id"`
-	TenantID       sql.NullInt64         `json:"tenant_id"`
-	EventType      string                `json:"event_type"`
-	HuID           sql.NullInt64         `json:"hu_id"`
-	ChildHuID      sql.NullInt64         `json:"child_hu_id"`
-	FromLocationID sql.NullInt64         `json:"from_location_id"`
-	ToLocationID   sql.NullInt64         `json:"to_location_id"`
-	Quantity       sql.NullString        `json:"quantity"`
-	Unit           sql.NullString        `json:"unit"`
-	ActorUserID    sql.NullInt64         `json:"actor_user_id"`
-	ReferenceDoc   sql.NullString        `json:"reference_doc"`
-	Metadata       pqtype.NullRawMessage `json:"metadata"`
-	CreatedAt      sql.NullTime          `json:"created_at"`
+	ID             pgtype.Int8        `json:"id"`
+	TenantID       pgtype.Int8        `json:"tenant_id"`
+	EventType      string             `json:"event_type"`
+	HuID           pgtype.Int8        `json:"hu_id"`
+	ChildHuID      pgtype.Int8        `json:"child_hu_id"`
+	FromLocationID pgtype.Int8        `json:"from_location_id"`
+	ToLocationID   pgtype.Int8        `json:"to_location_id"`
+	Quantity       pgtype.Numeric     `json:"quantity"`
+	Unit           pgtype.Text        `json:"unit"`
+	ActorUserID    pgtype.Int8        `json:"actor_user_id"`
+	ReferenceDoc   pgtype.Text        `json:"reference_doc"`
+	Metadata       []byte             `json:"metadata"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 type Location struct {
 	ID          int64          `json:"id"`
-	PublicID    uuid.NullUUID  `json:"public_id"`
-	TenantID    sql.NullInt64  `json:"tenant_id"`
-	WarehouseID sql.NullInt64  `json:"warehouse_id"`
+	PublicID    pgtype.UUID    `json:"public_id"`
+	TenantID    pgtype.Int8    `json:"tenant_id"`
+	WarehouseID pgtype.Int8    `json:"warehouse_id"`
 	Code        string         `json:"code"`
-	Zone        sql.NullString `json:"zone"`
-	Capacity    sql.NullString `json:"capacity"`
-	Unit        sql.NullString `json:"unit"`
-	IsActive    sql.NullBool   `json:"is_active"`
+	Zone        pgtype.Text    `json:"zone"`
+	Capacity    pgtype.Numeric `json:"capacity"`
+	Unit        pgtype.Text    `json:"unit"`
+	IsActive    pgtype.Bool    `json:"is_active"`
 }
 
 type PriceVersion struct {
-	ID        int64         `json:"id"`
-	TenantID  sql.NullInt64 `json:"tenant_id"`
-	ProductID sql.NullInt64 `json:"product_id"`
-	Price     string        `json:"price"`
-	Currency  string        `json:"currency"`
-	ValidFrom time.Time     `json:"valid_from"`
-	ValidTo   sql.NullTime  `json:"valid_to"`
-	CreatedBy sql.NullInt64 `json:"created_by"`
+	ID        int64              `json:"id"`
+	TenantID  pgtype.Int8        `json:"tenant_id"`
+	ProductID pgtype.Int8        `json:"product_id"`
+	Price     pgtype.Numeric     `json:"price"`
+	Currency  string             `json:"currency"`
+	ValidFrom pgtype.Timestamptz `json:"valid_from"`
+	ValidTo   pgtype.Timestamptz `json:"valid_to"`
+	CreatedBy pgtype.Int8        `json:"created_by"`
 }
 
 type Product struct {
-	ID          int64                 `json:"id"`
-	PublicID    uuid.NullUUID         `json:"public_id"`
-	TenantID    sql.NullInt64         `json:"tenant_id"`
-	Code        string                `json:"code"`
-	Name        string                `json:"name"`
-	BaseUnit    string                `json:"base_unit"`
-	Description sql.NullString        `json:"description"`
-	Attributes  pqtype.NullRawMessage `json:"attributes"`
-	CreatedAt   sql.NullTime          `json:"created_at"`
+	ID          int64              `json:"id"`
+	PublicID    pgtype.UUID        `json:"public_id"`
+	TenantID    pgtype.Int8        `json:"tenant_id"`
+	Code        string             `json:"code"`
+	Name        string             `json:"name"`
+	BaseUnit    string             `json:"base_unit"`
+	Description pgtype.Text        `json:"description"`
+	Attributes  []byte             `json:"attributes"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
 type ProductionOrder struct {
-	ID           int64          `json:"id"`
-	TenantID     sql.NullInt64  `json:"tenant_id"`
-	ProductID    sql.NullInt64  `json:"product_id"`
-	PlannedQty   sql.NullString `json:"planned_qty"`
-	ActualQty    sql.NullString `json:"actual_qty"`
-	Status       sql.NullString `json:"status"`
-	PlannedStart sql.NullTime   `json:"planned_start"`
-	ActualStart  sql.NullTime   `json:"actual_start"`
-	CreatedAt    sql.NullTime   `json:"created_at"`
+	ID           int64              `json:"id"`
+	TenantID     pgtype.Int8        `json:"tenant_id"`
+	ProductID    pgtype.Int8        `json:"product_id"`
+	PlannedQty   pgtype.Numeric     `json:"planned_qty"`
+	ActualQty    pgtype.Numeric     `json:"actual_qty"`
+	Status       pgtype.Text        `json:"status"`
+	PlannedStart pgtype.Timestamptz `json:"planned_start"`
+	ActualStart  pgtype.Timestamptz `json:"actual_start"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
 
 type PurchaseOrder struct {
-	ID        int64          `json:"id"`
-	TenantID  sql.NullInt64  `json:"tenant_id"`
-	Supplier  sql.NullString `json:"supplier"`
-	Status    sql.NullString `json:"status"`
-	CreatedAt sql.NullTime   `json:"created_at"`
+	ID        int64              `json:"id"`
+	TenantID  pgtype.Int8        `json:"tenant_id"`
+	Supplier  pgtype.Text        `json:"supplier"`
+	Status    pgtype.Text        `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type PurchaseOrderLine struct {
 	ID          int64          `json:"id"`
-	PoID        sql.NullInt64  `json:"po_id"`
-	ProductID   sql.NullInt64  `json:"product_id"`
-	QtyOrdered  sql.NullString `json:"qty_ordered"`
-	QtyReceived sql.NullString `json:"qty_received"`
-	Unit        sql.NullString `json:"unit"`
+	PoID        pgtype.Int8    `json:"po_id"`
+	ProductID   pgtype.Int8    `json:"product_id"`
+	QtyOrdered  pgtype.Numeric `json:"qty_ordered"`
+	QtyReceived pgtype.Numeric `json:"qty_received"`
+	Unit        pgtype.Text    `json:"unit"`
 }
 
 type Role struct {
@@ -223,51 +220,51 @@ type Role struct {
 }
 
 type SalesOrder struct {
-	ID         int64          `json:"id"`
-	TenantID   sql.NullInt64  `json:"tenant_id"`
-	Customer   sql.NullString `json:"customer"`
-	Status     sql.NullString `json:"status"`
-	TotalValue sql.NullString `json:"total_value"`
-	Currency   sql.NullString `json:"currency"`
-	CreatedAt  sql.NullTime   `json:"created_at"`
+	ID         int64              `json:"id"`
+	TenantID   pgtype.Int8        `json:"tenant_id"`
+	Customer   pgtype.Text        `json:"customer"`
+	Status     pgtype.Text        `json:"status"`
+	TotalValue pgtype.Numeric     `json:"total_value"`
+	Currency   pgtype.Text        `json:"currency"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 }
 
 type SalesOrderLine struct {
 	ID        int64          `json:"id"`
-	SoID      sql.NullInt64  `json:"so_id"`
-	ProductID sql.NullInt64  `json:"product_id"`
-	Qty       sql.NullString `json:"qty"`
-	Unit      sql.NullString `json:"unit"`
-	UnitPrice sql.NullString `json:"unit_price"`
+	SoID      pgtype.Int8    `json:"so_id"`
+	ProductID pgtype.Int8    `json:"product_id"`
+	Qty       pgtype.Numeric `json:"qty"`
+	Unit      pgtype.Text    `json:"unit"`
+	UnitPrice pgtype.Numeric `json:"unit_price"`
 }
 
 type Shipment struct {
-	ID              int64          `json:"id"`
-	TenantID        sql.NullInt64  `json:"tenant_id"`
-	Carrier         sql.NullString `json:"carrier"`
-	TrackingRef     sql.NullString `json:"tracking_ref"`
-	Status          sql.NullString `json:"status"`
-	PlannedDispatch sql.NullTime   `json:"planned_dispatch"`
-	ActualDispatch  sql.NullTime   `json:"actual_dispatch"`
-	CreatedAt       sql.NullTime   `json:"created_at"`
+	ID              int64              `json:"id"`
+	TenantID        pgtype.Int8        `json:"tenant_id"`
+	Carrier         pgtype.Text        `json:"carrier"`
+	TrackingRef     pgtype.Text        `json:"tracking_ref"`
+	Status          pgtype.Text        `json:"status"`
+	PlannedDispatch pgtype.Timestamptz `json:"planned_dispatch"`
+	ActualDispatch  pgtype.Timestamptz `json:"actual_dispatch"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
 
 type Tenant struct {
-	ID        int64         `json:"id"`
-	PublicID  uuid.NullUUID `json:"public_id"`
-	Name      string        `json:"name"`
-	Slug      string        `json:"slug"`
-	CreatedAt sql.NullTime  `json:"created_at"`
+	ID        int64              `json:"id"`
+	PublicID  pgtype.UUID        `json:"public_id"`
+	Name      string             `json:"name"`
+	Slug      string             `json:"slug"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type User struct {
-	ID           int64          `json:"id"`
-	PublicID     uuid.NullUUID  `json:"public_id"`
-	TenantID     sql.NullInt64  `json:"tenant_id"`
-	Username     string         `json:"username"`
-	Email        sql.NullString `json:"email"`
-	PasswordHash string         `json:"password_hash"`
-	CreatedAt    sql.NullTime   `json:"created_at"`
+	ID           int64              `json:"id"`
+	PublicID     pgtype.UUID        `json:"public_id"`
+	TenantID     pgtype.Int8        `json:"tenant_id"`
+	Username     string             `json:"username"`
+	Email        pgtype.Text        `json:"email"`
+	PasswordHash string             `json:"password_hash"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
 
 type UserRole struct {
@@ -276,22 +273,22 @@ type UserRole struct {
 }
 
 type Warehouse struct {
-	ID       int64         `json:"id"`
-	TenantID sql.NullInt64 `json:"tenant_id"`
-	Name     string        `json:"name"`
-	Code     string        `json:"code"`
+	ID       int64       `json:"id"`
+	TenantID pgtype.Int8 `json:"tenant_id"`
+	Name     string      `json:"name"`
+	Code     string      `json:"code"`
 }
 
 type WarehouseTask struct {
-	ID             int64         `json:"id"`
-	PublicID       uuid.NullUUID `json:"public_id"`
-	TenantID       sql.NullInt64 `json:"tenant_id"`
-	TaskType       string        `json:"task_type"`
-	Status         string        `json:"status"`
-	HuID           sql.NullInt64 `json:"hu_id"`
-	FromLocationID sql.NullInt64 `json:"from_location_id"`
-	ToLocationID   sql.NullInt64 `json:"to_location_id"`
-	AssignedTo     sql.NullInt64 `json:"assigned_to"`
-	OpenedAt       sql.NullTime  `json:"opened_at"`
-	ConfirmedAt    sql.NullTime  `json:"confirmed_at"`
+	ID             int64              `json:"id"`
+	PublicID       pgtype.UUID        `json:"public_id"`
+	TenantID       pgtype.Int8        `json:"tenant_id"`
+	TaskType       string             `json:"task_type"`
+	Status         string             `json:"status"`
+	HuID           pgtype.Int8        `json:"hu_id"`
+	FromLocationID pgtype.Int8        `json:"from_location_id"`
+	ToLocationID   pgtype.Int8        `json:"to_location_id"`
+	AssignedTo     pgtype.Int8        `json:"assigned_to"`
+	OpenedAt       pgtype.Timestamptz `json:"opened_at"`
+	ConfirmedAt    pgtype.Timestamptz `json:"confirmed_at"`
 }

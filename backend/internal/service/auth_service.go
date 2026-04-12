@@ -7,6 +7,7 @@ import (
 	"erplite/backend/internal/security"
 	"erplite/backend/internal/utils"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -31,7 +32,7 @@ func (s *AuthService) Authenticate(ctx context.Context, username, password strin
 		return nil, err
 	}
 
-	if !security.CheckPasswordHash(password, user.PasswordHash) {
+	if err := security.CheckPassword(user.PasswordHash, password); err != nil {
 		return nil, utils.NewAppError(401, "UNAUTHORIZED", "invalid credentials")
 	}
 
@@ -47,7 +48,8 @@ func (s *AuthService) Authenticate(ctx context.Context, username, password strin
 
 	idStr := ""
 	if user.PublicID.Valid {
-		idStr = user.PublicID.UUID.String()
+		u, _ := uuid.FromBytes(user.PublicID.Bytes[:])
+		idStr = u.String()
 	}
 
 	return &security.UserClaims{

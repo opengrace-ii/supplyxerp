@@ -39,7 +39,7 @@ func main() {
 	defer pool.Close()
 
 	// Ensure DB migrations
-	if err := db.RunMigrations(cfg.DatabaseURL); err != nil {
+	if err := db.RunMigrations(ctx, pool); err != nil {
 		log.Fatalf("migrations: %v", err)
 	}
 
@@ -49,14 +49,14 @@ func main() {
 
 	routerDeps := api.RouterDeps{
 		JWTSecret:   cfg.JWTSecret,
-		AllowedHost: cfg.AllowedHost,
+		AllowedHost: cfg.CORSAllowedHost,
 		AuthHandler: authHandler,
 	}
 
 	r := api.NewRouter(routerDeps)
 
-	slog.Info("Server starting", "port", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
+	slog.Info("Server starting", "port", cfg.AppPort)
+	if err := http.ListenAndServe(":"+cfg.AppPort, r); err != nil {
 		log.Fatalf("server: %v", err)
 	}
 }
