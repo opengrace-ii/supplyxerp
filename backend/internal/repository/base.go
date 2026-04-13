@@ -25,6 +25,8 @@ type UnitOfWork struct {
 	Products       *ProductRepository
 	Trace          *TraceRepository
 	Locations      *LocationRepository
+	Zones          *ZoneRepository
+	GR             *GRRepository
 }
 
 func NewUnitOfWork(db DBTX) *UnitOfWork {
@@ -40,5 +42,7 @@ func NewUnitOfWork(db DBTX) *UnitOfWork {
 		Products:       &ProductRepository{db: db},
 		Trace:          &TraceRepository{db: db},
 		Locations:      &LocationRepository{db: db},
+		Zones:          &ZoneRepository{db: db},
+		GR:             &GRRepository{db: db},
 	}
 }

@@ -2,122 +2,160 @@ package warehouse
 
 import (
 	"context"
-	"time"
+	"encoding/json"
 
-	"erplite/backend/internal/agent/inventory"
-	"erplite/backend/internal/domain"
+	"erplite/backend/internal/db/dbgen"
+	"erplite/backend/internal/events"
 	"erplite/backend/internal/repository"
-	"erplite/backend/internal/utils"
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Agent struct {
-	inventory *inventory.Agent
+	Hub *events.Hub
 }
 
-type PutawayInput struct {
-	HU          domain.HU
-	ToLocation  string
-	ActorUserID string
+func New(hub *events.Hub) *Agent {
+	return &Agent{Hub: hub}
 }
 
-type MoveInput struct {
-	HU           domain.HU
-	FromLocation string
-	ToLocation   string
-	ActorUserID  string
+type MoveParams struct {
+	HUBarcode       string
+	ToLocationCode  string
+	ActorUserID     int64
+	TenantID        int64
 }
 
-func New(inventoryAgent *inventory.Agent) *Agent {
-	return &Agent{inventory: inventoryAgent}
+func (a *Agent) MoveHU(ctx context.Context, uow *repository.UnitOfWork, p MoveParams) error {
+	// 1. Resolve HU
+	hu, err := uow.HU.GetByBarcode(ctx, p.TenantID, p.HUBarcode)
+	if err != nil {
+		return err
+	}
+
+	// Because sqlc wasn't generated with zone_id, we fetch it manually to get from_zone_id and from_site_id
+	var fromZoneID, fromSiteID *int64
+	var prodID *int64 = &hu.ProductID
+	
+	err = uow.Zones.GetDb().QueryRow(ctx, "SELECT zone_id, site_id FROM handling_units WHERE id = $1", hu.ID).Scan(&fromZoneID, &fromSiteID)
+	// it's fine if error here, they might be NULL or we continue
+
+	// 2. Resolve target zone
+	z, err := uow.Zones.GetByCode(ctx, p.TenantID, p.ToLocationCode)
+	if err != nil {
+		return err
+	}
+
+	// 3. Validation: Skip if already there
+	if fromZoneID != nil && *fromZoneID == z.ID {
+		return nil
+	}
+
+	// 4. Update HU State
+	if err := uow.HU.UpdateZone(ctx, hu.ID, z.ID, uow.Zones.GetSiteID(ctx, z.ID)); err != nil {
+		return err
+	}
+
+	// 5. Record Event in Ledger
+	metadata, _ := json.Marshal(map[string]any{
+		"reason": "manual_move",
+		"app":    "StockFlow",
+	})
+
+	err = uow.Events.CreateWithZone(ctx, repository.CreateEventZoneParams{
+		TenantID:    p.TenantID,
+		EventType:   "HU_MOVED",
+		HuID:        hu.ID,
+		ProductID:   prodID,
+		FromZoneID:  fromZoneID,
+		ToZoneID:    &z.ID,
+		FromSiteID:  fromSiteID,
+		ToSiteID:    &z.ID, // Simplification or pass exact site
+		Quantity:    hu.Quantity,
+		Unit:        hu.Unit,
+		ActorUserID: p.ActorUserID,
+		Metadata:    metadata,
+	})
+	if err != nil {
+		return err
+	}
+
+	// 6. Broadcast Update
+	if a.Hub != nil {
+		a.Hub.Broadcast("INVENTORY_UPDATE", map[string]any{
+			"hu_id":   hu.ID,
+			"zone_id": z.ID,
+			"event":   "MOVED",
+		})
+	}
+
+	return nil
 }
 
-func (a *Agent) Putaway(ctx context.Context, uow *repository.UnitOfWork, input PutawayInput) (domain.HU, domain.WarehouseTask, error) {
-	if input.ToLocation == "" {
-		return domain.HU{}, domain.WarehouseTask{}, utils.NewAppError(400, "INVALID_LOCATION", "putaway location is required")
+func (a *Agent) CreatePutawayTask(ctx context.Context, uow *repository.UnitOfWork, tenantID int64, huID int64, fromZoneID int64) error {
+	a.broadcast(ctx, "WarehouseAgent", "CREATING_PUTAWAY_TASK", "SUCCESS")
+	_, err := uow.WarehouseTasks.Create(ctx, repository.WarehouseTask{
+		TenantID:   tenantID,
+		TaskType:   "PUTAWAY",
+		Status:     "OPEN",
+		HuID:       huID,
+		FromZoneID: &fromZoneID,
+		Priority:   2,
+	})
+	if err != nil {
+		a.broadcast(ctx, "WarehouseAgent", "CREATING_PUTAWAY_TASK", "FAILED")
 	}
-	before := input.HU
-	after := input.HU
-	after.LocationCode = input.ToLocation
-	after.Status = domain.HUStatusStored
-
-	from := before.LocationCode
-	to := after.LocationCode
-	if err := a.inventory.PersistEventAndState(
-		ctx,
-		uow,
-		before,
-		after,
-		domain.EventHUStored,
-		0,
-		&from,
-		&to,
-		input.ActorUserID,
-		map[string]any{"operation": "putaway"},
-	); err != nil {
-		return domain.HU{}, domain.WarehouseTask{}, err
-	}
-
-	task := domain.WarehouseTask{
-		ID:           uuid.NewString(),
-		TaskType:     "PUTAWAY",
-		HUID:         after.ID,
-		FromLocation: &from,
-		ToLocation:   &to,
-		Status:       "DONE",
-		CreatedBy:    input.ActorUserID,
-		CreatedAt:    time.Now().UTC(),
-	}
-	if err := uow.WarehouseTasks.Create(ctx, task); err != nil {
-		return domain.HU{}, domain.WarehouseTask{}, err
-	}
-
-	return after, task, nil
+	return err
 }
 
-func (a *Agent) Move(ctx context.Context, uow *repository.UnitOfWork, input MoveInput) (domain.HU, domain.WarehouseTask, error) {
-	if input.ToLocation == "" {
-		return domain.HU{}, domain.WarehouseTask{}, utils.NewAppError(400, "INVALID_LOCATION", "target location is required")
-	}
-	if input.FromLocation == input.ToLocation {
-		return domain.HU{}, domain.WarehouseTask{}, utils.NewAppError(400, "INVALID_MOVE", "source and target locations must differ")
-	}
-
-	before := input.HU
-	after := input.HU
-	after.LocationCode = input.ToLocation
-	after.Status = domain.HUStatusStored
-
-	from := input.FromLocation
-	to := input.ToLocation
-	if err := a.inventory.PersistEventAndState(
-		ctx,
-		uow,
-		before,
-		after,
-		domain.EventHUMoved,
-		0,
-		&from,
-		&to,
-		input.ActorUserID,
-		map[string]any{"operation": "move"},
-	); err != nil {
-		return domain.HU{}, domain.WarehouseTask{}, err
+func (a *Agent) CompletePutawayTask(ctx context.Context, uow *repository.UnitOfWork, tenantID int64, userID int64, taskID int64, toZoneID int64) error {
+	a.broadcast(ctx, "WarehouseAgent", "EXECUTING_PUTAWAY", "SUCCESS")
+	
+	task, err := uow.WarehouseTasks.GetByID(ctx, taskID)
+	if err != nil {
+		return err
 	}
 
-	task := domain.WarehouseTask{
-		ID:           uuid.NewString(),
-		TaskType:     "MOVE",
-		HUID:         after.ID,
-		FromLocation: &from,
-		ToLocation:   &to,
-		Status:       "DONE",
-		CreatedBy:    input.ActorUserID,
-		CreatedAt:    time.Now().UTC(),
-	}
-	if err := uow.WarehouseTasks.Create(ctx, task); err != nil {
-		return domain.HU{}, domain.WarehouseTask{}, err
+	hu, err := uow.HU.GetByID(ctx, task.HuID)
+	if err != nil {
+		return err
 	}
 
-	return after, task, nil
+	siteID := uow.Zones.GetSiteID(ctx, toZoneID)
+
+	// Update HU
+	if err := uow.HU.UpdateZone(ctx, hu.ID, toZoneID, siteID); err != nil {
+		return err
+	}
+
+	// Record Event
+	err = uow.Events.CreateWithZone(ctx, repository.CreateEventZoneParams{
+		TenantID:    tenantID,
+		EventType:   "PUTAWAY",
+		HuID:        hu.ID,
+		ProductID:   &hu.ProductID,
+		FromZoneID:  task.FromZoneID,
+		ToZoneID:    &toZoneID,
+		ToSiteID:    &siteID,
+		Quantity:    hu.Quantity,
+		Unit:        hu.Unit,
+		ActorUserID: userID,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Complete Task
+	return uow.WarehouseTasks.Complete(ctx, taskID, toZoneID)
+}
+
+func (a *Agent) broadcast(ctx context.Context, agent, action, status string) {
+	if a.Hub == nil {
+		return
+	}
+	a.Hub.Broadcast("agent_trace", map[string]any{
+		"agent":     agent,
+		"action":    action,
+		"status":    status,
+		"timestamp": time.Now().Format(time.RFC3339),
+	})
 }

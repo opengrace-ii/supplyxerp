@@ -1,14 +1,17 @@
 import React from 'react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import { useAppStore } from '../../store/useAppStore';
 
 const Shell: React.FC<{children: React.ReactNode}> = ({ children }) => {
+  const { currentTab } = useAppStore();
+
   return (
-    <div className="shell-container">
+    <div className={`shell-container theme-${currentTab}`}>
       <Sidebar />
       <div className="main-content">
         <TopBar />
-        <main style={{flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-bg-base)'}}>
+        <main className="working-area">
           {children}
         </main>
       </div>

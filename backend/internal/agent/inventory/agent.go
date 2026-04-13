@@ -1,112 +1,79 @@
-package inventory
-
 import (
 	"context"
+	"fmt"
 	"time"
 
-	"erplite/backend/internal/domain"
+	"erplite/backend/internal/events"
 	"erplite/backend/internal/repository"
-	"erplite/backend/internal/utils"
-	"github.com/google/uuid"
 )
 
-type Agent struct{}
+type Agent struct {
+	Hub *events.Hub
+}
+
+func New(hub *events.Hub) *Agent {
+	return &Agent{Hub: hub}
+}
 
 type CreateHUInput struct {
-	Code         string
-	MaterialCode string
-	Quantity     float64
-	UOM          string
-	LocationCode string
-	Status       domain.HUStatus
-	ParentHUID   *string
-	ActorUserID  string
+	TenantID   int64
+	ProductID  int64
+	Code       string
+	Quantity   float64
+	Unit       string
+	SiteID     int64
+	ZoneID     int64
+	Status     string
 }
 
-func New() *Agent {
-	return &Agent{}
+func (a *Agent) CreateHU(ctx context.Context, uow *repository.UnitOfWork, in CreateHUInput) (int64, error) {
+	a.broadcast(ctx, "InventoryAgent", "CREATING_HU", "SUCCESS")
+	
+	var huID int64
+	err := uow.Zones.GetDb().QueryRow(ctx, `
+		INSERT INTO handling_units (tenant_id, product_id, code, quantity, unit, site_id, zone_id, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id
+	`, in.TenantID, in.ProductID, in.Code, in.Quantity, in.Unit, in.SiteID, in.ZoneID, in.Status).Scan(&huID)
+	
+	if err != nil {
+		a.broadcast(ctx, "InventoryAgent", "CREATING_HU", "FAILED")
+		return 0, err
+	}
+	return huID, nil
 }
 
-func (a *Agent) CreateHU(ctx context.Context, uow *repository.UnitOfWork, input CreateHUInput) (domain.HU, error) {
-	if input.Quantity <= 0 {
-		return domain.HU{}, utils.NewAppError(400, "INVALID_QUANTITY", "quantity must be greater than zero")
+func (a *Agent) PostInboundEvent(ctx context.Context, uow *repository.UnitOfWork, tenantID int64, huID int64, productID int64, quantity float64, unit string, siteID int64, zoneID int64, actorID int64, refType string, refID int64) error {
+	a.broadcast(ctx, "InventoryAgent", "POSTING_LEDGER_EVENT", "SUCCESS")
+	
+	// Create inventory event
+	err := uow.Events.CreateWithZone(ctx, repository.CreateEventZoneParams{
+		TenantID:    tenantID,
+		EventType:   "GR",
+		HuID:        huID,
+		ProductID:   &productID,
+		ToZoneID:    &zoneID,
+		ToSiteID:    &siteID,
+		Quantity:    quantity,
+		Unit:        unit,
+		ActorUserID: actorID,
+		Metadata:    []byte(fmt.Sprintf(`{"reference_type": "%s", "reference_id": %d}`, refType, refID)),
+	})
+	
+	if err != nil {
+		a.broadcast(ctx, "InventoryAgent", "POSTING_LEDGER_EVENT", "FAILED")
 	}
-
-	hu := domain.HU{
-		ID:            uuid.NewString(),
-		Code:          input.Code,
-		MaterialCode:  input.MaterialCode,
-		Quantity:      input.Quantity,
-		UOM:           input.UOM,
-		Status:        input.Status,
-		LocationCode:  input.LocationCode,
-		ParentHUID:    input.ParentHUID,
-		LabelVersion:  1,
-		CreatedBy:     input.ActorUserID,
-		CreatedAt:     time.Now().UTC(),
-		LastEventAt:   time.Now().UTC(),
-	}
-
-	if err := uow.HU.Create(ctx, hu); err != nil {
-		return domain.HU{}, err
-	}
-	return hu, nil
+	return err
 }
 
-func (a *Agent) EnsureStockIntegrity(hu domain.HU, movementQty float64) error {
-	if hu.Quantity <= 0 {
-		return utils.NewAppError(409, "HU_EMPTY", "HU has no available quantity")
+func (a *Agent) broadcast(ctx context.Context, agent, action, status string) {
+	if a.Hub == nil {
+		return
 	}
-	if movementQty <= 0 {
-		return utils.NewAppError(400, "INVALID_QUANTITY", "movement quantity must be positive")
-	}
-	if movementQty > hu.Quantity {
-		return utils.NewAppError(409, "INSUFFICIENT_STOCK", "movement quantity exceeds HU stock")
-	}
-	return nil
-}
-
-func (a *Agent) PersistEventAndState(
-	ctx context.Context,
-	uow *repository.UnitOfWork,
-	before domain.HU,
-	after domain.HU,
-	eventType domain.EventType,
-	quantityDelta float64,
-	fromLocation *string,
-	toLocation *string,
-	actorUserID string,
-	metadata map[string]any,
-) error {
-	event := domain.HUEvent{
-		ID:            uuid.NewString(),
-		HUID:          before.ID,
-		EventType:     eventType,
-		QuantityDelta: quantityDelta,
-		FromLocation:  fromLocation,
-		ToLocation:    toLocation,
-		ActorUserID:   actorUserID,
-		Metadata:      metadata,
-		BeforeState: map[string]any{
-			"id":            before.ID,
-			"code":          before.Code,
-			"quantity":      before.Quantity,
-			"status":        before.Status,
-			"location_code": before.LocationCode,
-			"label_version": before.LabelVersion,
-		},
-		AfterState: map[string]any{
-			"id":            after.ID,
-			"code":          after.Code,
-			"quantity":      after.Quantity,
-			"status":        after.Status,
-			"location_code": after.LocationCode,
-			"label_version": after.LabelVersion,
-		},
-	}
-
-	if err := uow.Events.AppendHUEvent(ctx, event); err != nil {
-		return err
-	}
-	return uow.HU.UpdateState(ctx, after)
+	a.Hub.Broadcast("agent_trace", map[string]any{
+		"agent":     agent,
+		"action":    action,
+		"status":    status,
+		"timestamp": time.Now().Format(time.RFC3339),
+	})
 }

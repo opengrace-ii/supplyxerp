@@ -12,6 +12,12 @@ import (
 	"erplite/backend/internal/config"
 	"erplite/backend/internal/db"
 	"erplite/backend/internal/db/dbgen"
+	"erplite/backend/internal/events"
+	"erplite/backend/internal/repository"
+	"erplite/backend/internal/agent/warehouse"
+	"erplite/backend/internal/agent/material"
+	"erplite/backend/internal/agent/barcode"
+	"erplite/backend/internal/agent/inventory"
 	"erplite/backend/internal/service"
 )
 
@@ -47,10 +53,47 @@ func main() {
 	authService := service.NewAuthService(queries)
 	authHandler := handlers.NewAuthHandler(authService, cfg.JWTSecret, cfg.JWTTTLMinutes, cfg.CookieSecure)
 
+	hub := events.NewHub()
+	go hub.Run()
+
+	wsHandler := handlers.NewWebSocketHandler(hub)
+
+	// Phase 2: StockFlow Core
+	uow := repository.NewUnitOfWork(pool)
+	
+	barcodeAgent := barcode.New(hub)
+	
+	warehouseAgent := warehouse.New(hub)
+	operationHandler := handlers.NewOperationHandler(uow, warehouseAgent, barcodeAgent, pool)
+	statsHandler := handlers.NewStatsHandler(pool)
+	tenantHandler := handlers.NewTenantHandler(pool, hub)
+	orgHandler := handlers.NewOrgHandler(pool)
+	
+	productAgent := material.New(hub)
+	productHandler := handlers.NewProductHandler(uow, productAgent, pool)
+	barcodeHandler := handlers.NewBarcodeHandler(uow, pool)
+
+	inventoryAgent := inventory.New(hub)
+	grWorkflow := &inventory.GRWorkflow{
+		Hub:            hub,
+		InventoryAgent: inventoryAgent,
+		BarcodeAgent:   barcodeAgent,
+		WarehouseAgent: warehouseAgent,
+	}
+	grHandler := handlers.NewGRHandler(uow, grWorkflow, warehouseAgent)
+
 	routerDeps := api.RouterDeps{
-		JWTSecret:   cfg.JWTSecret,
-		AllowedHost: cfg.CORSAllowedHost,
-		AuthHandler: authHandler,
+		JWTSecret:        cfg.JWTSecret,
+		AllowedHost:      cfg.CORSAllowedHost,
+		AuthHandler:      authHandler,
+		WSHandler:        wsHandler,
+		OperationHandler: operationHandler,
+		StatsHandler:     statsHandler,
+		TenantHandler:    tenantHandler,
+		OrgHandler:       orgHandler,
+		ProductHandler:   productHandler,
+		BarcodeHandler:   barcodeHandler,
+		GRHandler:        grHandler,
 	}
 
 	r := api.NewRouter(routerDeps)

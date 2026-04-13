@@ -19,6 +19,7 @@ backend/tmp/
 frontend/dist/
 backend/dist/
 backend/bin/
+mcp/venv/
 *.exe
 *.dll
 *.so
