@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
-	"erplite/backend/internal/db/dbgen"
+	"supplyxerp/backend/internal/db/dbgen"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )

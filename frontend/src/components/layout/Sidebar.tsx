@@ -34,6 +34,7 @@ const MODULES_BY_TAB = {
   cfg: {
     label: 'CONFIG',
     items: [
+      { name: 'Setup', status: 'LIVE', isLive: true },
       { name: 'Tenants', status: 'LIVE', isLive: true },
       { name: 'Org Structure', status: 'LIVE', isLive: true },
       { name: 'Module config', status: 'LIVE', isLive: true },

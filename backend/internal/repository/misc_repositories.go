@@ -1,7 +1,8 @@
+package repository
+
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 )
 
 type WarehouseTaskRepository struct{ db DBTX }
@@ -37,7 +38,7 @@ func (r *WarehouseTaskRepository) Create(ctx context.Context, t WarehouseTask) (
 func (r *WarehouseTaskRepository) Complete(ctx context.Context, taskID int64, toZoneID int64) error {
 	_, err := r.db.Exec(ctx, `
 		UPDATE warehouse_tasks 
-		SET status = 'COMPLETED', to_zone_id = $1, updated_at = now() 
+		SET status = 'COMPLETED', to_zone_id = $1, confirmed_at = now() 
 		WHERE id = $2
 	`, toZoneID, taskID)
 	return err
@@ -54,10 +55,10 @@ func (r *WarehouseTaskRepository) GetByID(ctx context.Context, id int64) (Wareho
 
 func (r *WarehouseTaskRepository) ListOpenByTenant(ctx context.Context, tenantID int64) ([]WarehouseTask, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT id, public_id, tenant_id, task_type, status, hu_id, from_zone_id, to_zone_id, priority, created_at
+		SELECT id, public_id::text, tenant_id, task_type, status, hu_id, from_zone_id, to_zone_id, priority, opened_at::text
 		FROM warehouse_tasks 
 		WHERE tenant_id = $1 AND status = 'OPEN' 
-		ORDER BY priority DESC, created_at ASC
+		ORDER BY priority DESC, opened_at ASC
 	`, tenantID)
 	if err != nil {
 		return nil, err

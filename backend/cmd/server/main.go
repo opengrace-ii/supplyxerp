@@ -7,18 +7,19 @@ import (
 	"net/http"
 	"os"
 
-	"erplite/backend/internal/api"
-	"erplite/backend/internal/api/handlers"
-	"erplite/backend/internal/config"
-	"erplite/backend/internal/db"
-	"erplite/backend/internal/db/dbgen"
-	"erplite/backend/internal/events"
-	"erplite/backend/internal/repository"
-	"erplite/backend/internal/agent/warehouse"
-	"erplite/backend/internal/agent/material"
-	"erplite/backend/internal/agent/barcode"
-	"erplite/backend/internal/agent/inventory"
-	"erplite/backend/internal/service"
+	"supplyxerp/backend/internal/api"
+	"supplyxerp/backend/internal/api/handlers"
+	"supplyxerp/backend/internal/config"
+	"supplyxerp/backend/internal/db"
+	"supplyxerp/backend/internal/db/dbgen"
+	"supplyxerp/backend/internal/events"
+	"supplyxerp/backend/internal/repository"
+	"supplyxerp/backend/internal/agent/warehouse"
+	"supplyxerp/backend/internal/agent/material"
+	"supplyxerp/backend/internal/agent/barcode"
+	"supplyxerp/backend/internal/agent/inventory"
+	"supplyxerp/backend/internal/agent/purchasing"
+	"supplyxerp/backend/internal/service"
 )
 
 func main() {
@@ -53,7 +54,7 @@ func main() {
 	authService := service.NewAuthService(queries)
 	authHandler := handlers.NewAuthHandler(authService, cfg.JWTSecret, cfg.JWTTTLMinutes, cfg.CookieSecure)
 
-	hub := events.NewHub()
+	hub := events.NewHub(pool)
 	go hub.Run()
 
 	wsHandler := handlers.NewWebSocketHandler(hub)
@@ -81,6 +82,21 @@ func main() {
 		WarehouseAgent: warehouseAgent,
 	}
 	grHandler := handlers.NewGRHandler(uow, grWorkflow, warehouseAgent)
+	configHandler := handlers.NewConfigHandler(uow, pool)
+	migrationHandler := handlers.NewMigrationHandler(uow, pool)
+	stockHandler := handlers.NewStockHandler(uow, inventoryAgent)
+	
+	purchasingAgent := purchasing.New(hub)
+	supplierHandler := handlers.NewSupplierHandler(uow)
+	purchasingHandler := handlers.NewPurchasingHandler(uow, purchasingAgent)
+	
+	productionWorkflow := &inventory.ProductionWorkflow{
+		Hub:            hub,
+		InventoryAgent: inventoryAgent,
+		BarcodeAgent:   barcodeAgent,
+		WarehouseAgent: warehouseAgent,
+	}
+	productionHandler := handlers.NewProductionHandler(uow, productionWorkflow, pool)
 
 	routerDeps := api.RouterDeps{
 		JWTSecret:        cfg.JWTSecret,
@@ -94,6 +110,12 @@ func main() {
 		ProductHandler:   productHandler,
 		BarcodeHandler:   barcodeHandler,
 		GRHandler:        grHandler,
+		ConfigHandler:    configHandler,
+		MigrationHandler: migrationHandler,
+		StockHandler:     stockHandler,
+		ProductionHandler: productionHandler,
+		SupplierHandler:  supplierHandler,
+		PurchasingHandler: purchasingHandler,
 	}
 
 	r := api.NewRouter(routerDeps)

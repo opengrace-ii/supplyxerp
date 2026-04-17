@@ -3,7 +3,7 @@ package middleware
 import (
 	"net/http"
 
-	"erplite/backend/internal/security"
+	"supplyxerp/backend/internal/security"
 	"github.com/gin-gonic/gin"
 )
 
@@ -11,8 +11,17 @@ const claimsKey = "claims"
 
 func AuthRequired(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenValue, err := c.Cookie("erplite_token")
+		tokenValue, err := c.Cookie("supplyxerp_token")
 		if err != nil || tokenValue == "" {
+			// Fallback to Header Support (for CURL/CLI testing)
+			const prefix = "Bearer "
+			authHeader := c.GetHeader("Authorization")
+			if len(authHeader) > len(prefix) && authHeader[:len(prefix)] == prefix {
+				tokenValue = authHeader[len(prefix):]
+			}
+		}
+
+		if tokenValue == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
 			return
 		}
@@ -23,7 +32,11 @@ func AuthRequired(jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
+		// Inject key IDs directly into context for handler consumption
 		c.Set(claimsKey, claims)
+		c.Set("tenant_id", claims.TenantID)
+		c.Set("user_id", claims.InternalID)
+		
 		c.Next()
 	}
 }

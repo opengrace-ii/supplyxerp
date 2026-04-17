@@ -3,8 +3,8 @@ package handlers
 import (
 	"net/http"
 
-	"erplite/backend/internal/agent/events"
-	"erplite/backend/internal/org"
+	"supplyxerp/backend/internal/events"
+	"supplyxerp/backend/internal/org"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 )

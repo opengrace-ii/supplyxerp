@@ -1,6 +1,6 @@
-# ERPLite
+# SupplyX ERP
 
-ERPLite is a production-grade monolithic ERP-lite control system with transparent agent execution.
+SupplyX ERP is a production-grade monolithic ERP-lite control system with transparent agent execution.
 
 ## Stack
 

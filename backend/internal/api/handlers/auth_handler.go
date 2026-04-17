@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"time"
 
-	"erplite/backend/internal/api/middleware"
-	"erplite/backend/internal/security"
-	"erplite/backend/internal/service"
+	"supplyxerp/backend/internal/api/middleware"
+	"supplyxerp/backend/internal/security"
+	"supplyxerp/backend/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -51,13 +51,19 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("erplite_token", token, int(time.Until(expiresAt).Seconds()), "/", "", h.cookieSecure, true)
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": gin.H{"user": claims}})
+	c.SetCookie("supplyxerp_token", token, int(time.Until(expiresAt).Seconds()), "/", "", h.cookieSecure, true)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true, 
+		"data": gin.H{
+			"user": claims,
+			"access_token": token,
+		},
+	})
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
 	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("erplite_token", "", -1, "/", "", h.cookieSecure, true)
+	c.SetCookie("supplyxerp_token", "", -1, "/", "", h.cookieSecure, true)
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 

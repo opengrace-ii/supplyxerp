@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"erplite/backend/internal/db/dbgen"
+	"supplyxerp/backend/internal/db/dbgen"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -17,6 +17,10 @@ func (r *HURepository) GetByBarcode(ctx context.Context, tenantID int64, barcode
 		TenantID: pgtype.Int8{Int64: tenantID, Valid: true},
 		Code:     barcode,
 	})
+}
+
+func (r *HURepository) GetDb() DBTX {
+	return r.db
 }
 
 func (r *HURepository) GetByID(ctx context.Context, id int64) (dbgen.HandlingUnit, error) {

@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"erplite/backend/internal/repository"
+	"supplyxerp/backend/internal/repository"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 )

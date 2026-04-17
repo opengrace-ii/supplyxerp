@@ -1,4 +1,4 @@
-module erplite/backend
+module supplyxerp/backend
 
 go 1.22
 

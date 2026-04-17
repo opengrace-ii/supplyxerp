@@ -27,6 +27,11 @@ type UnitOfWork struct {
 	Locations      *LocationRepository
 	Zones          *ZoneRepository
 	GR             *GRRepository
+	Config         *ConfigRepository
+	Migration      *MigrationRepository
+	Stock          *StockRepository
+	Suppliers      *SupplierRepository
+	Purchasing     *PurchasingRepository
 }
 
 func NewUnitOfWork(db DBTX) *UnitOfWork {
@@ -44,5 +49,10 @@ func NewUnitOfWork(db DBTX) *UnitOfWork {
 		Locations:      &LocationRepository{db: db},
 		Zones:          &ZoneRepository{db: db},
 		GR:             &GRRepository{db: db},
+		Config:         &ConfigRepository{db: db},
+		Migration:      &MigrationRepository{db: db},
+		Stock:          &StockRepository{db: db},
+		Suppliers:      &SupplierRepository{db: db},
+		Purchasing:     &PurchasingRepository{db: db},
 	}
 }

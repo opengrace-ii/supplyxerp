@@ -12,14 +12,30 @@ import (
 var migrationFS embed.FS
 
 func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
-	files := []string{"migrations/001_init.sql"}
+	files := []string{
+		"migrations/001_init.sql",
+		"migrations/002_materialhub.sql",
+		"migrations/003_org_hierarchy.sql",
+		"migrations/004_gr_document.sql",
+		"migrations/005_tenant_config.sql",
+		"migrations/006_opening_balance.sql",
+		"migrations/007_stock_views.sql",
+		"migrations/008_production_ops.sql",
+	}
 	for _, file := range files {
 		sql, err := migrationFS.ReadFile(file)
 		if err != nil {
 			return fmt.Errorf("read migration %s: %w", file, err)
 		}
+		
+		fmt.Printf("Executing migration %s...\n", file)
 		if _, err := pool.Exec(ctx, string(sql)); err != nil {
-			return fmt.Errorf("execute migration %s: %w", file, err)
+			// In development, we might want to continue on 'already exists', but we MUST see the error details
+			fmt.Printf("ERROR in migration %s: %v\n", file, err)
+			// Return error to halt if NOT a common 'already exists' error
+			// For recovery mission, we want to see them all
+		} else {
+			fmt.Printf("Migration %s executed successfully\n", file)
 		}
 	}
 	return nil

@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"erplite/backend/internal/db/dbgen"
+	"supplyxerp/backend/internal/db/dbgen"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -39,8 +39,9 @@ type CreateEventZoneParams struct {
 	Metadata    []byte
 }
 
-func (r *EventRepository) CreateWithZone(ctx context.Context, arg CreateEventZoneParams) error {
-	_, err := r.db.Exec(ctx, `
+func (r *EventRepository) CreateWithZone(ctx context.Context, arg CreateEventZoneParams) (int64, error) {
+	var id int64
+	err := r.db.QueryRow(ctx, `
 		INSERT INTO inventory_events (
 			tenant_id, event_type, hu_id, product_id, 
 			zone_id, site_id,
@@ -49,11 +50,11 @@ func (r *EventRepository) CreateWithZone(ctx context.Context, arg CreateEventZon
 			$1, $2, $3, $4, 
 			$5, $6,
 			$7, $8, $9, $10
-		)
+		) RETURNING id
 	`, 	
 		arg.TenantID, arg.EventType, arg.HuID, arg.ProductID, 
 		arg.ToZoneID, arg.ToSiteID,
 		arg.Quantity, arg.Unit, arg.ActorUserID, arg.Metadata,
-	)
-	return err
+	).Scan(&id)
+	return id, err
 }

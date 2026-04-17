@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"erplite/backend/internal/agent/events"
+	"supplyxerp/backend/internal/events"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -57,17 +57,35 @@ func AutoProvisionTenant(ctx context.Context, tx pgx.Tx, tenantID int64, tenantN
 		zoneIDs = append(zoneIDs, zID)
 	}
 
-	// 4. Broadcast Event (Simulating the format required)
+	// 4. Insert Tenant Config
+	_, err = tx.Exec(ctx, `
+		INSERT INTO tenant_config (tenant_id, domain_profile, default_uom)
+		VALUES ($1, 'GENERAL', 'QTY')
+	`, tenantID)
+	if err != nil {
+		return fmt.Errorf("failed to auto-provision tenant config: %w", err)
+	}
+
+	// 5. Initialize Sequences
+	seqTypes := []string{"GR", "PO", "HU", "SO"}
+	for _, st := range seqTypes {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO tenant_sequences (tenant_id, sequence_type, current_val)
+			VALUES ($1, $2, 0)
+		`, tenantID, st)
+		if err != nil {
+			return fmt.Errorf("failed to initialize sequence %s: %w", st, err)
+		}
+	}
+
+	// 6. Broadcast Event (Simulating the format required)
 	if hub != nil {
 	    // The hub.Broadcast accepts internal events. It connects to the frontend event system.
-		hub.Broadcast(map[string]interface{}{
-			"type": "org_provisioned",
-			"payload": map[string]interface{}{
-				"tenant_id": tenantID,
-				"org_id":    orgID,
-				"site_id":   siteID,
-				"zones":     zoneIDs,
-			},
+		hub.Broadcast("org_provisioned", map[string]interface{}{
+			"tenant_id": tenantID,
+			"org_id":    orgID,
+			"site_id":   siteID,
+			"zones":     zoneIDs,
 		})
 	}
 

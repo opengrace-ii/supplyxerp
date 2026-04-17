@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"sync"
 	"github.com/gorilla/websocket"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Event represents a WebSocket message
@@ -26,14 +27,16 @@ type Hub struct {
 	Register   chan *Client
 	Unregister chan *Client
 	mu         sync.RWMutex
+	Db         *pgxpool.Pool
 }
 
-func NewHub() *Hub {
+func NewHub(db *pgxpool.Pool) *Hub {
 	return &Hub{
 		clients:    make(map[*Client]bool),
 		broadcast:  make(chan []byte),
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
+		Db:         db,
 	}
 }
 

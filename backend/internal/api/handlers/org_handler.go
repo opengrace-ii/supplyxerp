@@ -286,7 +286,7 @@ func (h *OrgHandler) GetOrgTree(c *gin.Context) {
 	}
 	defer orgRows.Close()
 
-	var orgs []gin.H
+	orgs := []gin.H{}
 	orgIDs := []int64{}
 	for orgRows.Next() {
 		var id int64
@@ -343,4 +343,68 @@ func (h *OrgHandler) GetOrgTree(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, orgs)
+}
+
+func (h *OrgHandler) ProvisionDefaults(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(int64)
+	orgPID := c.Param("id")
+
+	// 1. Get internal Org ID
+	var orgID int64
+	err := h.Pool.QueryRow(c.Request.Context(), "SELECT id FROM organisations WHERE public_id = $1 AND tenant_id = $2", orgPID, tenantID).Scan(&orgID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Organisation not found"})
+		return
+	}
+
+	tx, err := h.Pool.Begin(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start transaction"})
+		return
+	}
+	defer tx.Rollback(c.Request.Context())
+
+	// 2. Ensure SITE-1 exists
+	var siteID int64
+	err = tx.QueryRow(c.Request.Context(), `
+		INSERT INTO sites (tenant_id, organisation_id, code, name, timezone)
+		VALUES ($1, $2, 'SITE-1', 'Main Site', 'UTC')
+		ON CONFLICT (tenant_id, code) DO UPDATE SET name = EXCLUDED.name
+		RETURNING id
+	`, tenantID, orgID).Scan(&siteID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to provision site: " + err.Error()})
+		return
+	}
+
+	// 3. Ensure mandatory zones exist
+	zones := []struct {
+		code string
+		name string
+		zType string
+	}{
+		{"RECV-01", "Receiving Bay", "RECEIVING"},
+		{"STOR-01", "Main Storage", "STORAGE"},
+		{"PROD-01", "Production Floor", "PRODUCTION"},
+		{"DISP-01", "Dispatch Area", "DISPATCH"},
+	}
+
+	for _, z := range zones {
+		_, err = tx.Exec(c.Request.Context(), `
+			INSERT INTO zones (tenant_id, site_id, code, name, zone_type)
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT (site_id, code) DO NOTHING
+		`, tenantID, siteID, z.code, z.name, z.zType)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to provision zone " + z.code + ": " + err.Error()})
+			return
+		}
+	}
+
+	if err := tx.Commit(c.Request.Context()); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Commit failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }

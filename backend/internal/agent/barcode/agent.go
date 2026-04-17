@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"erplite/backend/internal/db/dbgen"
-	"erplite/backend/internal/events"
-	"erplite/backend/internal/repository"
+	"supplyxerp/backend/internal/events"
+	"supplyxerp/backend/internal/repository"
 )
 
 type Agent struct {
@@ -32,11 +31,15 @@ func (a *Agent) Resolve(ctx context.Context, uow *repository.UnitOfWork, tenantI
 	if err == nil {
 		switch b.EntityType {
 		case "PRODUCT":
-			p, _ := uow.Products.GetByCode(ctx, tenantID, b.Code)
-			return &ResolvedEntity{Type: "PRODUCT", ID: p.ID, Data: p}, nil
+			p, err := uow.Products.GetByCode(ctx, tenantID, b.Code)
+			if err == nil {
+				return &ResolvedEntity{Type: "PRODUCT", ID: p.ID, Data: p}, nil
+			}
 		case "HU":
-			hu, _ := uow.HU.GetWithDetails(ctx, b.EntityID)
-			return &ResolvedEntity{Type: "HU", ID: hu.ID, Data: hu}, nil
+			hu, err := uow.HU.GetWithDetails(ctx, b.EntityID)
+			if err == nil {
+				return &ResolvedEntity{Type: "HU", ID: hu.ID, Data: hu}, nil
+			}
 		case "LOCATION", "ZONE":
 			// For backward compatibility keep LOCATION string, but query zones
 			z, err := uow.Zones.GetByCode(ctx, tenantID, b.Code)
@@ -49,8 +52,12 @@ func (a *Agent) Resolve(ctx context.Context, uow *repository.UnitOfWork, tenantI
 	// 2. Fallback to direct HU code (HU-XXXX)
 	hu, err := uow.HU.GetByBarcode(ctx, tenantID, code)
 	if err == nil {
-		details, _ := uow.HU.GetWithDetails(ctx, hu.ID)
-		return &ResolvedEntity{Type: "HU", ID: hu.ID, Data: details}, nil
+		details, err := uow.HU.GetWithDetails(ctx, hu.ID)
+		if err == nil {
+			return &ResolvedEntity{Type: "HU", ID: hu.ID, Data: details}, nil
+		}
+		// If details fail, at least return the basic HU
+		return &ResolvedEntity{Type: "HU", ID: hu.ID, Data: hu}, nil
 	}
 
 	// 3. Fallback to direct Zone code

@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"erplite/backend/internal/events"
+	"supplyxerp/backend/internal/events"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"

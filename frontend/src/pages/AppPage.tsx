@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Shell from '../components/layout/Shell';
 import { useAppStore } from '../store/useAppStore';
 import LoginPage from './LoginPage';
@@ -6,9 +6,40 @@ import StockFlowPanel from '../components/operation/StockFlowPanel';
 import Tenants from './Config/Tenants';
 import MaterialHub from './MFG/MaterialHub';
 import OrgStructure from './Config/OrgStructure';
+import Setup from './Config/Setup';
+import LedgerStock from './OPS/LedgerStock';
 
 const AppPage: React.FC = () => {
-  const { currentModule, user } = useAppStore();
+  const { currentModule, user, isAuthLoading, checkSession } = useAppStore();
+
+  useEffect(() => {
+    if (user && !(window as any).supplyxerpWs) {
+      console.log("Initializing global WebSocket...");
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.hostname}:8080/ws`;
+      const ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => console.log("WebSocket connected");
+      ws.onclose = () => {
+        console.log("WebSocket disconnected, retrying...");
+        delete (window as any).supplyxerpWs;
+      };
+      
+      (window as any).supplyxerpWs = ws;
+    }
+  }, [user]);
+
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
+
+  if (isAuthLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#111', color: '#fff' }}>
+        Loading session...
+      </div>
+    );
+  }
 
   if (!user) {
     return <LoginPage />;
@@ -18,6 +49,8 @@ const AppPage: React.FC = () => {
     switch(currentModule) {
       case 'StockFlow':
         return <StockFlowPanel />;
+      case 'Setup':
+        return <Setup />;
       case 'Tenants':
         return <Tenants />;
       case 'Org Structure':
@@ -25,6 +58,7 @@ const AppPage: React.FC = () => {
       case 'MaterialHub':
         return <MaterialHub />;
       case 'LedgerStock':
+        return <LedgerStock />;
       case 'Audit log':
       case 'Users & roles':
       case 'Module config':

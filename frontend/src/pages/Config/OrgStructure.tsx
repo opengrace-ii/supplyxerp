@@ -103,6 +103,26 @@ const OrgStructure: React.FC = () => {
             <div style={{ marginBottom: '24px' }}>
                 <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#f472b6' }}>Org Structure</h1>
                 <p style={{ fontSize: '14px', color: '#888', marginTop: '4px' }}>Organisation · Sites · Zones · Auto-provisioning</p>
+                
+                {error && (
+                    <div style={{ 
+                        marginTop: '16px', 
+                        padding: '12px 16px', 
+                        backgroundColor: 'rgba(239,68,68,0.1)', 
+                        border: '1px solid #ef4444', 
+                        borderRadius: '6px',
+                        color: '#ef4444',
+                        fontSize: '14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span>⚠️</span> {error}
+                        </div>
+                        <button onClick={() => setError(null)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
+                    </div>
+                )}
             </div>
 
             <div style={{ display: 'flex', gap: '24px', flex: 1, minHeight: 0 }}>
@@ -141,7 +161,7 @@ const OrgStructure: React.FC = () => {
                             
                             {/* Sites */}
                             <div style={{ paddingLeft: '24px', borderLeft: '1px solid rgba(255,255,255,0.1)', marginLeft: '12px', marginTop: '4px' }}>
-                                {(org.sites || []).map(site => (
+                                {Array.isArray(org.sites) && org.sites.map(site => (
                                     <div key={`site-${site.id}`}>
                                         <div 
                                             onClick={() => handleNodeClick(site)}
@@ -163,7 +183,7 @@ const OrgStructure: React.FC = () => {
 
                                         {/* Zones */}
                                         <div style={{ paddingLeft: '24px', borderLeft: '1px solid rgba(255,255,255,0.1)', marginLeft: '12px', marginTop: '4px' }}>
-                                            {(site.zones || []).map(zone => (
+                                            {Array.isArray(site.zones) && site.zones.map(zone => (
                                                 <div 
                                                     key={`zone-${zone.id}`}
                                                     onClick={() => handleNodeClick(zone)}
@@ -236,7 +256,18 @@ const OrgStructure: React.FC = () => {
                             ) : (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', color: '#f59e0b', fontSize: '14px', backgroundColor: 'rgba(245,158,11,0.1)', padding: '12px 16px', borderRadius: '6px' }}>
                                     <span style={{ flex: 1 }}>⚠ Missing default zones (RECEIVING, STORAGE, PRODUCTION, DISPATCH).</span>
-                                    <button style={{ backgroundColor: '#f59e0b', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 600, cursor: 'pointer' }}>
+                                    <button 
+                                        onClick={async () => {
+                                            if (!currentOrg) return;
+                                            try {
+                                                await api.provisionOrgDefaults(currentOrg.public_id);
+                                                fetchTree();
+                                            } catch (err: any) {
+                                                alert(err.response?.data?.error || 'Provisioning failed');
+                                            }
+                                        }}
+                                        style={{ backgroundColor: '#f59e0b', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 600, cursor: 'pointer' }}
+                                    >
                                         Re-provision defaults
                                     </button>
                                 </div>

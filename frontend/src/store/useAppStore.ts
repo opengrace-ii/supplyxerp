@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { api } from '../api/client';
 
 export type Mode = 'Goods Receipt' | 'Putaway' | 'Receiving' | 'Production' | 'Dispatch';
 
@@ -11,6 +12,7 @@ interface AppState {
   traceSteps: any[];
   wsStatus: 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
   user: any | null;
+  isAuthLoading: boolean;
   setTab: (tab: 'ops' | 'mfg' | 'com' | 'sys' | 'cfg') => void;
   setModule: (module: string) => void;
   setMode: (mode: Mode) => void;
@@ -20,6 +22,7 @@ interface AppState {
   clearTraceSteps: () => void;
   setWsStatus: (status: 'connecting' | 'connected' | 'disconnected' | 'reconnecting') => void;
   setUser: (user: any | null) => void;
+  checkSession: () => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -31,8 +34,15 @@ export const useAppStore = create<AppState>((set) => ({
   traceSteps: [],
   wsStatus: 'disconnected',
   user: null,
-  setTab: (tab) => set({ currentTab: tab }),
-  setModule: (mod) => set({ currentModule: mod }),
+  isAuthLoading: true,
+  setTab: (tab) => {
+    localStorage.setItem('supplyxerp_last_tab', tab);
+    set({ currentTab: tab });
+  },
+  setModule: (mod) => {
+    localStorage.setItem('supplyxerp_last_mod', mod);
+    set({ currentModule: mod });
+  },
   setMode: (mode) => set({ currentMode: mode, traceSteps: [], currentHU: null, currentTask: null }),
   setCurrentHU: (hu) => set({ currentHU: hu }),
   setCurrentTask: (task) => set({ currentTask: task }),
@@ -40,4 +50,23 @@ export const useAppStore = create<AppState>((set) => ({
   clearTraceSteps: () => set({ traceSteps: [] }),
   setWsStatus: (status) => set({ wsStatus: status }),
   setUser: (user) => set({ user }),
+  checkSession: async () => {
+    try {
+      const response = await api.getMe();
+      const user = response.data?.user || response.data;
+      
+      const lastTab = localStorage.getItem('supplyxerp_last_tab');
+      const lastMod = localStorage.getItem('supplyxerp_last_mod');
+      
+      set({ 
+        user, 
+        isAuthLoading: false,
+        currentTab: (lastTab as any) || 'ops',
+        currentModule: lastMod || 'StockFlow'
+      });
+    } catch (err: any) {
+      console.error("Session check failed:", err.message);
+      set({ user: null, isAuthLoading: false });
+    }
+  }
 }));

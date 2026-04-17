@@ -14,6 +14,7 @@ backend/tmp/
 .DS_Store
 .idea/
 .vscode/
+*.code-workspace
 
 # Build
 frontend/dist/
@@ -24,3 +25,13 @@ mcp/venv/
 *.dll
 *.so
 *.dylib
+
+# SupplyX ERP Temporary/Sensitive
+backend/.env
+.env
+cookies.txt
+backend/cookies.txt
+scratch/
+prompts_and_responses/
+backend/tmp/
+mcp/erplite_mcp_updated.py

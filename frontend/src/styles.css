@@ -17,6 +17,12 @@
   --radius-lg: 8px;
   --radius-xl: 12px;
   --radius-2xl: 16px;
+
+  /* TechLogix Branding */
+  --techlogix-blue: #3b82f6;
+  --techlogix-navy: #020617;
+  --techlogix-slate: #94a3b8;
+  --techlogix-glow: rgba(59, 130, 246, 0.4);
 }
 
 /* Base Theme (Default to Ops) */
@@ -145,7 +151,6 @@ body {
 /* Ribbons */
 .ribbon-tabs {
   display: flex;
-  flex: 1;
   height: 46px;
 }
 .ribbon-tab {
@@ -282,4 +287,83 @@ body {
 }
 .animate-pulse {
   animation: pulse 2s infinite;
+}
+
+/* Premium Redesign Utilities */
+
+.glass {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.input-underlined {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 12px 0;
+  width: 100%;
+  font-size: 16px;
+  outline: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.input-underlined:focus {
+  border-bottom-color: var(--techlogix-blue);
+  box-shadow: 0 4px 12px -4px var(--techlogix-glow);
+}
+
+.input-underlined::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 14px;
+}
+
+.btn-glass {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transition: all 0.3s;
+  backdrop-filter: blur(8px);
+}
+
+.btn-glass:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.login-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--techlogix-navy);
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(217,100%,15%,1) 0, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(220,100%,10%,1) 0, transparent 50%),
+    radial-gradient(at 100% 100%, hsla(215,100%,12%,1) 0, transparent 50%),
+    radial-gradient(at 0% 100%, hsla(225,100%,15%,1) 0, transparent 50%);
+  z-index: -1;
+  overflow: hidden;
+}
+
+.aurora-glow {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, var(--techlogix-glow) 0%, transparent 70%);
+  filter: blur(80px);
+  opacity: 0.3;
+  pointer-events: none;
+  border-radius: 50%;
+  animation: aurora-move 20s infinite alternate;
+}
+
+@keyframes aurora-move {
+  0% { transform: translate(-20%, -20%); }
+  100% { transform: translate(40%, 40%); }
 }

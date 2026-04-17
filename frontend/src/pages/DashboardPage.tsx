@@ -249,7 +249,7 @@ export function DashboardPage({ user, onLogout }: Props) {
     <main className="ops-root">
       <header className="ops-header">
         <div>
-          <h1>ERPLite Warehouse Execution</h1>
+          <h1>SupplyX ERP Warehouse Execution</h1>
           <p>
             Operator: <strong>{user.username}</strong> ({user.role})
           </p>

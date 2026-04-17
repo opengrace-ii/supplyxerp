@@ -3,9 +3,9 @@ package service
 import (
 	"context"
 	"errors"
-	"erplite/backend/internal/db/dbgen"
-	"erplite/backend/internal/security"
-	"erplite/backend/internal/utils"
+	"supplyxerp/backend/internal/db/dbgen"
+	"supplyxerp/backend/internal/security"
+	"supplyxerp/backend/internal/utils"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -53,8 +53,10 @@ func (s *AuthService) Authenticate(ctx context.Context, username, password strin
 	}
 
 	return &security.UserClaims{
-		UserID:   idStr,
-		Username: user.Username,
-		Role:     role,
+		UserID:     idStr,
+		InternalID: user.ID,
+		TenantID:   user.TenantID.Int64,
+		Username:   user.Username,
+		Role:       role,
 	}, nil
 }

@@ -3,11 +3,10 @@ package warehouse
 import (
 	"context"
 	"encoding/json"
+	"time"
 
-	"erplite/backend/internal/db/dbgen"
-	"erplite/backend/internal/events"
-	"erplite/backend/internal/repository"
-	"github.com/jackc/pgx/v5/pgtype"
+	"supplyxerp/backend/internal/events"
+	"supplyxerp/backend/internal/repository"
 )
 
 type Agent struct {
@@ -32,20 +31,21 @@ func (a *Agent) MoveHU(ctx context.Context, uow *repository.UnitOfWork, p MovePa
 		return err
 	}
 
-	// Because sqlc wasn't generated with zone_id, we fetch it manually to get from_zone_id and from_site_id
+	// 2. Resolve targets
 	var fromZoneID, fromSiteID *int64
-	var prodID *int64 = &hu.ProductID
+	var prodID *int64
+	if hu.ProductID.Valid {
+		val := hu.ProductID.Int64
+		prodID = &val
+	}
 	
 	err = uow.Zones.GetDb().QueryRow(ctx, "SELECT zone_id, site_id FROM handling_units WHERE id = $1", hu.ID).Scan(&fromZoneID, &fromSiteID)
-	// it's fine if error here, they might be NULL or we continue
 
-	// 2. Resolve target zone
 	z, err := uow.Zones.GetByCode(ctx, p.TenantID, p.ToLocationCode)
 	if err != nil {
 		return err
 	}
 
-	// 3. Validation: Skip if already there
 	if fromZoneID != nil && *fromZoneID == z.ID {
 		return nil
 	}
@@ -55,13 +55,15 @@ func (a *Agent) MoveHU(ctx context.Context, uow *repository.UnitOfWork, p MovePa
 		return err
 	}
 
-	// 5. Record Event in Ledger
+	// 5. Record Event
 	metadata, _ := json.Marshal(map[string]any{
 		"reason": "manual_move",
 		"app":    "StockFlow",
 	})
 
-	err = uow.Events.CreateWithZone(ctx, repository.CreateEventZoneParams{
+	qtyVal, _ := hu.Quantity.Float64Value()
+
+	_, err = uow.Events.CreateWithZone(ctx, repository.CreateEventZoneParams{
 		TenantID:    p.TenantID,
 		EventType:   "HU_MOVED",
 		HuID:        hu.ID,
@@ -69,8 +71,8 @@ func (a *Agent) MoveHU(ctx context.Context, uow *repository.UnitOfWork, p MovePa
 		FromZoneID:  fromZoneID,
 		ToZoneID:    &z.ID,
 		FromSiteID:  fromSiteID,
-		ToSiteID:    &z.ID, // Simplification or pass exact site
-		Quantity:    hu.Quantity,
+		ToSiteID:    &z.ID,
+		Quantity:    qtyVal.Float64,
 		Unit:        hu.Unit,
 		ActorUserID: p.ActorUserID,
 		Metadata:    metadata,
@@ -79,7 +81,7 @@ func (a *Agent) MoveHU(ctx context.Context, uow *repository.UnitOfWork, p MovePa
 		return err
 	}
 
-	// 6. Broadcast Update
+	// 6. Broadcast
 	if a.Hub != nil {
 		a.Hub.Broadcast("INVENTORY_UPDATE", map[string]any{
 			"hu_id":   hu.ID,
@@ -122,21 +124,26 @@ func (a *Agent) CompletePutawayTask(ctx context.Context, uow *repository.UnitOfW
 
 	siteID := uow.Zones.GetSiteID(ctx, toZoneID)
 
-	// Update HU
 	if err := uow.HU.UpdateZone(ctx, hu.ID, toZoneID, siteID); err != nil {
 		return err
 	}
 
-	// Record Event
-	err = uow.Events.CreateWithZone(ctx, repository.CreateEventZoneParams{
+	var prodID *int64
+	if hu.ProductID.Valid {
+		val := hu.ProductID.Int64
+		prodID = &val
+	}
+	qtyVal, _ := hu.Quantity.Float64Value()
+
+	_, err = uow.Events.CreateWithZone(ctx, repository.CreateEventZoneParams{
 		TenantID:    tenantID,
 		EventType:   "PUTAWAY",
 		HuID:        hu.ID,
-		ProductID:   &hu.ProductID,
+		ProductID:   prodID,
 		FromZoneID:  task.FromZoneID,
 		ToZoneID:    &toZoneID,
 		ToSiteID:    &siteID,
-		Quantity:    hu.Quantity,
+		Quantity:    qtyVal.Float64,
 		Unit:        hu.Unit,
 		ActorUserID: userID,
 	})
@@ -144,7 +151,6 @@ func (a *Agent) CompletePutawayTask(ctx context.Context, uow *repository.UnitOfW
 		return err
 	}
 
-	// Complete Task
 	return uow.WarehouseTasks.Complete(ctx, taskID, toZoneID)
 }
 

@@ -21,16 +21,16 @@ export const TopBar: React.FC = () => {
   return (
     <header className="topbar">
       {/* Logo */}
-      <div style={{ display: 'flex', alignItems: 'center', fontWeight: '700', fontSize: '14px', whiteSpace: 'nowrap' }}>
-        <span style={{ color: '#fff' }}>ERP</span>
-        <span className="text-accent">Lite</span>
+      <div style={{ display: 'flex', alignItems: 'center', fontWeight: '600', fontSize: '14px', whiteSpace: 'nowrap' }}>
+        <span style={{ color: '#ffffff' }}>SupplyX</span>
+        <span className="text-accent"> ERP</span>
       </div>
 
       <div className="topbar-separator" />
 
       {/* Breadcrumb */}
       <div style={{ fontSize: '11px', color: '#888', whiteSpace: 'nowrap' }}>
-        ERPLite · <span style={{color: '#fff'}}>{currentModule}</span> · TechLogix UK
+        SupplyX ERP · <span style={{color: '#fff'}}>{currentModule}</span> · TechLogix UK
       </div>
 
       {/* WS Pill */}

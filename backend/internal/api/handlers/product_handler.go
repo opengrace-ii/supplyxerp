@@ -1,12 +1,11 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
-	"erplite/backend/internal/agent/material"
-	"erplite/backend/internal/repository"
+	"supplyxerp/backend/internal/agent/material"
+	"supplyxerp/backend/internal/repository"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -138,55 +137,28 @@ func (h *ProductHandler) UpdateUOM(c *gin.Context) {
 
 func (h *ProductHandler) GetStock(c *gin.Context) {
 	tenantID := c.MustGet("tenant_id").(int64)
-	idStr := c.Param("public_id") // Could be public_id of product, wait the route is /api/products/:id/stock
+	idStr := c.Param("public_id")
 
-	// We only have product public_id or integer ID? Usually frontend sends public_id.
-	// But let's look up product.id
 	var productID int64
-	var baseUnit string
-	err := h.Pool.QueryRow(c.Request.Context(), "SELECT id, base_unit FROM products WHERE public_id = $1 AND tenant_id = $2", idStr, tenantID).Scan(&productID, &baseUnit)
+	err := h.Pool.QueryRow(c.Request.Context(), "SELECT id FROM products WHERE public_id = $1 AND tenant_id = $2", idStr, tenantID).Scan(&productID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
 		return
 	}
 
-	rows, err := h.Pool.Query(c.Request.Context(), `
-		SELECT z.code, z.name, z.zone_type, SUM(hu.quantity) as qty
-		FROM handling_units hu
-		JOIN zones z ON hu.zone_id = z.id
-		WHERE hu.product_id = $1 AND hu.tenant_id = $2 AND hu.status = 'AVAILABLE'
-		GROUP BY z.id, z.code, z.name, z.zone_type
-	`, productID, tenantID)
-
+	detail, err := h.Repo.Stock.GetProductDetail(c.Request.Context(), tenantID, productID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get stock"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get stock detail"})
 		return
 	}
-	defer rows.Close()
 
-	var breakdown []gin.H
-	var total float64
-	for rows.Next() {
-		var zCode, zName, zType string
-		var qty float64
-		if err := rows.Scan(&zCode, &zName, &zType, &qty); err == nil {
-			breakdown = append(breakdown, gin.H{
-				"zone_code": zCode,
-				"zone_name": zName,
-				"zone_type": zType,
-				"quantity":  qty,
-			})
-			total += qty
-		}
-	}
-
-	if breakdown == nil {
-		breakdown = []gin.H{}
-	}
+	// Transform to match old format for backward compatibility
+	summary := detail["product"].(repository.ProductStockSummary)
+	zones := detail["zone_breakdown"].([]map[string]any)
 
 	c.JSON(http.StatusOK, gin.H{
-		"total_quantity": total,
-		"unit": baseUnit,
-		"location_breakdown": breakdown,
+		"total_quantity":     summary.TotalQuantity,
+		"unit":               summary.BaseUnit,
+		"location_breakdown": zones,
 	})
 }

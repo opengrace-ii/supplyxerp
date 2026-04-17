@@ -3,10 +3,11 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
-	"erplite/backend/internal/agent/inventory"
-	"erplite/backend/internal/agent/warehouse"
-	"erplite/backend/internal/repository"
+	"supplyxerp/backend/internal/agent/inventory"
+	"supplyxerp/backend/internal/agent/warehouse"
+	"supplyxerp/backend/internal/repository"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,13 +22,23 @@ func NewGRHandler(repo *repository.UnitOfWork, workflow *inventory.GRWorkflow, w
 }
 
 type PostGRRequest struct {
-	ProductID   int64   `json:"product_id" binding:"required"`
-	Quantity    float64 `json:"quantity" binding:"required"`
-	Unit        string  `json:"unit" binding:"required"`
-	ZoneID      int64   `json:"zone_id" binding:"required"`
-	SupplierRef string  `json:"supplier_ref"`
-	Notes       string  `json:"notes"`
-	BatchRef    string  `json:"batch_ref"`
+	ProductID          int64      `json:"product_id" binding:"required"`
+	Quantity           float64    `json:"quantity" binding:"required"`
+	Unit               string     `json:"unit" binding:"required"`
+	ZoneID             int64      `json:"zone_id" binding:"required"`
+	DocumentDate       string     `json:"document_date"`
+	PostingDate        string     `json:"posting_date"`
+	MovementType       string     `json:"movement_type"`
+	SupplierID         int64      `json:"supplier_id"`
+	SupplierRef        string     `json:"supplier_ref"`
+	DeliveryNoteNumber string     `json:"delivery_note_number"`
+	BillOfLading       string     `json:"bill_of_lading"`
+	Notes              string     `json:"notes"`
+	BatchRef           string     `json:"batch_ref"`
+	ExpiryDate         *time.Time `json:"expiry_date"`
+	StockType          string     `json:"stock_type"`
+	POID               int64      `json:"po_id"`
+	POLineID           int64      `json:"po_line_id"`
 }
 
 func (h *GRHandler) PostGR(c *gin.Context) {
@@ -49,18 +60,51 @@ func (h *GRHandler) PostGR(c *gin.Context) {
 	}
 	h.Repo.Zones.GetDb().QueryRow(c.Request.Context(), "SELECT organisation_id FROM sites WHERE id = $1", siteID).Scan(&orgID)
 
+	docDate, _ := time.Parse("2006-01-02", req.DocumentDate)
+	postDate, _ := time.Parse("2006-01-02", req.PostingDate)
+	if docDate.IsZero() {
+		docDate = time.Now()
+	}
+	if postDate.IsZero() {
+		postDate = time.Now()
+	}
+
+	mType := req.MovementType
+	if mType == "" {
+		mType = "101"
+	}
+	sType := req.StockType
+	if sType == "" {
+		sType = "UNRESTRICTED"
+	}
+
+	var supplierID *int64
+	if req.SupplierID != 0 {
+		supplierID = &req.SupplierID
+	}
+
 	res, err := h.Workflow.ProcessGR(c.Request.Context(), h.Repo, inventory.GRParams{
-		TenantID:       tenantID,
-		OrganisationID: orgID,
-		SiteID:         siteID,
-		ZoneID:         req.ZoneID,
-		ProductID:      req.ProductID,
-		Quantity:       req.Quantity,
-		Unit:           req.Unit,
-		SupplierRef:    req.SupplierRef,
-		Notes:          req.Notes,
-		BatchRef:       req.BatchRef,
-		ActorUserID:    userID,
+		TenantID:           tenantID,
+		OrganisationID:     orgID,
+		SiteID:             siteID,
+		ZoneID:             req.ZoneID,
+		ProductID:          req.ProductID,
+		Quantity:           req.Quantity,
+		Unit:               req.Unit,
+		DocumentDate:       docDate,
+		PostingDate:        postDate,
+		MovementType:       mType,
+		SupplierID:         supplierID,
+		SupplierRef:        req.SupplierRef,
+		DeliveryNoteNumber: req.DeliveryNoteNumber,
+		BillOfLading:       req.BillOfLading,
+		Notes:              req.Notes,
+		BatchRef:           req.BatchRef,
+		ExpiryDate:         req.ExpiryDate,
+		StockType:          sType,
+		ActorUserID:        userID,
+		POID:               req.POID,
+		POLineID:           req.POLineID,
 	})
 
 	if err != nil {
@@ -86,6 +130,28 @@ func (h *GRHandler) ListGRs(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"grs": grs})
+}
+
+func (h *GRHandler) GetGR(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(int64)
+	grID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	doc, err := h.Repo.GR.GetByID(c.Request.Context(), tenantID, grID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "GR not found"})
+		return
+	}
+
+	lines, err := h.Repo.GR.GetDetails(c.Request.Context(), grID, tenantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch GR lines"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"gr_document": doc,
+		"lines":       lines,
+	})
 }
 
 func (h *GRHandler) GetStats(c *gin.Context) {

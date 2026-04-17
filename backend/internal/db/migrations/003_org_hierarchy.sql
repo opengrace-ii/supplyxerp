@@ -71,13 +71,22 @@ ALTER TABLE warehouse_tasks
 -- MIGRATE existing locations rows → zones
 -- (Requires a default org and site to exist — see auto-provisioning below)
 -- This INSERT runs AFTER the seed auto-provisioning function creates the default site.
+-- For the seed tenant 1, we must insert the defaults manually.
+INSERT INTO organisations (tenant_id, name, legal_name, currency, fiscal_year_start, is_active)
+VALUES (1, 'TechLogix UK', 'TechLogix Ltd', 'GBP', 1, true)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO sites (tenant_id, organisation_id, code, name, timezone, is_active)
+SELECT 1, id, 'SITE-1', 'Main Site', 'UTC', true FROM organisations WHERE tenant_id = 1
+ON CONFLICT DO NOTHING;
+
 -- It is idempotent: ON CONFLICT DO NOTHING.
 INSERT INTO zones (tenant_id, site_id, code, name, zone_type)
 SELECT
   l.tenant_id,
   s.id AS site_id,
   l.code,
-  l.name,
+  l.code, -- Use code as name since 'name' column is missing in 'locations'
   CASE
     WHEN l.code ILIKE '%RECV%' THEN 'RECEIVING'
     WHEN l.code ILIKE '%PROD%' THEN 'PRODUCTION'

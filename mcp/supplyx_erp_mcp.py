@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-ERPLite MCP Server
+SupplyX ERP MCP Server
 ==================
-Serves as the persistent memory and project context for the ERPLite build.
+Serves as the persistent memory and project context for the SupplyX ERP build.
 Instead of re-explaining the vision, stack, module structure, and SAP concepts
 to the LLM every session, this server provides them as structured tools.
 
@@ -16,14 +16,14 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
-app = Server("erplite-context")
+app = Server("supplyxerp-context")
 
 # ─── KNOWLEDGE BASE ──────────────────────────────────────────────────────────
 
 VISION = """
-ERPLite Vision (Source of Truth — Do Not Override)
+SupplyX ERP Vision (Source of Truth — Do Not Override)
 ===================================================
-ERPLite is a production-grade, industry-agnostic ERP system for small and
+SupplyX ERP is a production-grade, industry-agnostic ERP system for small and
 mid-scale industries who cannot afford SAP but deserve the same operational
 discipline. It is modelled on SAP S/4HANA MM, EWM, IM, PP, QM, SD, and TM.
 
@@ -43,16 +43,16 @@ This is not a prototype. It is a 10-year production system.
 MODULE_MAP = {
     "MaterialHub": {
         "sap_equivalent": "MM (Materials Management)",
-        "erplite_name": "MaterialHub",
+        "supplyx_name": "MaterialHub",
         "ribbon_section": "MFG",
         "phase": 2,
-        "status": "Built: Org Structure (Zones), Goods Receipt (Pipeline), Putaway Tasks. Next: Ledger Stock aggregation.",
+        "status": "STABLE & VERIFIED: Org Structure, Goods Receipt, StockFlow (Scan/Move/Consume), UOM Engine, Tenant Config. Scorecard: 100%.",
         "description": "Material master, procurement, goods receipt, supplier management",
         "core_concepts": [
-            "Material master record (product in ERPLite)",
+            "Material master record (product in SupplyX ERP)",
             "Purchasing organisation / purchasing group",
             "Purchase requisition → Purchase order → Goods receipt",
-            "Supplier barcode mapping (ERPLite differentiator)",
+            "Supplier barcode mapping (SupplyX ERP differentiator)",
             "Flexible UOM: received in KG, sold in IMP, consumed in QTY",
             "Goods receipt posts to inventory_events (never overwrites stock)",
             "Vendor invoice verification",
@@ -62,14 +62,14 @@ MODULE_MAP = {
         "key_sap_objects": ["Material Master", "Vendor Master", "Purchase Order", "Inbound Delivery", "GR Document"],
         "build_order_priority": 1,
         "why_first": "MaterialHub is the ground floor. Products must exist before HUs can be created. Purchasing must exist before goods can be received. WM and IM operations are meaningless without material master data.",
-        "erplite_tables": ["products", "product_units", "batches", "purchase_orders", "purchase_order_lines", "price_versions", "barcodes"]
+        "supplyx_tables": ["products", "product_units", "batches", "purchase_orders", "purchase_order_lines", "price_versions", "barcodes"]
     },
     "StockFlow": {
         "sap_equivalent": "EWM (Extended Warehouse Management)",
-        "erplite_name": "StockFlow",
+        "supplyx_name": "StockFlow",
         "ribbon_section": "OPS",
         "phase": 1,
-        "status": "ACTIVE_BUILD",
+        "status": "STABLE & VERIFIED: HU Lifecycle, Lineage, Production Ops (Move, Split, Consume). Multi-mode Auth (JWT/Header).",
         "description": "Handling unit lifecycle, warehouse tasks, scan operations",
         "core_concepts": [
             "Handling Unit (HU) = primary physical entity",
@@ -85,11 +85,11 @@ MODULE_MAP = {
         "key_sap_objects": ["Handling Unit", "Warehouse Task", "Transfer Order", "Storage Bin", "HU Split/Repack"],
         "build_order_priority": 2,
         "why_second": "StockFlow needs MaterialHub products to exist before HUs can reference them. The HU is the physical container of a material.",
-        "erplite_tables": ["handling_units", "locations", "warehouse_tasks", "barcodes", "inventory_events"]
+        "supplyx_tables": ["handling_units", "locations", "warehouse_tasks", "barcodes", "inventory_events"]
     },
     "LedgerStock": {
         "sap_equivalent": "IM (Inventory Management)",
-        "erplite_name": "LedgerStock",
+        "supplyx_name": "LedgerStock",
         "ribbon_section": "OPS",
         "phase": 1,
         "status": "ACTIVE_BUILD",
@@ -106,11 +106,11 @@ MODULE_MAP = {
         "sap_reference_book": "Inventory Management with SAP S/4HANA 2nd Ed (Roedel)",
         "key_sap_objects": ["Material Document", "Goods Movement", "Stock Type", "Physical Inventory Document"],
         "build_order_priority": 3,
-        "erplite_tables": ["inventory_events", "handling_units", "locations"]
+        "supplyx_tables": ["inventory_events", "handling_units", "locations"]
     },
     "BuildOrder": {
         "sap_equivalent": "PP (Production Planning)",
-        "erplite_name": "BuildOrder",
+        "supplyx_name": "BuildOrder",
         "ribbon_section": "MFG",
         "phase": 2,
         "status": "SCHEMA_READY",
@@ -119,16 +119,16 @@ MODULE_MAP = {
             "Bill of Materials (BOM) = list of components for a finished product",
             "Production order = instruction to produce a quantity",
             "Goods issue to production = CONSUME events against HUs",
-            "Partial consumption (ERPLite core strength) = HU split",
+            "Partial consumption (SupplyX ERP core strength) = HU split",
             "Backflushing = automatic GI on order confirmation",
             "Variance = planned qty vs actual qty consumed",
         ],
         "build_order_priority": 4,
-        "erplite_tables": ["production_orders", "bom_lines", "handling_units", "inventory_events"]
+        "supplyx_tables": ["production_orders", "bom_lines", "handling_units", "inventory_events"]
     },
     "QualityGate": {
         "sap_equivalent": "QM (Quality Management)",
-        "erplite_name": "QualityGate",
+        "supplyx_name": "QualityGate",
         "ribbon_section": "MFG",
         "phase": 2,
         "status": "SCHEMA_READY",
@@ -140,11 +140,11 @@ MODULE_MAP = {
             "Usage decision: PASS → stock to unrestricted; FAIL → blocked stock",
         ],
         "build_order_priority": 5,
-        "erplite_tables": ["inspection_lots"]
+        "supplyx_tables": ["inspection_lots"]
     },
     "DealFlow": {
         "sap_equivalent": "SD (Sales and Distribution)",
-        "erplite_name": "DealFlow",
+        "supplyx_name": "DealFlow",
         "ribbon_section": "COM",
         "phase": 3,
         "status": "SCHEMA_READY",
@@ -156,11 +156,11 @@ MODULE_MAP = {
             "Historical price accuracy: can reconstruct price on any past date",
         ],
         "build_order_priority": 6,
-        "erplite_tables": ["sales_orders", "sales_order_lines", "price_versions"]
+        "supplyx_tables": ["sales_orders", "sales_order_lines", "price_versions"]
     },
     "RouteRunner": {
         "sap_equivalent": "TM (Transportation Management)",
-        "erplite_name": "RouteRunner",
+        "supplyx_name": "RouteRunner",
         "ribbon_section": "COM",
         "phase": 3,
         "status": "SCHEMA_READY",
@@ -172,7 +172,7 @@ MODULE_MAP = {
             "Route optimisation via OSRM/Valhalla (open source)",
         ],
         "build_order_priority": 7,
-        "erplite_tables": ["shipments"]
+        "supplyx_tables": ["shipments"]
     }
 }
 
@@ -313,15 +313,15 @@ BUILD_SEQUENCE = [
 
 SAP_CORE_CONCEPTS = {
     "Handling_Unit": "The physical container of goods. Has quantity, unit, location, status. Can be split (parent→children) or merged. Identity never changes — only label_version increments.",
-    "Material_Document": "The record of a goods movement in SAP. In ERPLite = an entry in inventory_events.",
-    "Movement_Type": "SAP code defining what kind of stock change occurred (101=GR from PO, 261=GI to production, 311=transfer). In ERPLite = event_type field.",
-    "Plant": "SAP's manufacturing/storage unit. In ERPLite = Site (physical location). One default Site is auto-provisioned per tenant. Sites belong to an Organisation (Company Code equivalent). See get_org_model.",
-    "Storage_Location": "SAP's storage granularity within a Plant. In ERPLite = Zone. Zone has a zone_type (RECEIVING/STORAGE/PRODUCTION/DISPATCH/QC) which drives workflow behaviour automatically — replacing SAP movement type configuration.",
-    "Warehouse_Task": "SAP's instruction to move goods from source to destination. In ERPLite = warehouse_tasks table. Never moves stock directly.",
+    "Material_Document": "The record of a goods movement in SAP. In SupplyX ERP = an entry in inventory_events.",
+    "Movement_Type": "SAP code defining what kind of stock change occurred (101=GR from PO, 261=GI to production, 311=transfer). In SupplyX ERP = event_type field.",
+    "Plant": "SAP's manufacturing/storage unit. In SupplyX ERP = Site (physical location). One default Site is auto-provisioned per tenant. Sites belong to an Organisation (Company Code equivalent). See get_org_model.",
+    "Storage_Location": "SAP's storage granularity within a Plant. In SupplyX ERP = Zone. Zone has a zone_type (RECEIVING/STORAGE/PRODUCTION/DISPATCH/QC) which drives workflow behaviour automatically — replacing SAP movement type configuration.",
+    "Warehouse_Task": "SAP's instruction to move goods from source to destination. In SupplyX ERP = warehouse_tasks table. Never moves stock directly.",
     "MRP": "Material Requirements Planning. Calculates what needs to be purchased/produced based on demand. Phase 2 feature of BuildOrder.",
-    "Valuation": "The monetary value of stock. In ERPLite = price_versions table with valid_from/valid_to for historical accuracy.",
-    "Batch": "A lot of material with shared characteristics (expiry, origin). Optional in ERPLite but schema-ready.",
-    "Purchasing_Organisation": "SAP's buying entity. In ERPLite = tenant-level config for Phase 2. Purchasing authority is inherited from Organisation.",
+    "Valuation": "The monetary value of stock. In SupplyX ERP = price_versions table with valid_from/valid_to for historical accuracy.",
+    "Batch": "A lot of material with shared characteristics (expiry, origin). Optional in SupplyX ERP but schema-ready.",
+    "Purchasing_Organisation": "SAP's buying entity. In SupplyX ERP = tenant-level config for Phase 2. Purchasing authority is inherited from Organisation.",
 }
 
 # ─── TOOL HANDLERS ───────────────────────────────────────────────────────────
@@ -329,19 +329,20 @@ SAP_CORE_CONCEPTS = {
 @app.list_tools()
 async def list_tools():
     return [
-        Tool(name="get_vision",           description="Returns the ERPLite product vision, philosophy, and non-negotiable principles. Call this at the start of every session.", inputSchema={"type":"object","properties":{}}),
-        Tool(name="get_module",           description="Returns full spec for a specific ERPLite module: purpose, SAP equivalent, build priority, core concepts, and related tables. Pass module name.", inputSchema={"type":"object","properties":{"module":{"type":"string","description":"Module name: MaterialHub, StockFlow, LedgerStock, BuildOrder, QualityGate, DealFlow, RouteRunner"}},"required":["module"]}),
+        Tool(name="get_vision",           description="Returns the SupplyX ERP product vision, philosophy, and non-negotiable principles. Call this at the start of every session.", inputSchema={"type":"object","properties":{}}),
+        Tool(name="get_module",           description="Returns full spec for a specific SupplyX ERP module: purpose, SAP equivalent, build priority, core concepts, and related tables. Pass module name.", inputSchema={"type":"object","properties":{"module":{"type":"string","description":"Module name: MaterialHub, StockFlow, LedgerStock, BuildOrder, QualityGate, DealFlow, RouteRunner"}},"required":["module"]}),
         Tool(name="get_all_modules",      description="Returns the complete module map with build priorities and phases. Use to understand the full system scope.", inputSchema={"type":"object","properties":{}}),
         Tool(name="get_tech_stack",       description="Returns the full technology stack decision with rationale and non-negotiable constraints.", inputSchema={"type":"object","properties":{}}),
         Tool(name="get_ui_spec",          description="Returns the UI design specification: colour themes, layout structure, component rules. Always consult before writing any frontend code.", inputSchema={"type":"object","properties":{}}),
         Tool(name="get_agents",           description="Returns all 8 domain agents with their exact responsibilities. Every operation must route through these agents.", inputSchema={"type":"object","properties":{}}),
         Tool(name="get_build_sequence",   description="Returns the correct build order for all modules with the architectural reason WHY each step comes before the next. This is the answer to 'where do we start?'", inputSchema={"type":"object","properties":{}}),
-        Tool(name="get_sap_concept",      description="Returns the ERPLite equivalent of a SAP concept. Use when translating SAP terminology to ERPLite implementation.", inputSchema={"type":"object","properties":{"concept":{"type":"string","description":"SAP concept name e.g. Handling_Unit, Material_Document, Movement_Type, Storage_Bin"}},"required":["concept"]}),
-        Tool(name="get_all_sap_concepts", description="Returns all SAP→ERPLite concept translations. Use at session start when working on domain logic.", inputSchema={"type":"object","properties":{}}),
-        Tool(name="get_org_model",        description="Returns the canonical ERPLite organisational hierarchy model. Call this before writing any schema, API, or UI that references tenant, site, zone, or location. Replaces the old flat locations model.", inputSchema={"type":"object","properties":{}}),
+        Tool(name="get_sap_concept",      description="Returns the SupplyX ERP equivalent of a SAP concept. Use when translating SAP terminology to SupplyX ERP implementation.", inputSchema={"type":"object","properties":{"concept":{"type":"string","description":"SAP concept name e.g. Handling_Unit, Material_Document, Movement_Type, Storage_Bin"}},"required":["concept"]}),
+        Tool(name="get_all_sap_concepts", description="Returns all SAP→SupplyX ERP concept translations. Use at session start when working on domain logic.", inputSchema={"type":"object","properties":{}}),
+        Tool(name="get_org_model",        description="Returns the canonical SupplyX ERP organisational hierarchy model. Call this before writing any schema, API, or UI that references tenant, site, zone, or location. Replaces the old flat locations model.", inputSchema={"type":"object","properties":{}}),
         Tool(name="get_current_status",   description="Returns what is built, what is in progress, and what is next. The live project status.", inputSchema={"type":"object","properties":{}}),
         Tool(name="get_session_context",  description="Returns a compact context block suitable for injecting at the start of any Claude Code or Codex session. Saves tokens by providing structured context instead of prose re-explanation.", inputSchema={"type":"object","properties":{}}),
         Tool(name="get_db_schema_rules",  description="Returns the database design rules and critical constraints. Consult before writing any SQL or schema change.", inputSchema={"type":"object","properties":{}}),
+        Tool(name="get_migration_model", description="Returns the zero-friction migration model, domain profiles, and sequence safety rules.", inputSchema={"type":"object","properties":{}}),
     ]
 
 @app.call_tool()
@@ -390,7 +391,7 @@ async def call_tool(name: str, arguments: dict):
     elif name == "get_org_model":
         org_model = {
             "model": "Flexible Depth Hierarchy",
-            "rationale": "SAP's 4-level rigidity forces dummy nodes for SMEs. ERPLite depth is optional — the system adapts to the business.",
+            "rationale": "SAP's 4-level rigidity forces dummy nodes for SMEs. SupplyX ERP depth is optional — the system adapts to the business.",
             "hierarchy": {
                 "level_1": {"erplite": "Tenant", "sap_equivalent": "Client", "notes": "Top-level SaaS isolation. One per customer account."},
                 "level_2": {"erplite": "Organisation", "sap_equivalent": "Company Code", "notes": "Legal and financial boundary. Holds currency, fiscal year. Required."},
@@ -419,34 +420,29 @@ async def call_tool(name: str, arguments: dict):
 
     elif name == "get_current_status":
         status = {
+            "phase_1": "COMPLETE & VERIFIED (Scorecard available)",
             "built": [
-                "DB schema (all tables)",
-                "Docker Compose",
-                "JWT auth",
+                "DB schema (all tables + repaired sequences)",
+                "JWT auth (Dual Cookie/Bearer Support)",
                 "WebSocket hub (connected)",
                 "8 agent interfaces",
-                "StockFlow scan/consume/split API",
+                "StockFlow scan/move/consume API (VERIFIED)",
                 "Frontend shell with ribbon nav and colour themes",
                 "MaterialHub product master CRUD",
-                "MaterialHub barcode registration",
-                "MaterialHub UOM engine",
-                "Tenants management screen",
-                "Real stat cards (no hardcoded data)",
-                "Org hierarchy (organisations + sites + zones) migration",
-                "Zone-based location selector in StockFlow",
+                "Org hierarchy (Tenant → Org → Site → Zone) - VERIFIED",
+                "StockFlow GR flow (goods receipt) - VERIFIED",
+                "Tenant config (Profiles, Sequences, Migration) - VERIFIED",
+                "LedgerStock — pure computed stock aggregation (VERIFIED)",
             ],
             "in_progress": [
-                "StockFlow GR flow (goods receipt)",
-                "LedgerStock event table UI",
+                "MaterialHub — Purchasing (PO → GR integration)",
             ],
-            "next": "Step 3: StockFlow GR + HU creation (requires zones to exist)",
-            "canonical_org_model": "Flexible Depth Hierarchy — call get_org_model for full spec",
-            "critical_note": "The flat 'locations' table is deprecated. All new code must reference zones.",
+            "next": "Phase 2: MaterialHub Purchasing Integration. Procurement life-cycle.",
         }
         return txt(json.dumps(status, indent=2))
 
     elif name == "get_session_context":
-        ctx = """ERPLite Project Context (MCP — do not re-explain, act on this)
+        ctx = """SupplyX ERP Project Context (MCP — do not re-explain, act on this)
 ================================================================
 Vision: Production ERP for SMEs. SAP-equivalent quality. 10-year horizon.
 Stack: Go/Gin + PostgreSQL + Redis + React/Vite + Docker Compose.
@@ -458,13 +454,14 @@ ORG MODEL: Flexible Depth Hierarchy (NOT SAP's rigid 4-level).
   Call get_org_model for the canonical spec before touching any location/zone/site code.
 
 CORRECT BUILD ORDER (follow this — do not skip steps):
-1. ✅ MaterialHub product master (DONE)
-2. Org hierarchy migration — organisations + sites + zones (CURRENT STEP)
-3. StockFlow GR + HU creation (requires zones to exist)
-4. LedgerStock event ledger UI
-5. StockFlow production ops (consume/split/move)
-6. MaterialHub purchasing (PO → GR)
-7. BuildOrder, QualityGate, DealFlow, RouteRunner
+1. ✅ MaterialHub product master
+2. ✅ Org hierarchy migration — organisations + sites + zones
+3. ✅ StockFlow GR + HU creation
+4. ✅ Tenant Configurability & Data Migration (Setup Cockpit)
+5. ✅ LedgerStock stock aggregation (PURE COMPUTED VIEW)
+6. ✅ StockFlow production ops (consume/split/move)
+7. MaterialHub purchasing (PO → GR — NEXT STEP)
+8. BuildOrder, QualityGate, DealFlow, RouteRunner
 
 NON-NEGOTIABLES:
 - Stock is a ledger (inventory_events). Never overwrite balances.
@@ -474,8 +471,9 @@ NON-NEGOTIABLES:
 - No V1/V2. No placeholder functions. No hardcoded mock data.
 - Every operational table carries BOTH site_id and zone_id.
 - Auto-provision org/site/zones on tenant creation — zero-config day one.
+- Opening balance = OPENING_BALANCE ledger event.
 
-CURRENT STEP: Org hierarchy migration. Call get_org_model before writing any SQL."""
+CURRENT STEP: Phase 2 Kickoff. MaterialHub Purchasing Integration: PO → GR link."""
         return txt(ctx)
 
     elif name == "get_db_schema_rules":
@@ -492,6 +490,23 @@ CURRENT STEP: Org hierarchy migration. Call get_org_model before writing any SQL
             "migration_rule": "Schema is complete from 001_init.sql. No 002_add_column migrations needed — all tables are defined upfront including Phase 2/3 tables.",
         }
         return txt(json.dumps(rules, indent=2))
+
+    elif name == "get_migration_model":
+        model = {
+            "philosophy": "Zero-friction SME onboarding. Legacy data enters through formal ledger events.",
+            "profiles": ["GENERAL", "MANUFACTURING", "DISTRIBUTION", "RETAIL", "PHARMA", "TEXTILE", "CONSTRUCTION", "FOOD"],
+            "sequence_rules": {
+                "forward_only": "Sequences can only be re-seeded to a value HIGHER than the current max document number.",
+                "format_tags": ["{YEAR}", "{SEQ}"],
+                "safety": "Checked documents: GR (gr_documents), PO (purchase_orders), HU (barcodes/handling_units)"
+            },
+            "reset_logic": {
+                "admin_only": "Requires role_id 1 and typed confirmation 'RESET TENANT'.",
+                "destructive": "Clears operational data (GRs, HUs, Tasks, Events) but preserves master data (Tenants, Users, Products, Zones).",
+                "snapshot": "Generates a summary JSON before deletion."
+            }
+        }
+        return txt(json.dumps(model, indent=2))
 
     return txt(f"Unknown tool: {name}")
 

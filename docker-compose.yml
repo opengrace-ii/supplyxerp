@@ -1,25 +1,25 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: erplite-db
+    container_name: supplyxerp-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: erplite
-      POSTGRES_USER: erplite
-      POSTGRES_PASSWORD: erplite_dev_pass
+      POSTGRES_DB: supplyxerp
+      POSTGRES_USER: supplyxerp
+      POSTGRES_PASSWORD: supplyxerp_dev_pass
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
       - '15432:5432'
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U erplite -d erplite']
+      test: ['CMD-SHELL', 'pg_isready -U supplyxerp -d supplyxerp']
       interval: 5s
       timeout: 5s
       retries: 20
 
   redis:
     image: redis:7-alpine
-    container_name: erplite-redis
+    container_name: supplyxerp-redis
     restart: unless-stopped
     ports:
       - '16379:6379'
@@ -33,7 +33,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
-    container_name: erplite-backend
+    container_name: supplyxerp-backend
     restart: unless-stopped
     depends_on:
       db:
@@ -43,7 +43,7 @@ services:
     environment:
       APP_ENV: development
       APP_PORT: '8080'
-      DATABASE_URL: postgres://erplite:erplite_dev_pass@db:5432/erplite?sslmode=disable
+      DATABASE_URL: postgres://supplyxerp:supplyxerp_dev_pass@db:5432/supplyxerp?sslmode=disable
       REDIS_ADDR: redis:6379
       JWT_SECRET: dev_jwt_secret_change_in_prod
       JWT_TTL_MINUTES: '480'
@@ -61,7 +61,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
-    container_name: erplite-frontend
+    container_name: supplyxerp-frontend
     restart: unless-stopped
     depends_on:
       - backend

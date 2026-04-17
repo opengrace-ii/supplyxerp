@@ -13,7 +13,16 @@ const StockFlowPanel: React.FC = () => {
     const [products, setProducts] = useState<any[]>([]);
     const [grStats, setGRStats] = useState<any>(null);
     const [putawayTasks, setPutawayTasks] = useState<any[]>([]);
-    const [grForm, setGRForm] = useState({ product_id: 0, quantity: 0, unit: '', zone_id: 0, supplier_ref: '', batch_ref: '', notes: '' });
+    const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
+    const [grForm, setGRForm] = useState({ 
+        product_id: 0, quantity: 0, unit: '', zone_id: 0, 
+        supplier_ref: '', batch_ref: '', notes: '',
+        po_id: 0, po_line_id: 0 
+    });
+    const [showSplitModal, setShowSplitModal] = useState(false);
+    const [splitQty, setSplitQty] = useState(0);
+    const [huLineage, setHuLineage] = useState<any[]>([]);
+    const [consumeNotes, setConsumeNotes] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
 
     const MODES: Mode[] = ['Goods Receipt', 'Putaway', 'Receiving', 'Production', 'Dispatch'];
@@ -40,10 +49,16 @@ const StockFlowPanel: React.FC = () => {
 
     const fetchGRData = async () => {
         try {
-            const [s, p, t] = await Promise.all([api.getGRStats(), api.getProducts(), api.listPutawayTasks()]);
+            const [s, p, t, o] = await Promise.all([
+                api.getGRStats(), 
+                api.getProducts(), 
+                api.listPutawayTasks(),
+                api.listPOs('APPROVED')
+            ]);
             setGRStats(s);
             setProducts(p.products || []);
             setPutawayTasks(t || []);
+            setPurchaseOrders(o.purchase_orders || []);
         } catch (err) {
             console.error("Failed to fetch GR data", err);
         }
@@ -79,10 +94,18 @@ const StockFlowPanel: React.FC = () => {
                 setCurrentHU(res.data);
                 setCurrentTask(res.open_task || null);
                 setCurrentProduct(null);
+                setConsumeNotes('');
+
+                // If in production mode, fetch lineage automatically
+                if (currentMode === 'Production') {
+                    const lineage = await api.getLineage(res.data.public_id || res.data.code);
+                    setHuLineage(lineage);
+                }
             } else if (res.type === 'PRODUCT') {
                 setCurrentProduct(res.data);
                 setCurrentHU(null);
                 setCurrentTask(null);
+                setHuLineage([]);
             } else if (res.type === 'LOCATION') {
                 if (currentHU && (currentMode === 'Putaway' || currentMode === 'Production')) {
                     setTargetLocation(res.data.code);
@@ -106,7 +129,11 @@ const StockFlowPanel: React.FC = () => {
         try {
             const res = await api.postGR(grForm);
             if (res.success) {
-                setGRForm({ product_id: 0, quantity: 0, unit: '', zone_id: 0, supplier_ref: '', batch_ref: '', notes: '' });
+                setGRForm({ 
+                    product_id: 0, quantity: 0, unit: '', zone_id: 0, 
+                    supplier_ref: '', batch_ref: '', notes: '',
+                    po_id: 0, po_line_id: 0
+                });
                 fetchGRData();
             }
         } catch (err: any) {
@@ -135,8 +162,10 @@ const StockFlowPanel: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
+            const huCode = currentHU.public_id || currentHU.code;
+
             if (action === 'Move' && targetLocation) {
-                const res = await api.moveHU(currentHU.public_id, targetLocation);
+                const res = await api.moveHU(huCode, targetLocation);
                 if (res.success) {
                     setCurrentHU(null);
                     setTargetLocation('');
@@ -144,14 +173,53 @@ const StockFlowPanel: React.FC = () => {
                 } else {
                     setError(res.error?.message || 'Move failed');
                 }
+            } else if (action === 'Split') {
+                const res = await api.split({ 
+                    parent_hu_code: huCode, 
+                    split_quantity: splitQty 
+                });
+                if (res.success) {
+                    setShowSplitModal(false);
+                    setSplitQty(0);
+                    // Reload the parent HU to see updated quantity
+                    const scanRes = await api.scan(huCode);
+                    setCurrentHU(scanRes.data);
+                    const lineage = await api.getLineage(huCode);
+                    setHuLineage(lineage);
+                }
+            } else if (action === 'Consume') {
+                const res = await api.consume({ 
+                    hu_code: huCode, 
+                    quantity: currentHU.quantity, // Full consumption from button
+                    notes: "Full production consumption" 
+                });
+                if (res.success) {
+                    setCurrentHU(null);
+                    setHuLineage([]);
+                    fetchStats();
+                }
+            } else if (action === 'PartialConsume') {
+                const res = await api.consume({ 
+                    hu_code: huCode, 
+                    quantity: splitQty, 
+                    notes: consumeNotes || "Partial consumption" 
+                });
+                if (res.success) {
+                    setShowSplitModal(false);
+                    setSplitQty(0);
+                    setConsumeNotes('');
+                    // Reprocess parent
+                    const scanRes = await api.scan(huCode);
+                    setCurrentHU(scanRes.data);
+                    const lineage = await api.getLineage(huCode);
+                    setHuLineage(lineage);
+                }
             } else {
-                // Placeholder for other actions
-                console.log(`Action ${action} requested on ${currentHU.public_id}`);
-                // Clear HU after dummy action
+                console.log(`Action ${action} requested on ${huCode}`);
                 setCurrentHU(null);
             }
-        } catch (err) {
-            setError('Connection error');
+        } catch (err: any) {
+            setError(err.response?.data?.error || 'Connection error');
         } finally {
             setLoading(false);
         }
@@ -169,9 +237,14 @@ const StockFlowPanel: React.FC = () => {
             case 'Production':
                 return (
                     <div style={{ display: 'flex', gap: '8px' }}>
-                        <button type="submit" className="btn btn-primary" disabled={loading || !scannedBarcode}>Scan</button>
-                        <button type="button" className="btn btn-secondary" disabled={!currentHU || loading} onClick={() => handleAction('Consume')}>Consume</button>
-                        <button type="button" className="btn btn-secondary" disabled={!currentHU || loading} onClick={() => handleAction('Split')}>Split</button>
+                        <button type="submit" className="btn btn-primary" disabled={loading}>Scan</button>
+                        {currentHU && (
+                            <>
+                                <button type="button" className="btn" style={{ backgroundColor: '#22c55e', color: '#000', fontWeight: '700' }} disabled={loading} onClick={() => handleAction('Consume')}>Full Consume</button>
+                                <button type="button" className="btn btn-secondary" disabled={loading} onClick={() => { setSplitQty(0); setShowSplitModal(true); }}>Partial Use</button>
+                                <button type="button" className="btn btn-secondary" disabled={loading} onClick={() => { setSplitQty(0); setShowSplitModal(true); }}>Manual Split</button>
+                            </>
+                        )}
                     </div>
                 );
             case 'Putaway':
@@ -221,11 +294,59 @@ const StockFlowPanel: React.FC = () => {
                     <h3 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--theme-accent)', marginBottom: '8px' }}>POST GOODS RECEIPT</h3>
                     
                     <div className="form-group">
+                        <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>Purchase Order (PO)</label>
+                        <select 
+                            className="input-scanner" 
+                            style={{ width: '100%' }}
+                            value={grForm.po_id}
+                            onChange={e => {
+                                const poID = parseInt(e.target.value);
+                                const po = purchaseOrders.find(p => p.id === poID);
+                                setGRForm({ ...grForm, po_id: poID, po_line_id: 0, supplier_ref: po?.po_number || '' });
+                            }}
+                        >
+                            <option value="0">Manual (No PO)</option>
+                            {purchaseOrders.map(po => <option key={po.id} value={po.id}>{po.po_number} - {po.supplier_name}</option>)}
+                        </select>
+                    </div>
+
+                    {grForm.po_id !== 0 && (
+                        <div className="form-group">
+                            <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>PO Line Item</label>
+                            <select 
+                                className="input-scanner" 
+                                style={{ width: '100%' }}
+                                value={grForm.po_line_id}
+                                onChange={e => {
+                                    const lineID = parseInt(e.target.value);
+                                    const po = purchaseOrders.find(p => p.id === grForm.po_id);
+                                    const line = po?.lines?.find((l: any) => l.id === lineID);
+                                    if (line) {
+                                        setGRForm({ 
+                                            ...grForm, 
+                                            po_line_id: lineID, 
+                                            product_id: line.product_id, 
+                                            quantity: line.qty_ordered - line.qty_received,
+                                            unit: line.unit 
+                                        });
+                                    }
+                                }}
+                            >
+                                <option value="0">Select line...</option>
+                                {purchaseOrders.find(p => p.id === grForm.po_id)?.lines?.map((l: any) => (
+                                    <option key={l.id} value={l.id}>[{l.product_code}] {l.qty_ordered} {l.unit} (Left: {l.qty_ordered - l.qty_received})</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    <div className="form-group">
                         <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>Product</label>
                         <select 
                             className="input-scanner" 
                             style={{ width: '100%' }}
                             value={grForm.product_id}
+                            disabled={grForm.po_line_id !== 0}
                             onChange={e => {
                                 const p = products.find(p => p.id === parseInt(e.target.value));
                                 setGRForm({ ...grForm, product_id: p?.id || 0, unit: p?.base_unit || '' });
@@ -600,6 +721,105 @@ const StockFlowPanel: React.FC = () => {
                                 <div style={{ color: '#fff', fontWeight: '700', fontSize: '14px' }}>{targetLocation}</div>
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* Split / Partial Consume Modal */}
+            {showSplitModal && currentHU && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+                }}>
+                    <div style={{
+                        backgroundColor: '#18181b', border: '1px solid var(--theme-border)',
+                        padding: '30px', borderRadius: '12px', width: '400px', display: 'flex', flexDirection: 'column', gap: '20px'
+                    }}>
+                        <div>
+                            <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#fff' }}>Partial Consumption / Split</h2>
+                            <p style={{ fontSize: '12px', color: '#888' }}>Parent HU: {currentHU.public_id || currentHU.code} ({currentHU.quantity} {currentHU.unit})</p>
+                        </div>
+
+                        <div className="form-group">
+                            <label style={{ fontSize: '10px', color: 'var(--theme-accent)', textTransform: 'uppercase' }}>Quantity to Extract</label>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <input 
+                                    type="number" className="input-scanner" style={{ flex: 1 }} 
+                                    max={currentHU.quantity} min={0.0001} step={0.0001}
+                                    value={splitQty} onChange={e => setSplitQty(parseFloat(e.target.value))}
+                                />
+                                <span style={{ fontSize: '14px', color: '#fff' }}>{currentHU.unit}</span>
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label style={{ fontSize: '10px', color: 'var(--theme-accent)', textTransform: 'uppercase' }}>Notes / Reason</label>
+                            <input 
+                                type="text" className="input-scanner" placeholder="e.g. Production use, Lab sample..."
+                                value={consumeNotes} onChange={e => setConsumeNotes(e.target.value)}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                            <button className="btn" style={{ flex: 1, backgroundColor: '#22c55e', color: '#000', fontWeight: '700' }} onClick={() => handleAction('PartialConsume')}>Consume</button>
+                            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => handleAction('Split')}>Split to New HU</button>
+                        </div>
+                        <button className="btn btn-secondary" style={{ opacity: 0.5, fontSize: '11px' }} onClick={() => setShowSplitModal(false)}>Cancel</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Lineage Tree Viewer */}
+            {currentMode === 'Production' && huLineage.length > 0 && (
+                <div style={{ 
+                    marginTop: '20px', backgroundColor: 'rgba(255,255,255,0.02)', 
+                    border: '1px solid var(--theme-border)', borderRadius: '12px', padding: '20px' 
+                }}>
+                    <h3 style={{ fontSize: '12px', fontWeight: '700', color: 'var(--theme-accent)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                         <span style={{ color: '#fff' }}>IDENTITY LINEAGE</span>
+                         <span style={{ fontSize: '10px', fontWeight: '400', opacity: 0.5 }}>Real-time Trace</span>
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                        {huLineage.map((node, i) => (
+                            <div key={node.id} style={{ display: 'flex', position: 'relative' }}>
+                                {/* Tree Line */}
+                                <div style={{
+                                    width: '2px', backgroundColor: node.status === 'VOIDED' ? '#ef444440' : '#22c55e40',
+                                    marginLeft: `${node.depth * 24}px`, position: 'relative'
+                                }}>
+                                    <div style={{
+                                        position: 'absolute', top: '16px', left: '-4px', width: '10px', height: '10px',
+                                        borderRadius: '50%', border: '2px solid #18181b',
+                                        backgroundColor: node.status === 'VOIDED' ? '#ef4444' : '#22c55e'
+                                    }} />
+                                    {i < huLineage.length - 1 && huLineage[i+1].depth > node.depth && (
+                                        <div style={{ position: 'absolute', top: '26px', left: '0', width: '2px', height: '100%', backgroundColor: '#333' }} />
+                                    )}
+                                </div>
+                                
+                                <div style={{
+                                    flex: 1, padding: '10px 16px', marginBottom: '8px',
+                                    marginLeft: '12px', borderRadius: '8px',
+                                    backgroundColor: (currentHU?.public_id === node.hu_code || currentHU?.code === node.hu_code) ? 'rgba(245,158,11,0.05)' : 'rgba(255,255,255,0.02)',
+                                    border: (currentHU?.public_id === node.hu_code || currentHU?.code === node.hu_code) ? '1px solid rgba(245,158,11,0.2)' : '1px solid transparent',
+                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span style={{ fontSize: '13px', fontWeight: '700', color: node.status === 'VOIDED' ? '#666' : '#fff' }}>{node.hu_code}</span>
+                                            {node.status === 'VOIDED' && <span style={{ fontSize: '9px', backgroundColor: 'rgba(239,68,68,0.1)', color: '#ef4444', padding: '1px 4px', borderRadius: '4px' }}>CONSUMED</span>}
+                                            {node.depth === 0 && <span style={{ fontSize: '9px', backgroundColor: 'rgba(245,158,11,0.1)', color: '#f59e0b', padding: '1px 4px', borderRadius: '4px' }}>PARENT</span>}
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: '#555' }}>
+                                            {node.product_code} · {node.quantity} {node.base_unit} · {node.zone_code}
+                                        </div>
+                                    </div>
+                                    <div style={{ textAlign: 'right', fontSize: '10px', color: '#444' }}>
+                                        {new Date(node.created_at).toLocaleDateString()}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}

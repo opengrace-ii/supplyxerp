@@ -3,9 +3,9 @@ package handlers
 import (
 	"net/http"
 
-	"erplite/backend/internal/agent/barcode"
-	"erplite/backend/internal/agent/warehouse"
-	"erplite/backend/internal/repository"
+	"supplyxerp/backend/internal/agent/barcode"
+	"supplyxerp/backend/internal/agent/warehouse"
+	"supplyxerp/backend/internal/repository"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 )

@@ -2,13 +2,12 @@ package material
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
-	"erplite/backend/internal/db/dbgen"
-	"erplite/backend/internal/events"
-	"erplite/backend/internal/repository"
+	"supplyxerp/backend/internal/db/dbgen"
+	"supplyxerp/backend/internal/events"
+	"supplyxerp/backend/internal/repository"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -34,11 +33,10 @@ func (a *Agent) CreateProduct(ctx context.Context, uow *repository.UnitOfWork, p
 	a.broadcast(ctx, "ErrorPreventionAgent", "VALIDATING_INPUT", "SUCCESS")
 	
 	// Check uniqueness
-	_, err := uow.Products.GetByCode(ctx, p.Code) // I need to add this method or use a generic check
+	_, err := uow.Products.GetByCode(ctx, p.TenantID, p.Code) // I need to add this method or use a generic check
 	// For robustness, I'll just proceed and let DB UNIQUE constraint handle it if I haven't implemented GetByCode yet
 	
 	// 2. InventoryAgent → REGISTER_PRODUCT
-	a.broadcast(ctx, "InventoryAgent", "REGISTERING_PRODUCT", "SUCCESS")
 	product, err := uow.Products.Create(ctx, dbgen.Product{
 		TenantID:    pgtype.Int8{Int64: p.TenantID, Valid: true},
 		Code:        p.Code,
@@ -50,6 +48,7 @@ func (a *Agent) CreateProduct(ctx context.Context, uow *repository.UnitOfWork, p
 		a.broadcast(ctx, "InventoryAgent", "REGISTERING_PRODUCT", "FAILED")
 		return dbgen.Product{}, fmt.Errorf("failed to create product: %w", err)
 	}
+	a.broadcast(ctx, "InventoryAgent", "REGISTERING_PRODUCT", "SUCCESS")
 
 	// 3. BarcodeAgent → REGISTER_BARCODE
 	a.broadcast(ctx, "BarcodeAgent", "REGISTERING_BARCODE", "SUCCESS")
