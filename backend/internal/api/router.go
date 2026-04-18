@@ -7,6 +7,7 @@ import (
 	"supplyxerp/backend/internal/api/middleware"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"supplyxerp/backend/internal/logger"
 )
 
 type RouterDeps struct {
@@ -30,6 +31,7 @@ type RouterDeps struct {
 	PurchasingHandler *handlers.PurchasingHandler
 	RFQHandler       *handlers.RFQHandler
 	POEnrichHandler  *handlers.POEnrichHandler
+	SystemHandler    *handlers.SystemHandler
 }
 
 func NewRouter(deps RouterDeps) *gin.Engine {
@@ -42,6 +44,8 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		AllowHeaders:     []string{"Content-Type", "Authorization"},
 		AllowCredentials: true,
 	}))
+
+	r.Use(logger.Middleware(logger.Global))
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
@@ -234,6 +238,12 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		// Phase 1: PO Document Completeness (enrich tabs)
 		if deps.POEnrichHandler != nil {
 			deps.POEnrichHandler.RegisterPOEnrichRoutes(secured.Group("/api"))
+		}
+
+		// System Logs
+		{
+			secured.GET("/api/system/logs",         deps.SystemHandler.GetLogs)
+			secured.GET("/api/system/logs/summary", deps.SystemHandler.GetLogsSummary)
 		}
 	}
 

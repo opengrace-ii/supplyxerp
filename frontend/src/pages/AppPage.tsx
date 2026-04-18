@@ -13,6 +13,7 @@ import POManagement from './MFG/POManagement';
 import RFQManagement from './MFG/RFQManagement';
 import POBlockCancel from './MFG/POBlockCancel';
 import POAccountAssignment from './MFG/POAccountAssignment';
+import SystemLog from './SYSTEM/SystemLog';
 
 const AppPage: React.FC = () => {
   const { currentModule, user, isAuthLoading, checkSession } = useAppStore();
@@ -74,6 +75,8 @@ const AppPage: React.FC = () => {
         return <POBlockCancel />;
       case 'PO Account Assignment':
         return <POAccountAssignment />;
+      case 'System Log':
+        return <SystemLog />;
       case 'Audit log':
       case 'Users & roles':
       case 'Module config':

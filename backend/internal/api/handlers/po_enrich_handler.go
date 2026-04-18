@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"supplyxerp/backend/internal/logger"
 )
 
 // ─────────────────────────────────────────────────────────────
@@ -171,6 +173,7 @@ func (h *POEnrichHandler) PatchPOHeaderEnrich(c *gin.Context) {
 	}
 	var req POHeaderEnrichRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.LogError("API", "PO", "PatchPOHeaderEnrich", fmt.Sprintf("Bind error: %v", err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -203,9 +206,11 @@ func (h *POEnrichHandler) PatchPOHeaderEnrich(c *gin.Context) {
 		req.DownPaymentPct, req.DownPaymentAmt,
 	)
 	if err != nil {
+		logger.LogError("API", "PO", "PatchPOHeaderEnrich", fmt.Sprintf("DB error: %v", err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	logger.LogInfo("PO", "PatchPOHeaderEnrich", fmt.Sprintf("PO header enriched: id=%d", poID))
 	c.JSON(http.StatusOK, gin.H{"message": "PO header updated"})
 }
 
@@ -317,6 +322,7 @@ func (h *POEnrichHandler) UpsertItemDelivery(c *gin.Context) {
 	}
 	var req POItemDeliveryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.LogError("API", "PO", "UpsertItemDelivery", fmt.Sprintf("Bind error po=%d item=%d: %v", poID, itemNo, err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -360,9 +366,11 @@ func (h *POEnrichHandler) UpsertItemDelivery(c *gin.Context) {
 		req.RemShelfLife, req.QAControlKey, req.CertType, req.LatestGRDate, req.PartDelAllowed,
 	)
 	if err != nil {
+		logger.LogError("API", "PO", "UpsertItemDelivery", fmt.Sprintf("DB error po=%d item=%d: %v", poID, itemNo, err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	logger.LogInfo("PO", "UpsertItemDelivery", fmt.Sprintf("Item delivery updated: po=%d item=%d", poID, itemNo))
 	c.JSON(http.StatusOK, gin.H{"message": "delivery settings saved"})
 }
 
@@ -409,6 +417,7 @@ func (h *POEnrichHandler) UpsertItemInvoice(c *gin.Context) {
 	}
 	var req POItemInvoiceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.LogError("API", "PO", "UpsertItemInvoice", fmt.Sprintf("Bind error po=%d item=%d: %v", poID, itemNo, err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -426,9 +435,11 @@ func (h *POEnrichHandler) UpsertItemInvoice(c *gin.Context) {
 		poID, itemNo, req.InvReceipt, req.FinalInvoice, req.GRBasedIV, req.TaxCode, req.DPCategory,
 	)
 	if err != nil {
+		logger.LogError("API", "PO", "UpsertItemInvoice", fmt.Sprintf("DB error po=%d item=%d: %v", poID, itemNo, err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	logger.LogInfo("PO", "UpsertItemInvoice", fmt.Sprintf("Item invoice updated: po=%d item=%d", poID, itemNo))
 	c.JSON(http.StatusOK, gin.H{"message": "invoice settings saved"})
 }
 
@@ -499,6 +510,7 @@ func (h *POEnrichHandler) UpsertDeliverySchedule(c *gin.Context) {
 		Lines []PODeliveryScheduleLine `json:"lines" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.LogError("API", "PO", "UpsertDeliverySchedule", fmt.Sprintf("Bind error po=%d item=%d: %v", poID, itemNo, err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -532,9 +544,11 @@ func (h *POEnrichHandler) UpsertDeliverySchedule(c *gin.Context) {
 		}
 	}
 	if err := tx.Commit(c.Request.Context()); err != nil {
+		logger.LogError("API", "PO", "UpsertDeliverySchedule", fmt.Sprintf("Commit error po=%d item=%d: %v", poID, itemNo, err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	logger.LogInfo("PO", "UpsertDeliverySchedule", fmt.Sprintf("Delivery schedule updated: po=%d item=%d lines=%d", poID, itemNo, len(req.Lines)))
 	c.JSON(http.StatusOK, gin.H{"message": "delivery schedule saved", "lines": len(req.Lines)})
 }
 
@@ -595,6 +609,7 @@ func (h *POEnrichHandler) AddItemConfirmation(c *gin.Context) {
 	}
 	var req POConfirmationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.LogError("API", "PO", "AddItemConfirmation", fmt.Sprintf("Bind error po=%d item=%d: %v", poID, itemNo, err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -610,9 +625,11 @@ func (h *POEnrichHandler) AddItemConfirmation(c *gin.Context) {
 		req.InboundDeliveryNo, req.OrderAckReqd, req.RejectionInd,
 	)
 	if err != nil {
+		logger.LogError("API", "PO", "AddItemConfirmation", fmt.Sprintf("DB error po=%d item=%d: %v", poID, itemNo, err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	logger.LogInfo("PO", "AddItemConfirmation", fmt.Sprintf("Item confirmation added: po=%d item=%d", poID, itemNo))
 	c.JSON(http.StatusCreated, gin.H{"message": "confirmation recorded"})
 }
 
@@ -632,6 +649,7 @@ func (h *POEnrichHandler) BlockItem(c *gin.Context) {
 	}
 	var req POBlockRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.LogError("API", "PO", "BlockItem", fmt.Sprintf("Bind error po=%d item=%d: %v", poID, itemNo, err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -642,9 +660,11 @@ func (h *POEnrichHandler) BlockItem(c *gin.Context) {
 		poID, itemNo, req.BlockReasonCode, req.BlockedBy,
 	)
 	if err != nil {
+		logger.LogError("API", "PO", "BlockItem", fmt.Sprintf("DB error po=%d item=%d: %v", poID, itemNo, err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	logger.LogInfo("PO", "BlockItem", fmt.Sprintf("Item blocked: po=%d item=%d by %s reason=%s", poID, itemNo, req.BlockedBy, req.BlockReasonCode))
 	c.JSON(http.StatusOK, gin.H{"message": "item blocked"})
 }
 
@@ -665,9 +685,11 @@ func (h *POEnrichHandler) UnblockItem(c *gin.Context) {
 		poID, itemNo,
 	)
 	if err != nil {
+		logger.LogError("API", "PO", "UnblockItem", fmt.Sprintf("DB error po=%d item=%d: %v", poID, itemNo, err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	logger.LogInfo("PO", "UnblockItem", fmt.Sprintf("Item unblocked: po=%d item=%d", poID, itemNo))
 	c.JSON(http.StatusOK, gin.H{"message": "item unblocked"})
 }
 
@@ -690,6 +712,7 @@ func (h *POEnrichHandler) DeleteItem(c *gin.Context) {
 		FROM po_delivery_schedule
 		WHERE po_id = $1 AND item_no = $2`, poID, itemNo).Scan(&grQty)
 	if grQty > 0 {
+		logger.LogError("API", "PO", "DeleteItem", fmt.Sprintf("Conflict po=%d item=%d: GR exists (%.2f)", poID, itemNo, grQty))
 		c.JSON(http.StatusConflict, gin.H{
 			"error":  "cannot delete item: goods receipt already posted against this line",
 			"gr_qty": grQty,
@@ -704,9 +727,11 @@ func (h *POEnrichHandler) DeleteItem(c *gin.Context) {
 		poID, itemNo, deletedBy,
 	)
 	if err != nil {
+		logger.LogError("API", "PO", "DeleteItem", fmt.Sprintf("DB error po=%d item=%d: %v", poID, itemNo, err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	logger.LogInfo("PO", "DeleteItem", fmt.Sprintf("Item deleted: po=%d item=%d by %s", poID, itemNo, deletedBy))
 	c.JSON(http.StatusOK, gin.H{"message": "item deleted (soft)"})
 }
 
@@ -774,6 +799,7 @@ func (h *POEnrichHandler) UpsertAccountAssignments(c *gin.Context) {
 		Assignments []POAccountAssignmentRequest `json:"assignments" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.LogError("API", "PO", "UpsertAccountAssignments", fmt.Sprintf("Bind error po=%d item=%d: %v", poID, itemNo, err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -830,6 +856,7 @@ func (h *POEnrichHandler) UpsertAccountAssignments(c *gin.Context) {
 		}
 	}
 	tx.Commit(c.Request.Context())
+	logger.LogInfo("PO", "UpsertAccountAssignments", fmt.Sprintf("Account assignments updated: po=%d item=%d count=%d", poID, itemNo, len(req.Assignments)))
 	c.JSON(http.StatusOK, gin.H{"message": "account assignments saved"})
 }
 
@@ -891,6 +918,7 @@ func (h *POEnrichHandler) UpsertItemConditions(c *gin.Context) {
 		Conditions []POItemConditionRequest `json:"conditions" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.LogError("API", "PO", "UpsertItemConditions", fmt.Sprintf("Bind error po=%d item=%d: %v", poID, itemNo, err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -914,6 +942,7 @@ func (h *POEnrichHandler) UpsertItemConditions(c *gin.Context) {
 		)
 	}
 	tx.Commit(c.Request.Context())
+	logger.LogInfo("PO", "UpsertItemConditions", fmt.Sprintf("Item conditions updated: po=%d item=%d count=%d", poID, itemNo, len(req.Conditions)))
 	c.JSON(http.StatusOK, gin.H{"message": "conditions saved"})
 }
 
@@ -986,6 +1015,7 @@ func (h *POEnrichHandler) TriggerPOOutput(c *gin.Context) {
 		RepeatOutput    bool   `json:"repeat_output"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.LogError("API", "PO", "TriggerPOOutput", fmt.Sprintf("Bind error po=%d: %v", poID, err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -1022,6 +1052,7 @@ func (h *POEnrichHandler) TriggerPOOutput(c *gin.Context) {
 		SET status = '1', sent_at = NOW()
 		WHERE id = $1`, msgID)
 
+	logger.LogInfo("PO", "TriggerPOOutput", fmt.Sprintf("PO output triggered: po=%d msg=%d medium=%s", poID, msgID, req.Medium))
 	c.JSON(http.StatusOK, gin.H{
 		"message":    "PO output triggered",
 		"message_id": msgID,

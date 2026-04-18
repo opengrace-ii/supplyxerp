@@ -21,6 +21,7 @@ import (
 	"supplyxerp/backend/internal/agent/purchasing"
 	"supplyxerp/backend/internal/agent/pricing"
 	"supplyxerp/backend/internal/service"
+	syslogger "supplyxerp/backend/internal/logger"
 )
 
 func main() {
@@ -45,6 +46,8 @@ func main() {
 		log.Fatalf("connect db: %v", err)
 	}
 	defer pool.Close()
+
+	syslogger.Init(pool)
 
 	// Ensure DB migrations
 	if err := db.RunMigrations(ctx, pool); err != nil {
@@ -102,6 +105,7 @@ func main() {
 	}
 	productionHandler := handlers.NewProductionHandler(uow, productionWorkflow, pool)
 	poEnrichHandler := handlers.NewPOEnrichHandler(pool)
+	systemHandler := handlers.NewSystemHandler(pool)
 
 	routerDeps := api.RouterDeps{
 		JWTSecret:        cfg.JWTSecret,
@@ -124,6 +128,7 @@ func main() {
 		PurchasingHandler: purchasingHandler,
 		RFQHandler:       rfqHandler,
 		POEnrichHandler:  poEnrichHandler,
+		SystemHandler:    systemHandler,
 	}
 
 	r := api.NewRouter(routerDeps)

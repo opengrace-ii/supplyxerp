@@ -31,6 +31,7 @@ const MODULES_BY_TAB = {
   sys: {
     label: 'SYSTEM',
     items: [
+      { name: 'System Log', status: 'LIVE', isLive: true },
       { name: 'Audit log', status: 'LIVE', isLive: true },
       { name: 'Users & roles', status: 'LIVE', isLive: true }
     ]
