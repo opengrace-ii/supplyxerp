@@ -104,6 +104,10 @@ export function RFQManagement({ products, suppliers, onViewDoc }: RFQManagementP
     const handleSelectRFQ = async (rfq: any) => {
         setSelectedRFQ(rfq);
         setSubTab('DETAIL');
+        setComparison(null);
+        setRFQLines([]);
+        setRFQVendors([]);
+        setRFQQuotations([]);
         try {
             const data = await api.getRFQ(rfq.id);
             setRFQLines(data.lines || []);
@@ -445,8 +449,8 @@ export function RFQManagement({ products, suppliers, onViewDoc }: RFQManagementP
                                                         <div style={{ fontSize: '11px', color: '#f59e0b' }}>Line {item.line_number}</div>
                                                         <div style={{ fontSize: '13px', color: '#fff', fontWeight: '700' }}>{item.short_text}</div>
                                                     </td>
-                                                    <td style={{ padding: '16px 12px', textAlign: 'right', color: '#888', fontSize: '12px' }}>{item.master_price.toFixed(2)}</td>
-                                                    <td style={{ padding: '16px 12px', textAlign: 'right', color: '#fff', fontSize: '12px', fontWeight: '600' }}>{item.baseline.toFixed(2)}</td>
+                                                    <td style={{ padding: '16px 12px', textAlign: 'right', color: '#888', fontSize: '12px' }}>{(item.master_price ?? 0).toFixed(2)}</td>
+                                                    <td style={{ padding: '16px 12px', textAlign: 'right', color: '#fff', fontSize: '12px', fontWeight: '600' }}>{(item.baseline ?? 0).toFixed(2)}</td>
                                                     {rfqQuotations.map((q: any) => {
                                                         const offer = item.offers?.find((o: any) => o.quotation_id === q.id);
                                                         const dev = offer ? ((offer.effective_price - item.baseline) / item.baseline) * 100 : 0;
@@ -454,7 +458,7 @@ export function RFQManagement({ products, suppliers, onViewDoc }: RFQManagementP
                                                             <td key={q.id} style={{ padding: '16px 12px', textAlign: 'right' }}>
                                                                 {offer ? (
                                                                     <>
-                                                                        <div style={{ color: '#fff', fontWeight: '800' }}>{offer.effective_price.toFixed(2)}</div>
+                                                                        <div style={{ color: '#fff', fontWeight: '800' }}>{(offer.effective_price ?? 0).toFixed(2)}</div>
                                                                         <div style={{ fontSize: '9px', fontWeight: '900', color: dev > 0 ? '#ef4444' : '#22c55e' }}>{dev > 0 ? '+' : ''}{dev.toFixed(1)}%</div>
                                                                     </>
                                                                 ) : '-'}
@@ -467,7 +471,7 @@ export function RFQManagement({ products, suppliers, onViewDoc }: RFQManagementP
                                                 <td colSpan={3} style={{ padding: '16px 12px', fontSize: '11px', fontWeight: '800', color: '#f59e0b' }}>TOTAL QUOTED VALUE</td>
                                                 {rfqQuotations.map((q: any) => (
                                                     <td key={q.id} style={{ padding: '16px 12px', textAlign: 'right' }}>
-                                                        <div style={{ fontSize: '16px', fontWeight: '900', color: '#f59e0b' }}>{q.total_value.toFixed(2)}</div>
+                                                        <div style={{ fontSize: '16px', fontWeight: '900', color: '#f59e0b' }}>{(q.total_value ?? 0).toFixed(2)}</div>
                                                         <button 
                                                             className="btn btn-primary" 
                                                             style={{ padding: '4px 8px', fontSize: '10px', marginTop: '8px', opacity: selectedRFQ.status === 'CLOSED' ? 0.5 : 1 }} 
