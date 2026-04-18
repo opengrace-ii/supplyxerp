@@ -21,6 +21,11 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		"migrations/006_opening_balance.sql",
 		"migrations/007_stock_views.sql",
 		"migrations/008_production_ops.sql",
+		"migrations/009_purchasing_suite.sql",
+		"migrations/010_document_completeness.sql",
+		"migrations/011_pricing_and_rfq.sql",
+		"migrations/012_rename_rfq_tables.sql",
+		"migrations/013_rfq_complete.sql",
 	}
 	for _, file := range files {
 		sql, err := migrationFS.ReadFile(file)

@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 	"encoding/json"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type WarehouseTaskRepository struct{ db DBTX }
@@ -75,13 +77,21 @@ func (r *WarehouseTaskRepository) ListOpenByTenant(ctx context.Context, tenantID
 	return tasks, nil
 }
 
-func (r *AuditRepository) Log(ctx context.Context, tenantID int64, userID int64, action string, entityType string, entityID int64, before, after any) error {
+func (r *AuditRepository) Log(ctx context.Context, tenantID int64, actorID int64, action string, entityType string, entityID any, before, after any) error {
+	var publicID pgtype.UUID
+	switch v := entityID.(type) {
+	case pgtype.UUID:
+		publicID = v
+	case string:
+		publicID.Scan(v)
+	}
+
 	bJSON, _ := json.Marshal(before)
 	aJSON, _ := json.Marshal(after)
 	_, err := r.db.Exec(ctx, `
-		INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id, before_state, after_state)
+		INSERT INTO audit_log (tenant_id, actor_id, action, entity_type, entity_public_id, payload_before, payload_after)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, tenantID, userID, action, entityType, entityID, bJSON, aJSON)
+	`, tenantID, actorID, action, entityType, publicID, bJSON, aJSON)
 	return err
 }
 

@@ -274,27 +274,29 @@ func (r *StockRepository) ListMovements(ctx context.Context, tenantID int64, pro
 	limit := int32(50)
 	offset := (page - 1) * limit
 	
-	where := "WHERE tenant_id = $1"
+	where := "WHERE v.tenant_id = $1"
 	args := []any{tenantID}
 	
 	if productID > 0 {
-		where += fmt.Sprintf(" AND hu_id IN (SELECT id FROM handling_units WHERE product_id = $%d)", len(args)+1)
+		where += fmt.Sprintf(" AND hu.product_id = $%d", len(args)+1)
 		args = append(args, productID)
 	}
 	if zoneID > 0 {
-		where += fmt.Sprintf(" AND zone_id = $%d", len(args)+1)
+		where += fmt.Sprintf(" AND v.zone_id = $%d", len(args)+1)
 		args = append(args, zoneID)
 	}
 	if eventType != "" && eventType != "ALL" {
-		where += fmt.Sprintf(" AND event_type = $%d", len(args)+1)
+		where += fmt.Sprintf(" AND v.event_type = $%d", len(args)+1)
 		args = append(args, eventType)
 	}
 
 	query := fmt.Sprintf(`
-		SELECT hu_id, hu_code, event_type, quantity, base_unit, product_id, product_code, product_name, zone_code, zone_type, site_code, reference_type, reference_id, created_at, created_by
-		FROM v_hu_movement_history
+		SELECT v.hu_id, v.hu_code, v.event_type, v.quantity, v.base_unit, hu.product_id, p.code, p.name, v.zone_code, v.zone_type, v.site_code, v.reference_type, v.reference_id, v.created_at, v.created_by
+		FROM v_hu_movement_history v
+		JOIN handling_units hu ON hu.id = v.hu_id
+		JOIN products p ON p.id = hu.product_id
 		%s
-		ORDER BY created_at DESC
+		ORDER BY v.created_at DESC
 		LIMIT $%d OFFSET $%d
 	`, where, len(args)+1, len(args)+2)
 	

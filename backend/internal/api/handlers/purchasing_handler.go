@@ -9,15 +9,17 @@ import (
 	"supplyxerp/backend/internal/repository"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type PurchasingHandler struct {
 	Repo  *repository.UnitOfWork
 	Agent *purchasing.Agent
+	Pool  *pgxpool.Pool
 }
 
-func NewPurchasingHandler(repo *repository.UnitOfWork, agent *purchasing.Agent) *PurchasingHandler {
-	return &PurchasingHandler{Repo: repo, Agent: agent}
+func NewPurchasingHandler(repo *repository.UnitOfWork, agent *purchasing.Agent, pool *pgxpool.Pool) *PurchasingHandler {
+	return &PurchasingHandler{Repo: repo, Agent: agent, Pool: pool}
 }
 
 type CreatePRRequest struct {

@@ -18,6 +18,7 @@ type RouterDeps struct {
 	StatsHandler     *handlers.StatsHandler
 	TenantHandler    *handlers.TenantHandler
 	OrgHandler       *handlers.OrgHandler
+	OrgMasterHandler *handlers.OrgMasterHandler
 	ProductHandler   *handlers.ProductHandler
 	BarcodeHandler   *handlers.BarcodeHandler
 	GRHandler        *handlers.GRHandler
@@ -27,6 +28,8 @@ type RouterDeps struct {
 	ProductionHandler *handlers.ProductionHandler
 	SupplierHandler  *handlers.SupplierHandler
 	PurchasingHandler *handlers.PurchasingHandler
+	RFQHandler       *handlers.RFQHandler
+	POEnrichHandler  *handlers.POEnrichHandler
 }
 
 func NewRouter(deps RouterDeps) *gin.Engine {
@@ -73,6 +76,42 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		secured.POST("/api/sites/:id/zones", deps.OrgHandler.CreateZone)
 		secured.GET("/api/org-tree", deps.OrgHandler.GetOrgTree)
 		secured.POST("/api/organisations/:id/provision-defaults", deps.OrgHandler.ProvisionDefaults)
+
+		// Org Master (Session D — Organisational Master)
+		org := secured.Group("/api/org")
+		{
+			org.GET("/summary",                              deps.OrgMasterHandler.GetOrgSummary)
+			org.GET("/companies",                            deps.OrgMasterHandler.ListCompanies)
+			org.POST("/companies",                           deps.OrgMasterHandler.CreateCompany)
+			org.PATCH("/companies/:id",                      deps.OrgMasterHandler.UpdateCompany)
+			org.GET("/sites",                                deps.OrgMasterHandler.ListSites)
+			org.POST("/sites",                               deps.OrgMasterHandler.CreateSite)
+			org.PATCH("/sites/:id",                          deps.OrgMasterHandler.UpdateSite)
+			org.GET("/sites/:id/zones",                      deps.OrgMasterHandler.ListSiteZones)
+			org.GET("/sites/:id/areas",                      deps.OrgMasterHandler.ListStorageAreas)
+			org.POST("/sites/:id/areas",                     deps.OrgMasterHandler.CreateStorageArea)
+			org.PATCH("/areas/:id",                          deps.OrgMasterHandler.UpdateStorageArea)
+			org.POST("/sites/:id/zones",                     deps.OrgMasterHandler.CreateZoneForSite)
+			org.PATCH("/zones/:id",                          deps.OrgMasterHandler.UpdateZone)
+			org.GET("/calendars",                            deps.OrgMasterHandler.ListCalendars)
+			org.POST("/calendars",                           deps.OrgMasterHandler.CreateCalendar)
+			org.PATCH("/calendars/:id",                      deps.OrgMasterHandler.UpdateCalendar)
+			org.POST("/calendars/:id/exceptions",            deps.OrgMasterHandler.AddCalendarException)
+			org.DELETE("/calendars/:id/exceptions/:date",    deps.OrgMasterHandler.DeleteCalendarException)
+			org.GET("/calendars/:id/working-days",           deps.OrgMasterHandler.GetWorkingDays)
+			org.GET("/procurement-units",                    deps.OrgMasterHandler.ListProcurementUnits)
+			org.POST("/procurement-units",                   deps.OrgMasterHandler.CreateProcurementUnit)
+			org.PATCH("/procurement-units/:id",              deps.OrgMasterHandler.UpdateProcurementUnit)
+			org.POST("/procurement-units/:id/sites",         deps.OrgMasterHandler.AssignSitesToProcurementUnit)
+			org.DELETE("/procurement-units/:id/sites/:sid",  deps.OrgMasterHandler.RemoveSiteFromProcurementUnit)
+			org.GET("/procurement-teams",                    deps.OrgMasterHandler.ListProcurementTeams)
+			org.POST("/procurement-teams",                   deps.OrgMasterHandler.CreateProcurementTeam)
+			org.PATCH("/procurement-teams/:id",              deps.OrgMasterHandler.UpdateProcurementTeam)
+		}
+
+		// Tenant Profile
+		secured.GET("/api/config/tenant-profile",   deps.OrgMasterHandler.GetTenantProfile)
+		secured.PATCH("/api/config/tenant-profile", deps.OrgMasterHandler.UpdateTenantProfile)
 
 		// MaterialHub (MM)
 		secured.GET("/api/products", deps.ProductHandler.ListProducts)
@@ -144,12 +183,58 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		secured.POST("/api/purchase-requests/:id/reject", middleware.RequireRole("ADMIN", "WAREHOUSE_MANAGER"), deps.PurchasingHandler.RejectPR)
 		secured.POST("/api/purchase-requests/:id/convert", middleware.RequireRole("ADMIN", "WAREHOUSE_MANAGER"), deps.PurchasingHandler.ConvertToPO)
 
+		// Pricing & Info Records
+		secured.POST("/api/config/pricing/seed", deps.ConfigHandler.SeedPricingDefaults)
+		secured.GET("/api/config/pricing", deps.ConfigHandler.GetPricingConfig)
+		secured.PATCH("/api/config/pricing", deps.ConfigHandler.UpdatePricingConfig)
+		
+		secured.GET("/api/products/:public_id/pricing", deps.ProductHandler.GetProductPricing)
+		secured.PATCH("/api/products/:public_id/pricing", deps.ProductHandler.UpdateProductPricing)
+
+		secured.GET("/api/suppliers/:public_id/info-records", deps.PurchasingHandler.ListSupplierInfoRecords)
+		secured.POST("/api/suppliers/:public_id/info-records", deps.PurchasingHandler.CreateInfoRecord)
+		secured.GET("/api/info-records", deps.PurchasingHandler.ListAllInfoRecords)
+		secured.PATCH("/api/info-records/:id/deactivate", deps.PurchasingHandler.DeactivateInfoRecord)
+
+		// Config - RFQ
+		secured.GET("/api/config/rfq-types", deps.ConfigHandler.GetRFQTypes)
+		secured.POST("/api/config/rfq-types", deps.ConfigHandler.CreateRFQType)
+		secured.GET("/api/config/rfq-order-reasons", deps.ConfigHandler.GetOrderReasons)
+		secured.POST("/api/config/rfq-order-reasons", deps.ConfigHandler.CreateOrderReason)
+
 		secured.GET("/api/purchase-orders", deps.PurchasingHandler.ListPOs)
 		secured.POST("/api/purchase-orders", deps.PurchasingHandler.CreatePO)
 		secured.GET("/api/purchase-orders/:id", deps.PurchasingHandler.GetPO)
 		secured.POST("/api/purchase-orders/:id/submit", deps.PurchasingHandler.SubmitPO)
 		secured.POST("/api/purchase-orders/:id/approve", middleware.RequireRole("ADMIN", "WAREHOUSE_MANAGER"), deps.PurchasingHandler.ApprovePO)
 		secured.POST("/api/purchase-orders/:id/reject", middleware.RequireRole("ADMIN", "WAREHOUSE_MANAGER"), deps.PurchasingHandler.RejectPO)
+
+		// Phase 3: Session C - RFQ Complete
+		rfq := secured.Group("/api/rfq")
+		{
+			rfq.POST("", deps.RFQHandler.CreateRFQ)
+			rfq.GET("", deps.RFQHandler.ListRFQs)
+			rfq.GET("/:id", deps.RFQHandler.GetRFQ)
+			rfq.PATCH("/:id", deps.RFQHandler.UpdateRFQHeader)
+			rfq.PATCH("/:id/cancel", deps.RFQHandler.CancelRFQ)
+			rfq.PATCH("/:id/lines/:line_id", deps.RFQHandler.UpdateRFQLine)
+			rfq.POST("/:id/lines/:line_id/schedule", deps.RFQHandler.SetDeliverySchedule)
+			rfq.POST("/:id/vendors", deps.RFQHandler.InviteVendors)
+			rfq.GET("/:id/vendors", deps.RFQHandler.GetRFQVendors)
+			rfq.DELETE("/:id/vendors/:vendor_id", deps.RFQHandler.UninviteVendor)
+			rfq.POST("/:id/quotations", deps.RFQHandler.EnterQuotation)
+			rfq.GET("/:id/quotations", deps.RFQHandler.GetQuotations)
+			rfq.PATCH("/:id/quotations/:qid", deps.RFQHandler.UpdateQuotation)
+			rfq.POST("/:id/quotations/:qid/reject-line", deps.RFQHandler.RejectQuotationLine)
+			rfq.GET("/:id/compare", deps.RFQHandler.CompareQuotations)
+			rfq.POST("/:id/finalise", deps.RFQHandler.FinaliseRFQ)
+			rfq.POST("/:id/rejection-notices", deps.RFQHandler.MarkRejectionNoticesSent)
+		}
+
+		// Phase 1: PO Document Completeness (enrich tabs)
+		if deps.POEnrichHandler != nil {
+			deps.POEnrichHandler.RegisterPOEnrichRoutes(secured.Group("/api"))
+		}
 	}
 
 	return r

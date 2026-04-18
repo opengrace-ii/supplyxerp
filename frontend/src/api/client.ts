@@ -156,6 +156,24 @@ export const api = {
     const res = await apiClient.post('/api/config/sequences/apply', { sequence_type: type, start_from: start });
     return res.data;
   },
+  
+  // RFQ Config
+  getRFQTypes: async () => {
+    const res = await apiClient.get('/api/config/rfq-types');
+    return res.data;
+  },
+  createRFQType: async (data: any) => {
+    const res = await apiClient.post('/api/config/rfq-types', data);
+    return res.data;
+  },
+  getOrderReasons: async () => {
+    const res = await apiClient.get('/api/config/rfq-order-reasons');
+    return res.data;
+  },
+  createOrderReason: async (data: any) => {
+    const res = await apiClient.post('/api/config/rfq-order-reasons', data);
+    return res.data;
+  },
 
   // Migration
   getMigrationStatus: async () => {
@@ -289,5 +307,109 @@ export const api = {
   rejectPO: async (id: number, reason: string) => {
     const res = await apiClient.post(`/api/purchase-orders/${id}/reject`, { reason });
     return res.data;
+  },
+  // Pricing Engine & Info Records
+  getPricingConfig: async () => {
+    const res = await apiClient.get('/api/config/pricing');
+    return res.data;
+  },
+  updatePricingConfig: async (data: any) => {
+    const res = await apiClient.patch('/api/config/pricing', data);
+    return res.data;
+  },
+  seedPricingDefaults: async () => {
+    const res = await apiClient.post('/api/config/pricing/seed');
+    return res.data;
+  },
+  getProductPricing: async (productId: string) => {
+    const res = await apiClient.get(`/api/products/${productId}/pricing`);
+    return res.data;
+  },
+  updateProductPricing: async (productId: string, data: any) => {
+    const res = await apiClient.patch(`/api/products/${productId}/pricing`, data);
+    return res.data;
+  },
+  getSupplierInfoRecords: async (supplierId: string) => {
+    const res = await apiClient.get(`/api/suppliers/${supplierId}/info-records`);
+    return res.data.info_records || [];
+  },
+  getAllInfoRecords: async () => {
+    const res = await apiClient.get('/api/info-records');
+    return res.data.info_records || [];
+  },
+  createInfoRecord: async (supplierId: string, data: any) => {
+    const res = await apiClient.post(`/api/suppliers/${supplierId}/info-records`, data);
+    return res.data;
+  },
+
+  // RFQ Lifecycle
+  listRFQs: async (params: any = {}) => {
+    const res = await apiClient.get('/api/rfq', { params });
+    return res.data;
+  },
+  createRFQ: async (data: any) => {
+    const res = await apiClient.post('/api/rfq', data);
+    return res.data;
+  },
+  getRFQ: async (id: number) => {
+    const res = await apiClient.get(`/api/rfq/${id}`);
+    return res.data;
+  },
+  updateRFQHeader: async (id: number, data: any) => {
+    const res = await apiClient.patch(`/api/rfq/${id}`, data);
+    return res.data;
+  },
+  updateRFQLine: async (rfqId: number, lineId: number, data: any) => {
+    const res = await apiClient.patch(`/api/rfq/${rfqId}/lines/${lineId}`, data);
+    return res.data;
+  },
+  setRFQDeliverySchedule: async (rfqId: number, lineId: number, schedule: any[]) => {
+    const res = await apiClient.post(`/api/rfq/${rfqId}/lines/${lineId}/schedule`, { schedule });
+    return res.data;
+  },
+  cancelRFQ: async (id: number) => {
+    const res = await apiClient.patch(`/api/rfq/${id}/cancel`);
+    return res.data;
+  },
+  inviteRFQVendors: async (id: number, vendorIds: number[]) => {
+    const res = await apiClient.post(`/api/rfq/${id}/vendors`, { vendor_ids: vendorIds });
+    return res.data;
+  },
+  getRFQVendors: async (id: number) => {
+    const res = await apiClient.get(`/api/rfq/${id}/vendors`);
+    return res.data;
+  },
+  uninviteRFQVendor: async (id: number, vendorId: number) => {
+    const res = await apiClient.delete(`/api/rfq/${id}/vendors/${vendorId}`);
+    return res.data;
+  },
+  enterRFQQuotation: async (id: number, data: any) => {
+    const res = await apiClient.post(`/api/rfq/${id}/quotations`, data);
+    return res.data;
+  },
+  updateRFQQuotation: async (rfqId: number, qid: number, data: any) => {
+    const res = await apiClient.patch(`/api/rfq/${rfqId}/quotations/${qid}`, data);
+    return res.data;
+  },
+  rejectQuotationLine: async (rfqId: number, qid: number, data: any) => {
+    const res = await apiClient.post(`/api/rfq/${rfqId}/quotations/${qid}/reject-line`, data);
+    return res.data;
+  },
+  getRFQQuotations: async (id: number) => {
+    const res = await apiClient.get(`/api/rfq/${id}/quotations`);
+    return res.data;
+  },
+  compareRFQQuotations: async (id: number, params: any = {}) => {
+    const res = await apiClient.get(`/api/rfq/${id}/compare`, { params });
+    return res.data;
+  },
+  finaliseRFQ: async (id: number, data: any) => {
+    const res = await apiClient.post(`/api/rfq/${id}/finalise`, data);
+    return res.data;
+  },
+  markRFQRejectionNoticesSent: async (id: number, vendorIds: number[]) => {
+    const res = await apiClient.post(`/api/rfq/${id}/rejection-notices`, { vendor_ids: vendorIds });
+    return res.data;
   }
 }
+

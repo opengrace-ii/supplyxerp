@@ -51,11 +51,34 @@ func (a *Agent) CreatePR(ctx context.Context, repo *repository.UnitOfWork, p Cre
 		return dbgen.PurchaseRequest{}, fmt.Errorf("generate pr number: %w", err)
 	}
 
+	// 1.5 Calculate Total Value for PR
+	totalValue := 0.0
+	for _, l := range p.Lines {
+		totalValue += l.Quantity * l.EstimatedUnitPrice
+	}
+
+	// 1.6 Determine Initial Status via Threshold Check
+	status := "APPROVED"
+	decisionFactor := "Value below approval threshold"
+	thresholdRow, err := repo.Purchasing.GetApprovalThresholds(ctx, p.TenantID)
+	if err == nil {
+		if thresholdRow.ApprovalMode == "FLAT" {
+			threshold, _ := thresholdRow.FlatPrThreshold.Float64Value()
+			if totalValue >= threshold.Float64 {
+				status = "SUBMITTED"
+				decisionFactor = fmt.Sprintf("Value %0.2f exceeds flat threshold %0.2f", totalValue, threshold.Float64)
+			}
+		} else {
+			status = "SUBMITTED"
+			decisionFactor = "MRP-based approval required"
+		}
+	}
+
 	// 2. Create PR and lines in Transaction
 	pr, err := repo.Purchasing.CreatePR(ctx, dbgen.PurchaseRequest{
 		TenantID:        p.TenantID,
 		PrNumber:        prNumber,
-		Status:          "DRAFT",
+		Status:          status,
 		DocumentDate:    pgtype.Date{Time: p.DocumentDate, Valid: !p.DocumentDate.IsZero()},
 		PostingDate:     pgtype.Date{Time: p.PostingDate, Valid: !p.PostingDate.IsZero()},
 		PurchasingGroup: pgtype.Text{String: p.PurchasingGroup, Valid: p.PurchasingGroup != ""},
@@ -64,6 +87,7 @@ func (a *Agent) CreatePR(ctx context.Context, repo *repository.UnitOfWork, p Cre
 		ReferenceDoc:    pgtype.Text{String: p.ReferenceDoc, Valid: p.ReferenceDoc != ""},
 		Notes:           pgtype.Text{String: p.Notes, Valid: p.Notes != ""},
 		CreatedBy:       pgtype.Int8{Int64: p.ActorID, Valid: true},
+		DecisionFactor:  pgtype.Text{String: decisionFactor, Valid: true},
 	})
 	if err != nil {
 		return dbgen.PurchaseRequest{}, err
@@ -153,16 +177,18 @@ func (a *Agent) CreatePO(ctx context.Context, repo *repository.UnitOfWork, p Cre
 
 	// 3. Determine Initial Status via Threshold Check
 	status := "APPROVED"
-	thresholdRow, err := repo.Purchasing.GetApprovalThreshold(ctx, p.TenantID)
+	decisionFactor := "Value below approval threshold"
+	thresholdRow, err := repo.Purchasing.GetApprovalThresholds(ctx, p.TenantID)
 	if err == nil {
-		threshold, _ := thresholdRow.PoApprovalThreshold.Int.Float64()
-		// Simple scale down
-		for i := 0; i < int(-thresholdRow.PoApprovalThreshold.Exp); i++ {
-			threshold /= 10
-		}
-
-		if totalValue >= threshold {
+		if thresholdRow.ApprovalMode == "FLAT" {
+			threshold, _ := thresholdRow.FlatPoThreshold.Float64Value()
+			if totalValue >= threshold.Float64 {
+				status = "SUBMITTED"
+				decisionFactor = fmt.Sprintf("Value %0.2f exceeds flat threshold %0.2f", totalValue, threshold.Float64)
+			}
+		} else {
 			status = "SUBMITTED"
+			decisionFactor = "MRP-based approval required"
 		}
 	}
 
@@ -199,6 +225,7 @@ func (a *Agent) CreatePO(ctx context.Context, repo *repository.UnitOfWork, p Cre
 		ApprovedAt:           pgtype.Timestamptz{Time: time.Now(), Valid: status == "APPROVED"},
 		SupplierRef:          pgtype.Text{String: p.SupplierRef, Valid: p.SupplierRef != ""},
 		DeliveryAddress:      pgtype.Text{String: p.DeliveryAddress, Valid: p.DeliveryAddress != ""},
+		DecisionFactor:       pgtype.Text{String: decisionFactor, Valid: true},
 	})
 	if err != nil {
 		return dbgen.PurchaseOrder{}, err

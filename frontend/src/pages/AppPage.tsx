@@ -7,7 +7,10 @@ import Tenants from './Config/Tenants';
 import MaterialHub from './MFG/MaterialHub';
 import OrgStructure from './Config/OrgStructure';
 import Setup from './Config/Setup';
+import PricingConfig from './Config/PricingConfig';
 import LedgerStock from './OPS/LedgerStock';
+import POManagement from './MFG/POManagement';
+import RFQManagement from './MFG/RFQManagement';
 
 const AppPage: React.FC = () => {
   const { currentModule, user, isAuthLoading, checkSession } = useAppStore();
@@ -51,6 +54,8 @@ const AppPage: React.FC = () => {
         return <StockFlowPanel />;
       case 'Setup':
         return <Setup />;
+      case 'Pricing Engine':
+        return <PricingConfig />;
       case 'Tenants':
         return <Tenants />;
       case 'Org Structure':
@@ -59,6 +64,10 @@ const AppPage: React.FC = () => {
         return <MaterialHub />;
       case 'LedgerStock':
         return <LedgerStock />;
+      case 'RFQManagement':
+        return <RFQManagement />;
+      case 'POManagement':
+        return <POManagement />;
       case 'Audit log':
       case 'Users & roles':
       case 'Module config':

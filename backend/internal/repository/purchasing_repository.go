@@ -55,26 +55,34 @@ func (r *PurchasingRepository) GeneratePONumber(ctx context.Context, tenantID in
 	return res, nil
 }
 
+func (r *PurchasingRepository) GenerateRFQNumber(ctx context.Context, tenantID int64) (string, error) {
+	var seq int64
+	err := r.db.QueryRow(ctx, "SELECT get_next_sequence($1, 'rfq')", tenantID).Scan(&seq)
+	if err != nil {
+		return "", err
+	}
+
+	yearStr := time.Now().Format("2006")
+	seqStr := fmt.Sprintf("%04d", seq)
+	
+	return fmt.Sprintf("RFQ-%s-%s", yearStr, seqStr), nil
+}
+
 func (r *PurchasingRepository) CreatePR(ctx context.Context, arg dbgen.PurchaseRequest) (dbgen.PurchaseRequest, error) {
-	var pr dbgen.PurchaseRequest
-	err := r.db.QueryRow(ctx, `
-		INSERT INTO purchase_requests (
-			tenant_id, pr_number, status, document_date, posting_date,
-			purchasing_group, cost_centre, priority, reference_doc,
-			notes, created_by
-		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
-		) RETURNING id, public_id, tenant_id, pr_number, status, document_date, posting_date, notes, created_by, created_at, updated_at
-	`, arg.TenantID, arg.PrNumber, arg.Status,
-		arg.DocumentDate, arg.PostingDate, arg.PurchasingGroup,
-		arg.CostCentre, arg.Priority, arg.ReferenceDoc,
-		arg.Notes, arg.CreatedBy,
-	).Scan(
-		&pr.ID, &pr.PublicID, &pr.TenantID, &pr.PrNumber, &pr.Status,
-		&pr.DocumentDate, &pr.PostingDate, &pr.Notes, &pr.CreatedBy,
-		&pr.CreatedAt, &pr.UpdatedAt,
-	)
-	return pr, err
+	q := dbgen.New(r.db)
+	return q.CreatePurchaseRequest(ctx, dbgen.CreatePurchaseRequestParams{
+		TenantID:        arg.TenantID,
+		PrNumber:        arg.PrNumber,
+		RequiredByDate:  arg.RequiredByDate,
+		Notes:           arg.Notes,
+		CreatedBy:       arg.CreatedBy,
+		PurchasingGroup: arg.PurchasingGroup,
+		CostCentre:      arg.CostCentre,
+		Priority:        arg.Priority,
+		ReferenceDoc:    arg.ReferenceDoc,
+		DecisionFactor:  arg.DecisionFactor,
+		PricingBreakdown: arg.PricingBreakdown,
+	})
 }
 
 func (r *PurchasingRepository) AddPRLine(ctx context.Context, arg dbgen.PurchaseRequestLine) error {
@@ -122,30 +130,38 @@ func (r *PurchasingRepository) UpdatePRStatus(ctx context.Context, tenantID, prI
 }
 
 func (r *PurchasingRepository) CreatePO(ctx context.Context, arg dbgen.PurchaseOrder) (dbgen.PurchaseOrder, error) {
-	var po dbgen.PurchaseOrder
-	err := r.db.QueryRow(ctx, `
-		INSERT INTO purchase_orders (
-			tenant_id, po_number, supplier_id, pr_id, status,
-			document_type, document_date, posting_date, supplier_name_snapshot,
-			purchasing_org, purchasing_group, company_code, currency,
-			exchange_rate, payment_terms_days, incoterms, incoterms_location,
-			goods_receipt_expected, invoice_expected, total_net_value,
-			total_tax, total_gross_value, notes, created_by,
-			supplier_ref, delivery_address
-		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26
-		) RETURNING id, public_id, tenant_id, po_number, supplier_id, status, currency, created_at, updated_at
-	`, arg.TenantID, arg.PoNumber, arg.SupplierID, arg.PrID, arg.Status,
-		arg.DocumentType, arg.DocumentDate, arg.PostingDate, arg.SupplierNameSnapshot,
-		arg.PurchasingOrg, arg.PurchasingGroup, arg.CompanyCode, arg.Currency,
-		arg.ExchangeRate, arg.PaymentTermsDays, arg.Incoterms, arg.IncotermsLocation,
-		arg.GoodsReceiptExpected, arg.InvoiceExpected, arg.TotalNetValue,
-		arg.TotalTax, arg.TotalGrossValue, arg.Notes, arg.CreatedBy,
-		arg.SupplierRef, arg.DeliveryAddress,
-	).Scan(
-		&po.ID, &po.PublicID, &po.TenantID, &po.PoNumber, &po.SupplierID, &po.Status, &po.Currency, &po.CreatedAt, &po.UpdatedAt,
-	)
-	return po, err
+	q := dbgen.New(r.db)
+	return q.CreatePurchaseOrder(ctx, dbgen.CreatePurchaseOrderParams{
+		TenantID:             arg.TenantID,
+		PoNumber:             arg.PoNumber,
+		SupplierID:           arg.SupplierID,
+		PrID:                 arg.PrID,
+		Status:               arg.Status,
+		Currency:             arg.Currency,
+		TotalValue:           arg.TotalValue,
+		ExpectedDeliveryDate: arg.ExpectedDeliveryDate,
+		Notes:                arg.Notes,
+		CreatedBy:            arg.CreatedBy,
+		ApprovedBy:           arg.ApprovedBy,
+		ApprovedAt:           arg.ApprovedAt,
+		PurchasingOrg:        arg.PurchasingOrg,
+		PurchasingGroup:      arg.PurchasingGroup,
+		CompanyCode:          arg.CompanyCode,
+		ExchangeRate:         arg.ExchangeRate,
+		PaymentTermsDays:     arg.PaymentTermsDays,
+		Incoterms:            arg.Incoterms,
+		IncotermsLocation:    arg.IncotermsLocation,
+		GoodsReceiptExpected: arg.GoodsReceiptExpected,
+		InvoiceExpected:      arg.InvoiceExpected,
+		TotalNetValue:        arg.TotalNetValue,
+		TotalTax:             arg.TotalTax,
+		TotalGrossValue:      arg.TotalGrossValue,
+		RfqID:                arg.RfqID,
+		SupplierRef:          arg.SupplierRef,
+		DeliveryAddress:      arg.DeliveryAddress,
+		DecisionFactor:       arg.DecisionFactor,
+		PricingBreakdown:     arg.PricingBreakdown,
+	})
 }
 
 func (r *PurchasingRepository) AddPOLine(ctx context.Context, arg dbgen.PurchaseOrderLine) error {
@@ -204,7 +220,7 @@ func (r *PurchasingRepository) UpdatePOLineReceived(ctx context.Context, tenantI
 	})
 }
 
-func (r *PurchasingRepository) GetApprovalThreshold(ctx context.Context, tenantID int64) (dbgen.GetPOApprovalThresholdRow, error) {
+func (r *PurchasingRepository) GetApprovalThresholds(ctx context.Context, tenantID int64) (dbgen.GetApprovalThresholdsRow, error) {
 	q := dbgen.New(r.db)
-	return q.GetPOApprovalThreshold(ctx, tenantID)
+	return q.GetApprovalThresholds(ctx, tenantID)
 }

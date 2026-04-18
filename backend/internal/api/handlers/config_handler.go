@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"supplyxerp/backend/internal/repository"
+	"supplyxerp/backend/internal/db/dbgen"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -157,4 +158,97 @@ func (h *ConfigHandler) ApplySequence(c *gin.Context) {
 		"success": true,
 		"new_current": req.Start - 1,
 	})
+}
+
+// RFQ Configuration
+
+func (h *ConfigHandler) GetRFQTypes(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(int64)
+	q := dbgen.New(h.Pool)
+
+	types, err := q.GetRFQTypes(c.Request.Context(), tenantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch RFQ types"})
+		return
+	}
+
+	if len(types) == 0 {
+		// Auto-seed
+		q.CreateRFQType(c.Request.Context(), dbgen.CreateRFQTypeParams{TenantID: tenantID, TypeCode: "AN", Description: "Standard RFQ", IsGpBid: false})
+		q.CreateRFQType(c.Request.Context(), dbgen.CreateRFQTypeParams{TenantID: tenantID, TypeCode: "AB", Description: "GP Bid", IsGpBid: true})
+		types, _ = q.GetRFQTypes(c.Request.Context(), tenantID)
+	}
+
+	c.JSON(http.StatusOK, types)
+}
+
+func (h *ConfigHandler) CreateRFQType(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(int64)
+	var req struct {
+		TypeCode    string `json:"type_code"`
+		Description string `json:"description"`
+		IsGpBid     bool   `json:"is_gp_bid"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	q := dbgen.New(h.Pool)
+	res, err := q.CreateRFQType(c.Request.Context(), dbgen.CreateRFQTypeParams{
+		TenantID:    tenantID,
+		TypeCode:    req.TypeCode,
+		Description: req.Description,
+		IsGpBid:     req.IsGpBid,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create RFQ type"})
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+func (h *ConfigHandler) GetOrderReasons(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(int64)
+	q := dbgen.New(h.Pool)
+
+	reasons, err := q.GetOrderReasons(c.Request.Context(), tenantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch order reasons"})
+		return
+	}
+
+	if len(reasons) == 0 {
+		// Auto-seed
+		q.CreateOrderReason(c.Request.Context(), dbgen.CreateOrderReasonParams{TenantID: tenantID, ReasonCode: "001", Description: "New Material"})
+		q.CreateOrderReason(c.Request.Context(), dbgen.CreateOrderReasonParams{TenantID: tenantID, ReasonCode: "002", Description: "New Vendor"})
+		q.CreateOrderReason(c.Request.Context(), dbgen.CreateOrderReasonParams{TenantID: tenantID, ReasonCode: "003", Description: "Price Review"})
+		reasons, _ = q.GetOrderReasons(c.Request.Context(), tenantID)
+	}
+
+	c.JSON(http.StatusOK, reasons)
+}
+
+func (h *ConfigHandler) CreateOrderReason(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(int64)
+	var req struct {
+		ReasonCode  string `json:"reason_code"`
+		Description string `json:"description"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	q := dbgen.New(h.Pool)
+	res, err := q.CreateOrderReason(c.Request.Context(), dbgen.CreateOrderReasonParams{
+		TenantID:    tenantID,
+		ReasonCode:  req.ReasonCode,
+		Description: req.Description,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create order reason"})
+		return
+	}
+	c.JSON(http.StatusOK, res)
 }

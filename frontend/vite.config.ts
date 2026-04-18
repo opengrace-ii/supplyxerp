@@ -6,6 +6,13 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    watch: {
+      usePolling: true,
+      interval: 1000,
+    },
+    hmr: {
+      clientPort: 5173,
+    },
     proxy: {
       '/scan': {
         target: process.env.VITE_BACKEND_URL ?? 'http://backend:8080',

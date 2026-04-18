@@ -19,6 +19,7 @@ import (
 	"supplyxerp/backend/internal/agent/barcode"
 	"supplyxerp/backend/internal/agent/inventory"
 	"supplyxerp/backend/internal/agent/purchasing"
+	"supplyxerp/backend/internal/agent/pricing"
 	"supplyxerp/backend/internal/service"
 )
 
@@ -69,6 +70,7 @@ func main() {
 	statsHandler := handlers.NewStatsHandler(pool)
 	tenantHandler := handlers.NewTenantHandler(pool, hub)
 	orgHandler := handlers.NewOrgHandler(pool)
+	orgMasterHandler := handlers.NewOrgMasterHandler(pool)
 	
 	productAgent := material.New(hub)
 	productHandler := handlers.NewProductHandler(uow, productAgent, pool)
@@ -87,8 +89,10 @@ func main() {
 	stockHandler := handlers.NewStockHandler(uow, inventoryAgent)
 	
 	purchasingAgent := purchasing.New(hub)
+	pricingAgent := pricing.New(hub)
+	rfqHandler := handlers.NewRFQHandler(uow, purchasingAgent, pricingAgent, pool)
 	supplierHandler := handlers.NewSupplierHandler(uow)
-	purchasingHandler := handlers.NewPurchasingHandler(uow, purchasingAgent)
+	purchasingHandler := handlers.NewPurchasingHandler(uow, purchasingAgent, pool)
 	
 	productionWorkflow := &inventory.ProductionWorkflow{
 		Hub:            hub,
@@ -97,6 +101,7 @@ func main() {
 		WarehouseAgent: warehouseAgent,
 	}
 	productionHandler := handlers.NewProductionHandler(uow, productionWorkflow, pool)
+	poEnrichHandler := handlers.NewPOEnrichHandler(pool)
 
 	routerDeps := api.RouterDeps{
 		JWTSecret:        cfg.JWTSecret,
@@ -107,6 +112,7 @@ func main() {
 		StatsHandler:     statsHandler,
 		TenantHandler:    tenantHandler,
 		OrgHandler:       orgHandler,
+		OrgMasterHandler: orgMasterHandler,
 		ProductHandler:   productHandler,
 		BarcodeHandler:   barcodeHandler,
 		GRHandler:        grHandler,
@@ -116,6 +122,8 @@ func main() {
 		ProductionHandler: productionHandler,
 		SupplierHandler:  supplierHandler,
 		PurchasingHandler: purchasingHandler,
+		RFQHandler:       rfqHandler,
+		POEnrichHandler:  poEnrichHandler,
 	}
 
 	r := api.NewRouter(routerDeps)

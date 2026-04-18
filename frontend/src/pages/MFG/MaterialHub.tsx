@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../api/client';
 import { useAppStore } from '../../store/useAppStore';
+import { RFQManagement } from './RFQManagement';
 
 export const MaterialHub: React.FC = () => {
     const { traceSteps, clearTraceSteps } = useAppStore();
-    const [view, setView] = useState<'materials' | 'suppliers' | 'purchasing' | 'gr' | 'adjustments'>('materials');
+    const [view, setView] = useState<'materials' | 'suppliers' | 'purchasing' | 'gr' | 'adjustments' | 'rfq'>('materials');
     
     // Materials State
     const [products, setProducts] = useState<any[]>([]);
@@ -12,7 +13,7 @@ export const MaterialHub: React.FC = () => {
     const [showAddForm, setShowAddForm] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
     const [selectedDoc, setSelectedDoc] = useState<any | null>(null);
-    const [detailTab, setDetailTab] = useState<'info' | 'barcodes' | 'uom' | 'stock'>('info');
+    const [detailTab, setDetailTab] = useState<'info' | 'barcodes' | 'uom' | 'stock' | 'pricing'>('info');
     const [productStock, setProductStock] = useState<any | null>(null);
     const [error, setError] = useState<string | null>(null);
     
@@ -20,6 +21,7 @@ export const MaterialHub: React.FC = () => {
     const [newBarcode, setNewBarcode] = useState('');
     const [newUom, setNewUom] = useState({ to_unit: 'PCS', factor: 1 });
     const [stats, setStats] = useState({ total: 0, active: 0, no_barcode: 0, uom_count: 0 });
+    const [suppliers, setSuppliers] = useState<any[]>([]);
 
     const fetchProducts = async () => {
         setLoading(true);
@@ -40,8 +42,16 @@ export const MaterialHub: React.FC = () => {
         }
     };
 
+    const fetchSuppliers = async () => {
+        try {
+            const data = await api.listSuppliers();
+            setSuppliers(data.suppliers || []);
+        } catch (err) { console.error(err); }
+    };
+
     useEffect(() => {
         if (view === 'materials') fetchProducts();
+        if (view === 'rfq' || view === 'purchasing' || view === 'suppliers') fetchSuppliers();
     }, [view]);
 
     useEffect(() => {
@@ -109,6 +119,7 @@ export const MaterialHub: React.FC = () => {
                     {[
                         { id: 'materials', label: 'Materials', icon: '📦' },
                         { id: 'suppliers', label: 'Suppliers', icon: '🏢' },
+                        { id: 'rfq', label: 'RFQ Cycle', icon: '🎯' },
                         { id: 'purchasing', label: 'Purchasing', icon: '🧾' },
                         { id: 'gr', label: 'Goods Receipt', icon: '🚚' },
                         { id: 'adjustments', label: 'Adjustments', icon: '⚖️' }
@@ -221,7 +232,7 @@ export const MaterialHub: React.FC = () => {
                             ) : selectedProduct ? (
                                 <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                                     <div style={{ display: 'flex', borderBottom: '1px solid var(--theme-border)' }}>
-                                        {['info', 'stock', 'barcodes', 'uom'].map(t => (
+                                        {['info', 'stock', 'pricing', 'barcodes', 'uom'].map(t => (
                                             <button key={t} onClick={() => setDetailTab(t as any)} style={{ flex: 1, padding: '14px', background: 'none', border: 'none', color: detailTab === t ? '#f59e0b' : '#666', borderBottom: detailTab === t ? '2px solid #f59e0b' : 'none', fontSize: '11px', fontWeight: '800', cursor: 'pointer', textTransform: 'uppercase' }}>{t}</button>
                                         ))}
                                     </div>
@@ -259,6 +270,7 @@ export const MaterialHub: React.FC = () => {
                                                 ))}
                                             </div>
                                         )}
+                                        {detailTab === 'pricing' && <ProductPricingTab product={selectedProduct} />}
                                     </div>
                                 </div>
                             ) : (
@@ -271,7 +283,8 @@ export const MaterialHub: React.FC = () => {
                 </>
             )}
 
-            {view === 'suppliers' && <SupplierManagement onViewDoc={setSelectedDoc} />}
+            {view === 'suppliers' && <SupplierManagement suppliers={suppliers} onRefresh={fetchSuppliers} onViewDoc={setSelectedDoc} />}
+            {view === 'rfq' && <RFQManagement products={products} suppliers={suppliers} onViewDoc={setSelectedDoc} />}
             {view === 'purchasing' && <PurchasingManagement products={products} onViewDoc={setSelectedDoc} />}
             {view === 'gr' && <GRManagement products={products} onViewDoc={setSelectedDoc} />}
             {view === 'adjustments' && <StockAdjustmentManagement onViewDoc={setSelectedDoc} />}
@@ -283,22 +296,10 @@ export const MaterialHub: React.FC = () => {
     );
 };
 
-const SupplierManagement: React.FC<{ onViewDoc: (doc: any) => void }> = ({ onViewDoc }) => {
-    const [suppliers, setSuppliers] = useState<any[]>([]);
+const SupplierManagement: React.FC<{ suppliers: any[], onRefresh: () => void, onViewDoc: (doc: any) => void }> = ({ suppliers, onRefresh, onViewDoc }) => {
     const [loading, setLoading] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [formData, setFormData] = useState({ code: '', name: '', currency: 'GBP', contact_name: '', email: '' });
-
-    const fetchSuppliers = async () => {
-        setLoading(true);
-        try {
-            const data = await api.listSuppliers();
-            setSuppliers(data.suppliers || []);
-        } catch (err) { console.error(err); }
-        finally { setLoading(false); }
-    };
-
-    useEffect(() => { fetchSuppliers(); }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -306,7 +307,7 @@ const SupplierManagement: React.FC<{ onViewDoc: (doc: any) => void }> = ({ onVie
             await api.createSupplier(formData);
             setShowForm(false);
             setFormData({ code: '', name: '', currency: 'GBP', contact_name: '', email: '' });
-            fetchSuppliers();
+            onRefresh();
         } catch (err) { alert("Failed to add supplier"); }
     };
 
@@ -778,6 +779,21 @@ const DocumentDetail: React.FC<{ doc: { type: 'PR' | 'PO' | 'GR' | 'SUPPLIER' | 
                 )}
             </div>
 
+            {(doc.type === 'PR' || doc.type === 'PO') && d.decision_factor && (
+                <div style={{ marginBottom: '40px', padding: '24px', backgroundColor: 'rgba(245,158,11,0.05)', borderRadius: '16px', border: '1px solid rgba(245,158,11,0.2)' }}>
+                    <div style={{ fontSize: '10px', color: '#f59e0b', fontWeight: '800', marginBottom: '12px', letterSpacing: '0.05em' }}>APPROVAL GOVERNANCE</div>
+                    <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '13px', color: '#fff', fontWeight: '600', lineHeight: '1.5' }}>"{d.decision_factor}"</div>
+                            <div style={{ fontSize: '11px', color: '#666', marginTop: '8px' }}>Controlled by SupplyX Pricing Engine v1.2</div>
+                        </div>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '20px', backgroundColor: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(34,197,94,0.2)' }}>
+                            <span style={{ color: '#22c55e', fontSize: '18px' }}>✓</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {doc.type !== 'SUPPLIER' && doc.type !== 'SA' && (
                 <>
                     <div style={{ fontSize: '11px', color: '#666', fontWeight: '800', borderBottom: '1px solid var(--theme-border)', paddingBottom: '8px', marginBottom: '16px', letterSpacing: '0.05em' }}>DOCUMENT LINE ITEMS</div>
@@ -838,6 +854,9 @@ const DocumentDetail: React.FC<{ doc: { type: 'PR' | 'PO' | 'GR' | 'SUPPLIER' | 
                         <div style={{ color: '#fff', fontSize: '16px', fontWeight: '700' }}>{d.contact_name}</div>
                         <div style={{ color: '#888', fontSize: '14px' }}>{d.email}</div>
                     </div>
+
+                    <div style={{ fontSize: '11px', color: '#666', fontWeight: '800', borderBottom: '1px solid var(--theme-border)', paddingBottom: '8px', letterSpacing: '0.05em' }}>PURCHASING INFO RECORDS</div>
+                    <SupplierInfoRecords supplierId={d.public_id || d.id} />
                 </div>
             )}
 
@@ -876,6 +895,7 @@ const DocumentDetail: React.FC<{ doc: { type: 'PR' | 'PO' | 'GR' | 'SUPPLIER' | 
         </div>
     );
 };
+
 
 const StockAdjustmentManagement: React.FC<{ onViewDoc: (doc: any) => void }> = ({ onViewDoc }) => {
     const [adjustments, setAdjustments] = useState<any[]>([]);
@@ -925,6 +945,127 @@ const StockAdjustmentManagement: React.FC<{ onViewDoc: (doc: any) => void }> = (
                     </tbody>
                 </table>
             </div>
+        </div>
+    );
+};
+
+const ProductPricingTab: React.FC<{ product: any }> = ({ product }) => {
+    const [pricing, setPricing] = useState<any>(null);
+    const [loading, setLoading] = useState(false);
+    const [history, setHistory] = useState<any[]>([]);
+    const [edit, setEdit] = useState({ price_control: 'V', standard_price: 0, moving_price: 0 });
+
+    const fetchPricing = async () => {
+        setLoading(true);
+        try {
+            const data = await api.getProductPricing(product.public_id);
+            setPricing(data.pricing);
+            setHistory(data.history || []);
+            setEdit({
+                price_control: data.pricing.price_control,
+                standard_price: parseFloat(data.pricing.standard_price),
+                moving_price: parseFloat(data.pricing.moving_price)
+            });
+        } catch (err) { console.error(err); }
+        finally { setLoading(false); }
+    };
+
+    useEffect(() => { fetchPricing(); }, [product.id]);
+
+    const handleUpdate = async () => {
+        try {
+            await api.updateProductPricing(product.public_id, edit);
+            fetchPricing();
+        } catch (err) { alert("Update failed"); }
+    };
+
+    if (loading) return <div>Standardizing Market Data...</div>;
+    if (!pricing) return <div style={{ padding: '20px', color: '#666' }}>No pricing profile active. Standardize above.</div>;
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ padding: '16px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--theme-border)' }}>
+                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '8px' }}>PRICE CONTROL</div>
+                    <select className="input-scanner" value={edit.price_control} onChange={e => setEdit({...edit, price_control: e.target.value})}>
+                        <option value="S">S - Standard Price</option>
+                        <option value="V">V - Moving Average</option>
+                    </select>
+                </div>
+                <div style={{ padding: '16px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--theme-border)' }}>
+                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '8px' }}>VALUATION PRICE</div>
+                    <div style={{ fontSize: '24px', fontWeight: '800', color: '#f59e0b' }}>
+                        {pricing.price_control === 'S' ? pricing.standard_price : pricing.moving_price} <span style={{ fontSize: '12px', color: '#888' }}>{pricing.currency}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="form-group">
+                <label style={{ fontSize: '10px', color: '#f59e0b', fontWeight: '700', marginBottom: '8px', display: 'block' }}>UPDATE MASTER PRICE</label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <input 
+                        type="number" 
+                        className="input-scanner" 
+                        style={{ flex: 1 }} 
+                        value={edit.price_control === 'S' ? edit.standard_price : edit.moving_price} 
+                        onChange={e => setEdit({...edit, [edit.price_control === 'S' ? 'standard_price' : 'moving_price']: parseFloat(e.target.value)})} 
+                    />
+                    <button className="btn btn-primary" onClick={handleUpdate}>Update</button>
+                </div>
+            </div>
+
+            <div>
+                <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '12px', textTransform: 'uppercase' }}>PRICE HISTORY LOG</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {history.map((h, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#000', borderRadius: '6px', border: '1px solid #111', fontSize: '12px' }}>
+                            <span style={{ color: '#888' }}>{new Date(h.valid_from).toLocaleDateString()}</span>
+                            <span style={{ fontWeight: '700', color: h.change_type === 'INITIAL' ? '#22c55e' : '#f59e0b' }}>{h.new_price} {pricing.currency}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const SupplierInfoRecords: React.FC<{ supplierId: string }> = ({ supplierId }) => {
+    const [records, setRecords] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        api.getSupplierInfoRecords(supplierId).then(setRecords).catch(() => {});
+    }, [supplierId]);
+
+    return (
+        <div style={{ marginTop: '16px' }}>
+             {records.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#444', fontSize: '12px', border: '1px dashed #222', borderRadius: '8px' }}>
+                    No purchasing agreements found for this vendor.
+                </div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {records.map(r => (
+                        <div key={r.id} style={{ padding: '16px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--theme-border)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ color: '#f59e0b', fontWeight: '800', fontSize: '12px' }}>{r.info_record_number}</span>
+                                <span style={{ color: '#22c55e', fontSize: '10px', fontWeight: '800' }}>ACTIVE</span>
+                            </div>
+                            <div style={{ fontSize: '14px', fontWeight: '600', color: '#fff', marginBottom: '4px' }}>{r.product_name}</div>
+                            <div style={{ fontSize: '11px', color: '#888', marginBottom: '12px' }}>{r.product_code}</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                                <div>
+                                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '700' }}>NET PRICE</div>
+                                    <div style={{ fontSize: '16px', fontWeight: '800', color: '#fff' }}>{r.currency?.String} {parseFloat(r.net_price?.Int || 0) / 10000}</div>
+                                </div>
+                                <div style={{ textAlign: 'right', fontSize: '10px', color: '#666' }}>
+                                    VALID TO: {r.valid_to?.Valid ? new Date(r.valid_to.Time).toLocaleDateString() : 'INDETERMINATE'}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };

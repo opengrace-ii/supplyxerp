@@ -25,9 +25,11 @@ UPDATE suppliers SET is_active = false, updated_at = now() WHERE tenant_id = $1 
 
 -- name: CreatePurchaseRequest :one
 INSERT INTO purchase_requests (
-  tenant_id, pr_number, status, required_by_date, notes, created_by
+  tenant_id, pr_number, status, required_by_date, notes, created_by,
+  purchasing_group, cost_centre, priority, reference_doc, 
+  decision_factor, pricing_breakdown
 ) VALUES (
-  $1, $2, 'DRAFT', $3, $4, $5
+  $1, $2, 'DRAFT', $3, $4, $5, $6, $7, $8, $9, $10, $11
 ) RETURNING *;
 
 -- name: CreatePurchaseRequestLine :exec
@@ -60,9 +62,12 @@ WHERE tenant_id = $1 AND id = $2;
 
 -- name: CreatePurchaseOrder :one
 INSERT INTO purchase_orders (
-  tenant_id, po_number, supplier_id, pr_id, status, currency, total_value, expected_delivery_date, notes, created_by, approved_by, approved_at
+  tenant_id, po_number, supplier_id, pr_id, status, currency, total_value, expected_delivery_date, notes, created_by, approved_by, approved_at,
+  purchasing_org, purchasing_group, company_code, exchange_rate, payment_terms_days, incoterms, incoterms_location,
+  goods_receipt_expected, invoice_expected, total_net_value, total_tax, total_gross_value, 
+  rfq_id, supplier_ref, delivery_address, decision_factor, pricing_breakdown
 ) VALUES (
-  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
 ) RETURNING *;
 
 -- name: CreatePurchaseOrderLine :exec
@@ -100,7 +105,7 @@ UPDATE purchase_orders
 SET status = $3, updated_at = now()
 WHERE tenant_id = $1 AND id = $2;
 
--- name: GetPOApprovalThreshold :one
-SELECT po_approval_threshold, po_approval_currency
+-- name: GetApprovalThresholds :one
+SELECT flat_po_threshold, flat_pr_threshold, default_currency, approval_mode
 FROM tenant_config
 WHERE tenant_id = $1;
