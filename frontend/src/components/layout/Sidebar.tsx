@@ -15,6 +15,8 @@ const MODULES_BY_TAB = {
       { name: 'MaterialHub',   status: 'LIVE',    isLive: true  },
       { name: 'RFQManagement', status: 'LIVE',    isLive: true  },
       { name: 'POManagement',  status: 'LIVE',    isLive: true  },
+      { name: 'PO Block/Cancel', status: 'LIVE',   isLive: true  },
+      { name: 'PO Account Assignment', status: 'LIVE', isLive: true },
       { name: 'BuildOrder',    status: 'PHASE 2', isLive: false },
       { name: 'QualityGate',   status: 'PHASE 2', isLive: false }
     ]

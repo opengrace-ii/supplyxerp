@@ -11,6 +11,8 @@ import PricingConfig from './Config/PricingConfig';
 import LedgerStock from './OPS/LedgerStock';
 import POManagement from './MFG/POManagement';
 import RFQManagement from './MFG/RFQManagement';
+import POBlockCancel from './MFG/POBlockCancel';
+import POAccountAssignment from './MFG/POAccountAssignment';
 
 const AppPage: React.FC = () => {
   const { currentModule, user, isAuthLoading, checkSession } = useAppStore();
@@ -68,6 +70,10 @@ const AppPage: React.FC = () => {
         return <RFQManagement />;
       case 'POManagement':
         return <POManagement />;
+      case 'PO Block/Cancel':
+        return <POBlockCancel />;
+      case 'PO Account Assignment':
+        return <POAccountAssignment />;
       case 'Audit log':
       case 'Users & roles':
       case 'Module config':
