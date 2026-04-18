@@ -8,9 +8,11 @@ interface RFQManagementProps {
     onViewDoc: (doc: any) => void;
 }
 
-export function RFQManagement({ products, suppliers, onViewDoc }: RFQManagementProps) {
+export function RFQManagement({ products: propProducts = [], suppliers: propSuppliers = [], onViewDoc = () => {} }: Partial<RFQManagementProps>) {
     const { clearTraceSteps } = useAppStore();
     const [rfqs, setRFQs] = useState<any[]>([]);
+    const [products, setProducts] = useState<any[]>(propProducts);
+    const [suppliers, setSuppliers] = useState<any[]>(propSuppliers);
     const [subTab, setSubTab] = useState<'LIST' | 'CREATE' | 'DETAIL'>('LIST');
     const [selectedRFQ, setSelectedRFQ] = useState<any>(null);
     const [rfqLines, setRFQLines] = useState<any[]>([]);
@@ -75,6 +77,19 @@ export function RFQManagement({ products, suppliers, onViewDoc }: RFQManagementP
             const reasons = await api.getOrderReasons();
             setRFQTypes(types || []);
             setOrderReasons(reasons || []);
+            
+            // Fetch products if not provided via props
+            if (products.length === 0) {
+                const pData = await api.getProducts(200, 0);
+                setProducts(pData.products || []);
+            }
+            
+            // Fetch suppliers if not provided via props
+            if (suppliers.length === 0) {
+                const sData = await api.listSuppliers();
+                setSuppliers(sData.suppliers || []);
+            }
+
             // Load org master dropdowns
             const [puRes, ptRes, siteRes] = await Promise.allSettled([
                 apiClient.get('/api/org/procurement-units'),
@@ -249,7 +264,7 @@ export function RFQManagement({ products, suppliers, onViewDoc }: RFQManagementP
                                 <div>
                                     <label style={{ display: 'block', fontSize: '10px', color: '#f59e0b', marginBottom: '8px', fontWeight: '700' }}>RFQ TYPE</label>
                                     <select className="input-scanner" value={newRFQ.rfq_type} onChange={e => setNewRFQ({...newRFQ, rfq_type: e.target.value})}>
-                                        {rfqTypes.map(t => <option key={t.code} value={t.code}>{t.name} ({t.code})</option>)}
+                                        {rfqTypes?.map(t => <option key={t.code} value={t.code}>{t.name} ({t.code})</option>)}
                                     </select>
                                 </div>
                                 <div>
@@ -260,14 +275,14 @@ export function RFQManagement({ products, suppliers, onViewDoc }: RFQManagementP
                                     <label style={{ display: 'block', fontSize: '10px', color: '#f59e0b', marginBottom: '8px', fontWeight: '700' }}>PROCUREMENT UNIT</label>
                                     <select className="input-scanner" value={newRFQ.procurement_unit_id} onChange={e => setNewRFQ({...newRFQ, procurement_unit_id: Number(e.target.value)})}>
                                         <option value={0}>— Select —</option>
-                                        {procUnits.map((u: any) => <option key={u.id} value={u.id}>{u.code} — {u.name}</option>)}
+                                        {procUnits?.map((u: any) => <option key={u.id} value={u.id}>{u.code} — {u.name}</option>)}
                                     </select>
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '10px', color: '#f59e0b', marginBottom: '8px', fontWeight: '700' }}>PROCUREMENT TEAM</label>
                                     <select className="input-scanner" value={newRFQ.procurement_team_id} onChange={e => setNewRFQ({...newRFQ, procurement_team_id: Number(e.target.value)})}>
                                         <option value={0}>— Select —</option>
-                                        {procTeams.map((t: any) => <option key={t.id} value={t.id}>{t.code} — {t.name}</option>)}
+                                        {procTeams?.map((t: any) => <option key={t.id} value={t.id}>{t.code} — {t.name}</option>)}
                                     </select>
                                 </div>
                             </div>
@@ -321,7 +336,7 @@ export function RFQManagement({ products, suppliers, onViewDoc }: RFQManagementP
                                                 setNewRFQ({ ...newRFQ, lines });
                                             }}>
                                                 <option value={0}>Select Product...</option>
-                                                {products.map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
+                                                {products?.map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
                                             </select>
                                             <input type="number" className="input-scanner" placeholder="Qty" value={l.quantity} onChange={e => {
                                                 const lines = [...newRFQ.lines];
@@ -358,7 +373,7 @@ export function RFQManagement({ products, suppliers, onViewDoc }: RFQManagementP
                                                 setNewRFQ({ ...newRFQ, lines });
                                             }}>
                                                 <option value="">Order Reason...</option>
-                                                {orderReasons.map(r => <option key={r.code} value={r.code}>{r.name}</option>)}
+                                                {orderReasons?.map(r => <option key={r.code} value={r.code}>{r.name}</option>)}
                                             </select>
                                             <input className="input-scanner" placeholder="Tracking No" value={l.req_tracking_no} onChange={e => {
                                                 const lines = [...newRFQ.lines];
@@ -515,7 +530,7 @@ export function RFQManagement({ products, suppliers, onViewDoc }: RFQManagementP
                             </div>
                             <select className="input-scanner" onChange={e => handleInviteVendor(parseInt(e.target.value))} value={0}>
                                 <option value={0}>+ Invite Supplier...</option>
-                                {suppliers.map(s => <option key={s.id} value={s.id}>{s.code} - {s.name}</option>)}
+                                {suppliers?.map(s => <option key={s.id} value={s.id}>{s.code} - {s.name}</option>)}
                             </select>
                         </div>
 
