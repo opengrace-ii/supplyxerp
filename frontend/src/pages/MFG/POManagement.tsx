@@ -850,7 +850,7 @@ function NewPOModal({ suppliers, onClose, onCreated }: {
             if (!f.vendor_id) { setErr("Vendor is required"); return; }
             setSaving(true); setErr("");
             try {
-              await apiPost("/api/purchase-orders", { vendor_id: parseInt(f.vendor_id), doc_type: f.doc_type, currency: f.currency, payment_terms: f.payment_terms, purch_org: f.purch_org, purch_group: f.purch_group, company_code: f.company_code });
+              await apiPost("/api/purchase-orders", { supplier_id: parseInt(f.vendor_id), document_type: f.doc_type, currency: f.currency, purchasing_org: f.purch_org, purchasing_group: f.purch_group, company_code: f.company_code, lines: [] });
               onCreated();
             } catch (e: unknown) {
               setErr(e instanceof Error ? e.message : "Failed to create PO");
