@@ -53,7 +53,7 @@ const AgentTracePanel: React.FC = () => {
             <div key={idx} className={`p-3 rounded border animate-in slide-in-from-bottom-2 fade-in duration-300 shadow-sm ${getStatusColor(step.status)}`}>
               <div className="flex justify-between items-start mb-1.5 border-b border-[currentcolor]/20 pb-1.5">
                 <span className="font-bold opacity-90">{step.agent} : {step.action}</span>
-                <span className="opacity-75">{new Date(step.timestamp).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit', fractionalSecondDigits: 2})}</span>
+                <span className="opacity-75">{new Date(step.timestamp).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'})}</span>
               </div>
               <div className="opacity-80 mt-1 whitespace-pre-wrap break-all overflow-hidden line-clamp-4">
                 {JSON.stringify(step.data, null, 2)}

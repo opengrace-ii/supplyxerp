@@ -13,6 +13,7 @@ import POManagement from './MFG/POManagement';
 import RFQManagement from './MFG/RFQManagement';
 import POBlockCancel from './MFG/POBlockCancel';
 import POAccountAssignment from './MFG/POAccountAssignment';
+import POProgressTracking from './MFG/POProgressTracking';
 import SystemLog from './SYSTEM/SystemLog';
 
 const AppPage: React.FC = () => {
@@ -75,6 +76,8 @@ const AppPage: React.FC = () => {
         return <POBlockCancel />;
       case 'PO Account Assignment':
         return <POAccountAssignment />;
+      case 'Progress Tracking':
+        return <POProgressTracking />;
       case 'System Log':
         return <SystemLog />;
       case 'Audit log':

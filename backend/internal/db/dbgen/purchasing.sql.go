@@ -370,9 +370,9 @@ func (q *Queries) GetApprovalThresholds(ctx context.Context, tenantID int64) (Ge
 
 const getPurchaseOrderWithLines = `-- name: GetPurchaseOrderWithLines :many
 SELECT po.id, po.public_id, po.tenant_id, po.po_number, po.supplier_id, po.pr_id, po.status, po.currency, po.total_value, po.expected_delivery_date, po.notes, po.created_by, po.approved_by, po.approved_at, po.created_at, po.updated_at, po.document_type, po.document_date, po.posting_date, po.supplier_name_snapshot, po.purchasing_org, po.purchasing_group, po.company_code, po.exchange_rate, po.payment_terms_days, po.incoterms, po.incoterms_location, po.goods_receipt_expected, po.invoice_expected, po.total_net_value, po.total_tax, po.total_gross_value, po.rejection_reason, po.rejected_at, po.rejected_by, po.rfq_id, po.supplier_ref, po.delivery_address, po.decision_factor, po.pricing_breakdown, 
-       pol.id as line_id, pol.product_id, pol.quantity, pol.unit, pol.unit_price, pol.line_value, pol.qty_received, 
+       pol.id as line_id, pol.item_no, pol.product_id, pol.quantity, pol.unit, pol.unit_price, pol.line_value, pol.qty_received, 
        pol.account_assignment_type, pol.cost_centre as cost_centre_line, pol.line_notes, pol.line_status,
-       p.name as product_name, p.code as product_code, s.name as supplier_name
+       COALESCE(p.name, '') as material_name, COALESCE(p.code, '') as material_code, COALESCE(s.name, '') as supplier_name
 FROM purchase_orders po
 JOIN purchase_order_lines pol ON pol.po_id = po.id
 JOIN products p ON p.id = pol.product_id
@@ -427,6 +427,7 @@ type GetPurchaseOrderWithLinesRow struct {
 	DecisionFactor        pgtype.Text        `json:"decision_factor"`
 	PricingBreakdown      []byte             `json:"pricing_breakdown"`
 	LineID                int64              `json:"line_id"`
+	ItemNo                pgtype.Int4        `json:"item_no"`
 	ProductID             int64              `json:"product_id"`
 	Quantity              pgtype.Numeric     `json:"quantity"`
 	Unit                  string             `json:"unit"`
@@ -437,9 +438,9 @@ type GetPurchaseOrderWithLinesRow struct {
 	CostCentreLine        pgtype.Text        `json:"cost_centre_line"`
 	LineNotes             pgtype.Text        `json:"line_notes"`
 	LineStatus            string             `json:"line_status"`
-	ProductName           string             `json:"product_name"`
-	ProductCode           string             `json:"product_code"`
-	SupplierName          string             `json:"supplier_name"`
+	MaterialName          pgtype.Text        `json:"material_name"`
+	MaterialCode          pgtype.Text        `json:"material_code"`
+	SupplierName          pgtype.Text        `json:"supplier_name"`
 }
 
 func (q *Queries) GetPurchaseOrderWithLines(ctx context.Context, arg GetPurchaseOrderWithLinesParams) ([]GetPurchaseOrderWithLinesRow, error) {
@@ -493,6 +494,7 @@ func (q *Queries) GetPurchaseOrderWithLines(ctx context.Context, arg GetPurchase
 			&i.DecisionFactor,
 			&i.PricingBreakdown,
 			&i.LineID,
+			&i.ItemNo,
 			&i.ProductID,
 			&i.Quantity,
 			&i.Unit,
@@ -503,8 +505,8 @@ func (q *Queries) GetPurchaseOrderWithLines(ctx context.Context, arg GetPurchase
 			&i.CostCentreLine,
 			&i.LineNotes,
 			&i.LineStatus,
-			&i.ProductName,
-			&i.ProductCode,
+			&i.MaterialName,
+			&i.MaterialCode,
 			&i.SupplierName,
 		); err != nil {
 			return nil, err

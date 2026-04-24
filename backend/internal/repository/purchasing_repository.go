@@ -167,16 +167,16 @@ func (r *PurchasingRepository) CreatePO(ctx context.Context, arg dbgen.PurchaseO
 func (r *PurchasingRepository) AddPOLine(ctx context.Context, arg dbgen.PurchaseOrderLine) error {
 	_, err := r.db.Exec(ctx, `
 		INSERT INTO purchase_order_lines (
-			tenant_id, po_id, line_number, product_id, short_text,
+			tenant_id, po_id, line_number, item_no, product_id, short_text,
 			quantity, unit, currency, unit_price, line_net_value,
 			tax_code, tax_amount, line_gross_value, delivery_date,
 			receiving_zone_id, overdelivery_tolerance_pct,
 			underdelivery_tolerance_pct, price_locked,
 			account_assignment_type, cost_centre, line_notes, line_status
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
 		)
-	`, arg.TenantID, arg.PoID, arg.LineNumber, arg.ProductID, arg.ShortText,
+	`, arg.TenantID, arg.PoID, arg.LineNumber, arg.ItemNo, arg.ProductID, arg.ShortText,
 		arg.Quantity, arg.Unit, arg.Currency, arg.UnitPrice, arg.LineNetValue,
 		arg.TaxCode, arg.TaxAmount, arg.LineGrossValue, arg.DeliveryDate,
 		arg.ReceivingZoneID, arg.OverdeliveryTolerancePct,

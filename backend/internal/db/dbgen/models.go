@@ -438,6 +438,7 @@ type PurchaseOrderLine struct {
 	QtyReceived               pgtype.Numeric     `json:"qty_received"`
 	CreatedAt                 pgtype.Timestamptz `json:"created_at"`
 	LineNumber                int32              `json:"line_number"`
+	ItemNo                    pgtype.Int4        `json:"item_no"`
 	ShortText                 pgtype.Text        `json:"short_text"`
 	Currency                  pgtype.Text        `json:"currency"`
 	LineNetValue              pgtype.Numeric     `json:"line_net_value"`

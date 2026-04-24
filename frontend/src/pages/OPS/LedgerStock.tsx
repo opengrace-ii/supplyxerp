@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { api } from '../../api/client';
+import { api, apiClient } from '../../api/client';
 import { useAppStore } from '../../store/useAppStore';
 
 interface StockStat {

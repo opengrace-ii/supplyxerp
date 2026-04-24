@@ -8,7 +8,7 @@ const ContextPanel: React.FC = () => {
 
   const lineageQuery = useQuery({
     queryKey: ['lineage', currentHU?.id],
-    queryFn: () => api.getLineage(currentHU!.id),
+    queryFn: () => api.lineage(currentHU!.code),
     enabled: !!currentHU?.id,
   });
 

@@ -107,6 +107,26 @@ interface AccountLine {
   percentage?: number;
 }
 
+interface ItemAddress {
+  diff_address: boolean;
+  street: string;
+  city: string;
+  zip_code: string;
+  country: string;
+}
+
+interface ItemWeights {
+  base_uom: string;
+  order_uom: string;
+  conv_num: number;
+  conv_den: number;
+  gross_weight: number;
+  net_weight: number;
+  weight_unit: string;
+  volume: number;
+  volume_unit: string;
+}
+
 interface BlockReason { code: string; description: string; }
 
 interface NewPOForm {
@@ -618,6 +638,94 @@ function ConfirmTab({ poId, itemNo }: { poId: number; itemNo: number }) {
   );
 }
 
+function AddressTab({ poId, itemNo }: { poId: number; itemNo: number }) {
+  const { data, loading, refetch } = useAPI<ItemAddress>(`/api/po/${poId}/items/${itemNo}/address`);
+  const [f, setF]     = useState<ItemAddress>({ diff_address: false, street: "", city: "", zip_code: "", country: "" });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved]   = useState(false);
+
+  useEffect(() => { if (data) setF(data); }, [data]);
+
+  const onSave = async () => {
+    setSaving(true);
+    try {
+      await apiPut(`/api/po/${poId}/items/${itemNo}/address`, f);
+      setSaved(true); setTimeout(() => setSaved(false), 2000);
+      refetch();
+    } finally { setSaving(false); }
+  };
+
+  if (loading) return <div style={{ color: T.textMuted, padding: 12, fontSize: 11 }}>Loading address…</div>;
+
+  return (
+    <div>
+      <Section title="Delivery Address Override">
+        <div style={{ marginBottom: 12 }}>
+          <Chk label="Use Different Delivery Address" checked={f.diff_address} onChange={(v) => setF({ ...f, diff_address: v })} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, opacity: f.diff_address ? 1 : 0.5, pointerEvents: f.diff_address ? "auto" : "none" }}>
+          <Fld label="Street/House No." span={2}><Inp value={f.street} onChange={(v) => setF({ ...f, street: v })} /></Fld>
+          <Fld label="City"><Inp value={f.city} onChange={(v) => setF({ ...f, city: v })} /></Fld>
+          <Fld label="Postal Code"><Inp value={f.zip_code} onChange={(v) => setF({ ...f, zip_code: v })} /></Fld>
+          <Fld label="Country"><Inp value={f.country} onChange={(v) => setF({ ...f, country: v })} placeholder="e.g. GB, DE, US" /></Fld>
+        </div>
+        <div style={{ marginTop: 16 }}>
+          <SaveRow onSave={onSave} saving={saving} saved={saved} />
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+function WeightsTab({ poId, itemNo, baseUnit }: { poId: number; itemNo: number; baseUnit: string }) {
+  const { data, loading, refetch } = useAPI<ItemWeights>(`/api/po/${poId}/items/${itemNo}/weights`);
+  const [f, setF]     = useState<ItemWeights>({ base_uom: baseUnit, order_uom: baseUnit, conv_num: 1, conv_den: 1, gross_weight: 0, net_weight: 0, weight_unit: "KG", volume: 0, volume_unit: "M3" });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved]   = useState(false);
+
+  useEffect(() => { if (data) setF(data); }, [data]);
+
+  const onSave = async () => {
+    setSaving(true);
+    try {
+      await apiPut(`/api/po/${poId}/items/${itemNo}/weights`, f);
+      setSaved(true); setTimeout(() => setSaved(false), 2000);
+      refetch();
+    } finally { setSaving(false); }
+  };
+
+  if (loading) return <div style={{ color: T.textMuted, padding: 12, fontSize: 11 }}>Loading units/weights…</div>;
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <Section title="UOM Conversion">
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, marginBottom: 12 }}>
+            <div style={{ flex: 1 }}><Inp value={f.conv_num} type="number" onChange={(v) => setF({ ...f, conv_num: +v })} /></div>
+            <div style={{ color: T.textMuted }}>{f.order_uom}</div>
+            <div style={{ color: T.amber }}>=</div>
+            <div style={{ flex: 1 }}><Inp value={f.conv_den} type="number" onChange={(v) => setF({ ...f, conv_den: +v })} /></div>
+            <div style={{ color: T.textMuted }}>{f.base_uom}</div>
+          </div>
+          <p style={{ fontSize: 11, color: T.textMuted, margin: 0 }}>Define the relation between the order unit and the base unit of measure.</p>
+        </Section>
+        <Section title="Weights and Volume">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <Fld label="Gross Weight"><Inp value={f.gross_weight} type="number" onChange={(v) => setF({ ...f, gross_weight: +v })} /></Fld>
+            <Fld label="Net Weight"><Inp value={f.net_weight} type="number" onChange={(v) => setF({ ...f, net_weight: +v })} /></Fld>
+            <Fld label="Weight Unit"><Inp value={f.weight_unit} onChange={(v) => setF({ ...f, weight_unit: v })} /></Fld>
+            <Fld label="Volume"><Inp value={f.volume} type="number" onChange={(v) => setF({ ...f, volume: +v })} /></Fld>
+            <Fld label="Volume Unit"><Inp value={f.volume_unit} onChange={(v) => setF({ ...f, volume_unit: v })} /></Fld>
+          </div>
+        </Section>
+      </div>
+      <div style={{ marginTop: 10 }}>
+        <SaveRow onSave={onSave} saving={saving} saved={saved} />
+      </div>
+    </div>
+  );
+}
+
 function AccountTab({ poId, itemNo }: { poId: number; itemNo: number }) {
   const { data, loading } = useAPI<{ assignments: AccountLine[] }>(`/api/po/${poId}/items/${itemNo}/account-assignments`);
   const [lines, setLines] = useState<AccountLine[]>([]);
@@ -876,6 +984,7 @@ export default function POManagement() {
   const [search, setSearch] = useState("");
   const [blockModal, setBlockModal] = useState<{ itemNo: number; isBlocked: boolean } | null>(null);
   const [showNewPO, setShowNewPO] = useState(false);
+  const [showAddItem, setShowAddItem] = useState(false);
   const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([]);
   const [blockReasons, setBlockReasons] = useState<BlockReason[]>([]);
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -927,7 +1036,7 @@ export default function POManagement() {
   };
 
   const HEADER_TABS = ["Conditions", "Texts", "Partners", "Additional Data", "Org. Data", "Status", "Output"];
-  const ITEM_TABS   = ["Delivery", "Invoice", "Confirmations", "Delivery Schedule", "Account Assignments", "Condition Control", "Texts"];
+  const ITEM_TABS   = ["Delivery", "Invoice", "Confirmations", "Delivery Schedule", "Delivery Address", "Quantities/Weights", "Condition Control"];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg, color: T.text, fontFamily: "inherit" }}>
@@ -1130,7 +1239,7 @@ export default function POManagement() {
                   </tbody>
                 </table>
                 <div style={{ padding: "6px 10px", borderTop: `1px solid ${T.border}`, display: "flex", gap: 8 }}>
-                  <Btn small color="ghost">+ Add item</Btn>
+                  <Btn small color="ghost" onClick={() => setShowAddItem(true)}>+ Add item</Btn>
                   <Btn small color="ghost">Mass change</Btn>
                 </div>
               </div>
@@ -1153,15 +1262,11 @@ export default function POManagement() {
                     {itemTab === "Invoice"           && <InvoiceTab poId={selectedPO.id} itemNo={selectedLine.item_no} />}
                     {itemTab === "Confirmations"     && <ConfirmTab poId={selectedPO.id} itemNo={selectedLine.item_no} />}
                     {itemTab === "Delivery Schedule" && <ScheduleTab poId={selectedPO.id} itemNo={selectedLine.item_no} totalQty={selectedLine.quantity} unit={selectedLine.unit_of_measure ?? "EA"} />}
-                    {itemTab === "Account Assignments" && <AccountTab poId={selectedPO.id} itemNo={selectedLine.item_no} />}
+                    {itemTab === "Delivery Address"  && <AddressTab poId={selectedPO.id} itemNo={selectedLine.item_no} />}
+                    {itemTab === "Quantities/Weights" && <WeightsTab poId={selectedPO.id} itemNo={selectedLine.item_no} baseUnit={selectedLine.unit_of_measure ?? "EA"} />}
                     {itemTab === "Condition Control" && (
                       <Section title="Item-Level Conditions">
                         <p style={{ margin: 0, fontSize: 12, color: T.textMuted }}>Item pricing conditions — gross price, discounts, surcharges, freight — are maintained here and override header conditions for this line.</p>
-                      </Section>
-                    )}
-                    {itemTab === "Texts" && (
-                      <Section title="Item Texts">
-                        <p style={{ margin: 0, fontSize: 12, color: T.textMuted }}>Item text, info record PO text, delivery instructions and notes. These are embedded in the PO print layout when output is generated.</p>
                       </Section>
                     )}
                   </div>
@@ -1190,6 +1295,64 @@ export default function POManagement() {
           onCreated={() => { setShowNewPO(false); loadPOs(); }}
         />
       )}
+      {/* ─── Add Item modal ─────────────────────────────────────────────────────── */}
+      {showAddItem && selectedPO && (
+        <AddItemModal
+          poId={selectedPO.id}
+          onClose={() => setShowAddItem(false)}
+          onCreated={() => { setShowAddItem(false); selectPO(selectedPO); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Add Item Modal — Standallone Component ───────────────────────────────
+
+function AddItemModal({ poId, onClose, onCreated }: {
+  poId: number; onClose: () => void; onCreated: () => void;
+}) {
+  const [f, setF] = useState({ product_id: "", qty: 1, unit: "EA", price: 10.0, text: "", date: new Date().toISOString().split("T")[0] });
+  const [products, setProducts] = useState<{ id: number; code: string; name: string; base_unit: string }[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    apiFetch("/api/stock/products?limit=100")
+      .then(r => r.ok ? r.json() : Promise.reject("Fetch failed"))
+      .then(d => { if (active) setProducts(d.products ?? []); })
+      .catch(e => { console.error("AddItemModal fetch error:", e); });
+    return () => { active = false; };
+  }, []); // Only fetch on mount
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
+      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: 24, width: 440, boxShadow: "0 24px 80px rgba(0,0,0,0.5)" }}>
+        <h3 style={{ margin: "0 0 20px", fontSize: 15, color: T.amber }}>Add Item to PO</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+          <Fld label="Material" span={2}>
+            <Sel value={f.product_id} onChange={(v) => {
+              const p = products.find(ox => ox.id.toString() === v);
+              setF(x => ({ ...x, product_id: v, unit: p?.base_unit ?? "EA", text: p?.name ?? "" }));
+            }} options={products.map(p => ({ value: p.id.toString(), label: `[${p.code}] ${p.name}` }))} />
+          </Fld>
+          <Fld label="Quantity"><Inp type="number" value={f.qty} onChange={v => setF(x => ({ ...x, qty: +v }))} /></Fld>
+          <Fld label="Unit"><Inp value={f.unit} onChange={v => setF(x => ({ ...x, unit: v }))} /></Fld>
+          <Fld label="Net Price"><Inp type="number" value={f.price} onChange={v => setF(x => ({ ...x, price: +v }))} /></Fld>
+          <Fld label="Delivery Date"><Inp type="date" value={f.date} onChange={v => setF(x => ({ ...x, date: v }))} /></Fld>
+          <Fld label="Short Text" span={2}><Inp value={f.text} onChange={v => setF(x => ({ ...x, text: v }))} /></Fld>
+        </div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <Btn color="ghost" onClick={onClose}>Cancel</Btn>
+          <Btn disabled={saving || !f.product_id} onClick={async () => {
+             setSaving(true);
+             try {
+               await apiPost(`/api/purchase-orders/${poId}/items`, { product_id: parseInt(f.product_id), quantity: f.qty, unit: f.unit, unit_price: f.price, short_text: f.text, delivery_date: f.date });
+               onCreated();
+             } finally { setSaving(false); }
+          }}>{saving ? "Adding…" : "Add Item"}</Btn>
+        </div>
+      </div>
     </div>
   );
 }

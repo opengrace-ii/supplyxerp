@@ -31,6 +31,7 @@ type RouterDeps struct {
 	PurchasingHandler *handlers.PurchasingHandler
 	RFQHandler       *handlers.RFQHandler
 	POEnrichHandler  *handlers.POEnrichHandler
+	ProgressHandler  *handlers.ProgressHandler
 	SystemHandler    *handlers.SystemHandler
 }
 
@@ -209,9 +210,20 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		secured.GET("/api/purchase-orders", deps.PurchasingHandler.ListPOs)
 		secured.POST("/api/purchase-orders", deps.PurchasingHandler.CreatePO)
 		secured.GET("/api/purchase-orders/:id", deps.PurchasingHandler.GetPO)
+		secured.GET("/api/purchase-orders/:id/items", deps.PurchasingHandler.ListPOItems)
+		secured.POST("/api/purchase-orders/:id/items", deps.PurchasingHandler.AddPOItem)
 		secured.POST("/api/purchase-orders/:id/submit", deps.PurchasingHandler.SubmitPO)
 		secured.POST("/api/purchase-orders/:id/approve", middleware.RequireRole("ADMIN", "WAREHOUSE_MANAGER"), deps.PurchasingHandler.ApprovePO)
 		secured.POST("/api/purchase-orders/:id/reject", middleware.RequireRole("ADMIN", "WAREHOUSE_MANAGER"), deps.PurchasingHandler.RejectPO)
+
+		// Phase 3: PO Progress Tracking (SAP 10.5)
+		if deps.ProgressHandler != nil {
+			secured.GET("/api/po/scenarios", deps.ProgressHandler.GetScenarios)
+			secured.GET("/api/po/progress/dashboard", deps.ProgressHandler.GetProgressDashboard)
+			secured.GET("/api/po/:id/progress", deps.ProgressHandler.GetPOProgress)
+			secured.POST("/api/po/:id/progress/initialize", deps.ProgressHandler.InitializeProgress)
+			secured.PUT("/api/po/:id/progress/:event_code", deps.ProgressHandler.UpdateProgressEvent)
+		}
 
 		// Phase 3: Session C - RFQ Complete
 		rfq := secured.Group("/api/rfq")

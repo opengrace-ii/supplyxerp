@@ -106,6 +106,7 @@ func main() {
 	productionHandler := handlers.NewProductionHandler(uow, productionWorkflow, pool)
 	poEnrichHandler := handlers.NewPOEnrichHandler(pool)
 	systemHandler := handlers.NewSystemHandler(pool)
+	progressHandler := handlers.NewProgressHandler(pool)
 
 	routerDeps := api.RouterDeps{
 		JWTSecret:        cfg.JWTSecret,
@@ -128,6 +129,7 @@ func main() {
 		PurchasingHandler: purchasingHandler,
 		RFQHandler:       rfqHandler,
 		POEnrichHandler:  poEnrichHandler,
+		ProgressHandler:  progressHandler,
 		SystemHandler:    systemHandler,
 	}
 

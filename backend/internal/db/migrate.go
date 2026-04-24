@@ -26,6 +26,12 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		"migrations/011_pricing_and_rfq.sql",
 		"migrations/012_rename_rfq_tables.sql",
 		"migrations/013_rfq_complete.sql",
+		"migrations/014_rfq_schema_fix.sql",
+		"migrations/015_org_master.sql",
+		"migrations/016_po_document_enrich.sql",
+		"migrations/017_po_item_weights.sql",
+		"migrations/017_system_logs.sql",
+		"migrations/018_po_progress_tracking.sql",
 	}
 	for _, file := range files {
 		sql, err := migrationFS.ReadFile(file)

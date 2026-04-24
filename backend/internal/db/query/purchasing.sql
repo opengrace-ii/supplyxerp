@@ -86,9 +86,9 @@ ORDER BY po.created_at DESC;
 
 -- name: GetPurchaseOrderWithLines :many
 SELECT po.*, 
-       pol.id as line_id, pol.product_id, pol.quantity, pol.unit, pol.unit_price, pol.line_value, pol.qty_received, 
+       pol.id as line_id, pol.item_no, pol.product_id, pol.quantity, pol.unit, pol.unit_price, pol.line_value, pol.qty_received, 
        pol.account_assignment_type, pol.cost_centre as cost_centre_line, pol.line_notes, pol.line_status,
-       p.name as product_name, p.code as product_code, s.name as supplier_name
+       p.name as material_name, p.code as material_code, s.name as supplier_name
 FROM purchase_orders po
 JOIN purchase_order_lines pol ON pol.po_id = po.id
 JOIN products p ON p.id = pol.product_id

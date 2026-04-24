@@ -13,7 +13,7 @@ const ActionButtons: React.FC = () => {
   const locQuery = useQuery({ queryKey: ['locations'], queryFn: api.getLocations });
 
   const moveMut = useMutation({
-    mutationFn: () => api.move(currentHU!.code, targetLocation),
+    mutationFn: () => api.move({ barcode: currentHU!.code, target_location: targetLocation }),
     onSuccess: (res) => {
       if (res.success) {
         setCurrentHU(res.data.hu);
@@ -24,7 +24,7 @@ const ActionButtons: React.FC = () => {
   });
 
   const consumeMut = useMutation({
-    mutationFn: () => api.consume(currentHU!.code, parseFloat(consumeQty)),
+    mutationFn: () => api.consume({ barcode: currentHU!.code, quantity: parseFloat(consumeQty), mode: 'consume' }),
     onSuccess: (res) => {
       if (res.success) {
         setCurrentHU(res.data.hu);
@@ -36,7 +36,7 @@ const ActionButtons: React.FC = () => {
   });
 
   const splitMut = useMutation({
-    mutationFn: () => api.split(currentHU!.code, parseFloat(consumeQty)),
+    mutationFn: () => api.consume({ barcode: currentHU!.code, quantity: parseFloat(consumeQty), mode: 'split' }),
     onSuccess: (res) => {
       if (res.success) {
         setCurrentHU(res.data.hu);

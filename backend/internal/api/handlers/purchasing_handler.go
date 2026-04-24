@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"supplyxerp/backend/internal/logger"
+	"supplyxerp/backend/internal/db/dbgen"
 )
 
 type PurchasingHandler struct {
@@ -538,6 +539,101 @@ func (h *PurchasingHandler) GetPO(c *gin.Context) {
 		"purchase_order": rows[0],
 		"lines":          rows,
 	})
+}
+
+func (h *PurchasingHandler) ListPOItems(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(int64)
+	poID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	rows, err := h.Repo.Purchasing.GetPODetail(c.Request.Context(), tenantID, poID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list items"})
+		return
+	}
+
+	type FlatRow struct {
+		dbgen.GetPurchaseOrderWithLinesRow
+		MaterialName string `json:"material_name"`
+		MaterialCode string `json:"material_code"`
+		SupplierName string `json:"supplier_name"`
+		ItemNo       int    `json:"item_no"`
+	}
+
+	flatRows := make([]FlatRow, len(rows))
+	for i, r := range rows {
+		itemNo := 0
+		if r.ItemNo.Valid {
+			itemNo = int(r.ItemNo.Int32)
+		}
+		flatRows[i] = FlatRow{
+			GetPurchaseOrderWithLinesRow: r,
+			MaterialName:                 r.MaterialName.String,
+			MaterialCode:                 r.MaterialCode.String,
+			SupplierName:                 r.SupplierName.String,
+			ItemNo:                       itemNo,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"items": flatRows,
+		"purchase_order_lines": flatRows,
+	})
+}
+
+func (h *PurchasingHandler) AddPOItem(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(int64)
+	poID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	var req struct {
+		ProductID   int64   `json:"product_id"`
+		Quantity    float64 `json:"quantity"`
+		Unit        string  `json:"unit"`
+		UnitPrice   float64 `json:"unit_price"`
+		ShortText   string  `json:"short_text"`
+		DelivDate   string  `json:"delivery_date"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get next line number
+	var nextNum int
+	err := h.Pool.QueryRow(c.Request.Context(), 
+		"SELECT COALESCE(MAX(item_no), 0) + 10 FROM purchase_order_lines WHERE po_id = $1", poID).Scan(&nextNum)
+	if err != nil {
+		nextNum = 10
+	}
+
+	delDate, _ := time.Parse("2006-01-02", req.DelivDate)
+	if delDate.IsZero() {
+		delDate = time.Now().AddDate(0, 0, 7)
+	}
+
+	arg := dbgen.PurchaseOrderLine{
+		TenantID:        tenantID,
+		PoID:            poID,
+		LineNumber:      int32(nextNum),
+		ProductID:       req.ProductID,
+		ShortText:       pgtype.Text{String: req.ShortText, Valid: req.ShortText != ""},
+		Quantity:        repository.NumericFromFloat(req.Quantity),
+		Unit:            req.Unit,
+		UnitPrice:       repository.NumericFromFloat(req.UnitPrice),
+		DeliveryDate:    pgtype.Date{Time: delDate, Valid: true},
+		ItemNo:          pgtype.Int4{Int32: int32(nextNum), Valid: true},
+		LineStatus:      "OPEN",
+	}
+
+	err = h.Repo.Purchasing.AddPOLine(c.Request.Context(), arg)
+	if err != nil {
+		logger.LogError("API", "PURCHASING", "AddPOItem", fmt.Sprintf("DB error: %v", err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add item"})
+		return
+	}
+
+	logger.LogInfo("PURCHASING", "AddPOItem", fmt.Sprintf("Item added to PO %d: line %d", poID, nextNum))
+	c.JSON(http.StatusOK, gin.H{"success": true, "line_number": nextNum})
 }
 
 func (h *PurchasingHandler) SubmitPO(c *gin.Context) {

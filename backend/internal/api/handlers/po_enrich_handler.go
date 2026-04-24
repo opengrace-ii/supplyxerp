@@ -139,6 +139,26 @@ type POItemConditionRequest struct {
 	Inactive       bool    `json:"inactive"`
 }
 
+type POItemAddressRequest struct {
+	DiffAddress bool   `json:"diff_address"`
+	Street      string `json:"street"`
+	City        string `json:"city"`
+	ZipCode     string `json:"zip_code"`
+	Country     string `json:"country"`
+}
+
+type POItemWeightsRequest struct {
+	BaseUOM     string  `json:"base_uom"`
+	OrderUOM    string  `json:"order_uom"`
+	ConvNum     float64 `json:"conv_num"`
+	ConvDen     float64 `json:"conv_den"`
+	GrossWeight float64 `json:"gross_weight"`
+	NetWeight   float64 `json:"net_weight"`
+	WeightUnit  string  `json:"weight_unit"`
+	Volume      float64 `json:"volume"`
+	VolumeUnit  string  `json:"volume_unit"`
+}
+
 // ─────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────
@@ -1109,6 +1129,146 @@ func (h *POEnrichHandler) GetOutputLog(c *gin.Context) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Item Address Override Tab
+// ─────────────────────────────────────────────────────────────
+
+// GET /api/po/:id/items/:item_no/address
+func (h *POEnrichHandler) GetItemAddress(c *gin.Context) {
+	poID, ok := enrichParsePOID(c)
+	if !ok {
+		return
+	}
+	itemNo, ok := enrichParseItemNo(c)
+	if !ok {
+		return
+	}
+	var a POItemAddressRequest
+	err := h.Pool.QueryRow(c.Request.Context(), `
+		SELECT delivery_addr_diff, 
+		       COALESCE(delivery_addr_street,''), 
+		       COALESCE(delivery_addr_city,''), 
+		       COALESCE(delivery_addr_zip,''), 
+		       COALESCE(delivery_addr_country,'')
+		FROM purchase_order_lines
+		WHERE po_id = $1 AND line_number = $2`, poID, itemNo).Scan(
+		&a.DiffAddress, &a.Street, &a.City, &a.ZipCode, &a.Country,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, a)
+}
+
+// PUT /api/po/:id/items/:item_no/address
+func (h *POEnrichHandler) UpdateItemAddress(c *gin.Context) {
+	poID, ok := enrichParsePOID(c)
+	if !ok {
+		return
+	}
+	itemNo, ok := enrichParseItemNo(c)
+	if !ok {
+		return
+	}
+	var req POItemAddressRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	_, err := h.Pool.Exec(c.Request.Context(), `
+		UPDATE purchase_order_lines SET
+		  delivery_addr_diff   = $3,
+		  delivery_addr_street = $4,
+		  delivery_addr_city   = $5,
+		  delivery_addr_zip    = $6,
+		  delivery_addr_country = $7,
+		  updated_at = NOW()
+		WHERE po_id = $1 AND line_number = $2`,
+		poID, itemNo, req.DiffAddress, req.Street, req.City, req.ZipCode, req.Country,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "address updated"})
+}
+
+// ─────────────────────────────────────────────────────────────
+// Item Weights & Units Tab
+// ─────────────────────────────────────────────────────────────
+
+// GET /api/po/:id/items/:item_no/weights
+func (h *POEnrichHandler) GetItemWeights(c *gin.Context) {
+	poID, ok := enrichParsePOID(c)
+	if !ok {
+		return
+	}
+	itemNo, ok := enrichParseItemNo(c)
+	if !ok {
+		return
+	}
+	var w POItemWeightsRequest
+	err := h.Pool.QueryRow(c.Request.Context(), `
+		SELECT COALESCE(base_uom,''), 
+		       COALESCE(order_uom,''), 
+		       uom_conversion_num, 
+		       uom_conversion_den, 
+		       gross_weight, 
+		       net_weight, 
+		       COALESCE(weight_unit,''), 
+		       volume, 
+		       COALESCE(volume_unit,'')
+		FROM purchase_order_lines
+		WHERE po_id = $1 AND line_number = $2`, poID, itemNo).Scan(
+		&w.BaseUOM, &w.OrderUOM, &w.ConvNum, &w.ConvDen,
+		&w.GrossWeight, &w.NetWeight, &w.WeightUnit, &w.Volume, &w.VolumeUnit,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, w)
+}
+
+// PUT /api/po/:id/items/:item_no/weights
+func (h *POEnrichHandler) UpdateItemWeights(c *gin.Context) {
+	poID, ok := enrichParsePOID(c)
+	if !ok {
+		return
+	}
+	itemNo, ok := enrichParseItemNo(c)
+	if !ok {
+		return
+	}
+	var req POItemWeightsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	_, err := h.Pool.Exec(c.Request.Context(), `
+		UPDATE purchase_order_lines SET
+		  base_uom           = $3,
+		  order_uom          = $4,
+		  uom_conversion_num = $5,
+		  uom_conversion_den = $6,
+		  gross_weight       = $7,
+		  net_weight         = $8,
+		  weight_unit        = $9,
+		  volume             = $10,
+		  volume_unit        = $11,
+		  updated_at         = NOW()
+		WHERE po_id = $1 AND line_number = $2`,
+		poID, itemNo, req.BaseUOM, req.OrderUOM, req.ConvNum, req.ConvDen,
+		req.GrossWeight, req.NetWeight, req.WeightUnit, req.Volume, req.VolumeUnit,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "weights updated"})
+}
+
+// ─────────────────────────────────────────────────────────────
 // RegisterPOEnrichRoutes wires all endpoints into the Gin router.
 // Call from router.go: h := handlers.NewPOEnrichHandler(pool); h.RegisterPOEnrichRoutes(api)
 // ─────────────────────────────────────────────────────────────
@@ -1141,6 +1301,12 @@ func (h *POEnrichHandler) RegisterPOEnrichRoutes(r *gin.RouterGroup) {
 
 	r.GET("/po/:id/items/:item_no/conditions",         h.GetItemConditions)
 	r.PUT("/po/:id/items/:item_no/conditions",         h.UpsertItemConditions)
+
+	r.GET("/po/:id/items/:item_no/address",            h.GetItemAddress)
+	r.PUT("/po/:id/items/:item_no/address",            h.UpdateItemAddress)
+
+	r.GET("/po/:id/items/:item_no/weights",            h.GetItemWeights)
+	r.PUT("/po/:id/items/:item_no/weights",            h.UpdateItemWeights)
 
 	// Block / Cancel
 	r.POST("/po/:id/items/:item_no/block",             h.BlockItem)

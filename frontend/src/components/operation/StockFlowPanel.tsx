@@ -89,7 +89,7 @@ const StockFlowPanel: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            const res = await api.scan(scannedBarcode);
+            const res = await api.scan({ barcode: scannedBarcode });
             if (res.type === 'HU') {
                 setCurrentHU(res.data);
                 setCurrentTask(res.open_task || null);
@@ -98,7 +98,7 @@ const StockFlowPanel: React.FC = () => {
 
                 // If in production mode, fetch lineage automatically
                 if (currentMode === 'Production') {
-                    const lineage = await api.getLineage(res.data.public_id || res.data.code);
+                    const lineage = await api.lineage(res.data.public_id || res.data.code);
                     setHuLineage(lineage);
                 }
             } else if (res.type === 'PRODUCT') {
@@ -165,7 +165,7 @@ const StockFlowPanel: React.FC = () => {
             const huCode = currentHU.public_id || currentHU.code;
 
             if (action === 'Move' && targetLocation) {
-                const res = await api.moveHU(huCode, targetLocation);
+                const res = await api.move({ barcode: huCode, target_location: targetLocation });
                 if (res.success) {
                     setCurrentHU(null);
                     setTargetLocation('');
@@ -174,9 +174,10 @@ const StockFlowPanel: React.FC = () => {
                     setError(res.error?.message || 'Move failed');
                 }
             } else if (action === 'Split') {
-                const res = await api.split({ 
-                    parent_hu_code: huCode, 
-                    split_quantity: splitQty 
+                const res = await api.consume({ 
+                    barcode: huCode, 
+                    quantity: splitQty,
+                    mode: 'split'
                 });
                 if (res.success) {
                     setShowSplitModal(false);
@@ -184,14 +185,14 @@ const StockFlowPanel: React.FC = () => {
                     // Reload the parent HU to see updated quantity
                     const scanRes = await api.scan(huCode);
                     setCurrentHU(scanRes.data);
-                    const lineage = await api.getLineage(huCode);
+                    const lineage = await api.lineage(huCode);
                     setHuLineage(lineage);
                 }
             } else if (action === 'Consume') {
                 const res = await api.consume({ 
-                    hu_code: huCode, 
+                    barcode: huCode, 
                     quantity: currentHU.quantity, // Full consumption from button
-                    notes: "Full production consumption" 
+                    mode: 'consume' 
                 });
                 if (res.success) {
                     setCurrentHU(null);
@@ -200,9 +201,9 @@ const StockFlowPanel: React.FC = () => {
                 }
             } else if (action === 'PartialConsume') {
                 const res = await api.consume({ 
-                    hu_code: huCode, 
+                    barcode: huCode, 
                     quantity: splitQty, 
-                    notes: consumeNotes || "Partial consumption" 
+                    mode: 'consume' 
                 });
                 if (res.success) {
                     setShowSplitModal(false);
@@ -211,7 +212,7 @@ const StockFlowPanel: React.FC = () => {
                     // Reprocess parent
                     const scanRes = await api.scan(huCode);
                     setCurrentHU(scanRes.data);
-                    const lineage = await api.getLineage(huCode);
+                    const lineage = await api.lineage(huCode);
                     setHuLineage(lineage);
                 }
             } else {
@@ -414,7 +415,7 @@ const StockFlowPanel: React.FC = () => {
                                 <div key={idx} style={{
                                     display: 'flex', flexDirection: 'column', gap: '4px',
                                     borderLeft: `2px solid ${step.status === 'SUCCESS' ? '#22c55e' : '#ef4444'}`,
-                                    paddingLeft: '12px', py: '4px',
+                                    paddingLeft: '12px', paddingTop: '4px', paddingBottom: '4px',
                                     backgroundColor: step.status === 'SUCCESS' ? 'rgba(34,197,94,0.03)' : 'rgba(239,68,68,0.03)'
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -672,7 +673,7 @@ const StockFlowPanel: React.FC = () => {
                                 <span style={{ fontSize: '12px', color: '#888' }}>Checking live ledger...</span>
                             </div>
                         </div>
-                        <div style={{ gridColumn: 'span 2', borderTop: '1px solid rgba(245,158,11,0.1)', pt: '10px', marginTop: '4px' }}>
+                        <div style={{ gridColumn: 'span 2', borderTop: '1px solid rgba(245,158,11,0.1)', paddingTop: '10px', marginTop: '4px' }}>
                             <div style={{ fontSize: '10px', color: '#888', marginBottom: '6px' }}>REGISTERED BARCODES</div>
                             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: '11px', fontFamily: 'monospace', color: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', padding: '2px 6px', borderRadius: '4px' }}>{currentProduct.code}</span>

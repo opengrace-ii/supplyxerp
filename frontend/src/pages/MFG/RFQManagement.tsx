@@ -105,7 +105,7 @@ export function RFQManagement({ products: propProducts = [], suppliers: propSupp
     const fetchRFQs = async (status?: string, collNo?: string) => {
         setLoading(true);
         try {
-            const data = await api.listRFQs(status, collNo);
+            const data = await api.listRFQs({ status, collNo });
             setRFQs(data.rfqs || []);
         } catch (err) { console.error(err); }
         finally { setLoading(false); }

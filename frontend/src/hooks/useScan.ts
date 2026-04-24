@@ -8,7 +8,7 @@ export const useScan = () => {
 
   return useMutation({
     mutationFn: async (barcode: string) => {
-      const result = await api.scan(barcode);
+      const result = await api.scan({ barcode });
       return result;
     },
     onSuccess: (data) => {

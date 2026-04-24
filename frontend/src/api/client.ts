@@ -18,23 +18,19 @@ export const api = {
     const res = await apiClient.get('/api/auth/me');
     return res.data;
   },
-  scan: async (barcode: string) => {
-    const res = await apiClient.post('/api/scan', { barcode });
+  scan: async (data: { barcode: string }) => {
+    const res = await apiClient.post('/api/scan', data);
     return res.data;
   },
-  consume: async (data: { hu_code: string, quantity: number, notes: string }) => {
+  consume: async (data: { barcode: string, quantity: number, mode: string }) => {
     const res = await apiClient.post('/api/stock/consume', data);
     return res.data;
   },
-  split: async (data: { parent_hu_code: string, split_quantity: number }) => {
-    const res = await apiClient.post('/api/stock/split', data);
+  move: async (data: { barcode: string, target_location: string }) => {
+    const res = await apiClient.post('/api/stock/move', data);
     return res.data;
   },
-  moveHU: async (hu_code: string, to_zone_code: string) => {
-    const res = await apiClient.post('/api/stock/move', { hu_code, to_zone_code });
-    return res.data;
-  },
-  getInventory: async () => {
+  inventory: async () => {
     const res = await apiClient.get('/api/inventory');
     return res.data;
   },
@@ -42,9 +38,13 @@ export const api = {
     const res = await apiClient.get('/api/locations');
     return res.data;
   },
-  getLineage: async (huCode: string) => {
+  lineage: async (huCode: string) => {
     const res = await apiClient.get(`/api/stock/hu/${huCode}/lineage`);
     return res.data;
+  },
+  trace: async (traceId: string) => {
+    // Placeholder as trace is not yet fully implemented in backend
+    return { steps: [] };
   },
   getStockFlowStats: async () => {
     const res = await apiClient.get('/api/stats/stockflow');
@@ -404,12 +404,12 @@ export const api = {
     return res.data;
   },
   finaliseRFQ: async (id: number, data: any) => {
-    const res = await apiClient.post(`/api/rfq/${id}/finalise`, data);
+    const res = await apiClient.post('/api/rfq/finalise', data);
     return res.data;
   },
   markRFQRejectionNoticesSent: async (id: number, vendorIds: number[]) => {
     const res = await apiClient.post(`/api/rfq/${id}/rejection-notices`, { vendor_ids: vendorIds });
     return res.data;
   }
-}
+};
 
