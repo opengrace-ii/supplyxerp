@@ -35,3 +35,6 @@ scratch/
 prompts_and_responses/
 backend/tmp/
 mcp/erplite_mcp_updated.py
+
+*storybook.log
+storybook-static

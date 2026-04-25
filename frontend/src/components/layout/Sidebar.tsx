@@ -55,30 +55,27 @@ const Sidebar: React.FC = () => {
 
   const tabData = MODULES_BY_TAB[currentTab];
 
-  if (!tabData) return <aside className="sidebar"></aside>;
+  if (!tabData) return <div className="sidebar" id="sidebar"></div>;
 
   return (
-    <aside className="sidebar">
-      <div className="nav-group-label">— {tabData.label} —</div>
-      
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {tabData.items.map(item => (
-          <button 
-            key={item.name}
-            className={`nav-item ${currentModule === item.name ? 'active' : ''}`}
-            onClick={() => setModule(item.name)}
-          >
-            <div className="nav-text">
-              <span className={`nav-dot ${item.isLive ? 'live' : 'planned'}`} />
-              <span style={{ fontSize: '12px' }}>{item.name}</span>
-            </div>
-            <span className="nav-badge">
-              [{item.status}]
-            </span>
-          </button>
-        ))}
-      </div>
-    </aside>
+    <div className="sidebar" id="sidebar">
+      <div className="sb-group">{tabData.label}</div>
+      {tabData.items.map(item => (
+        <div
+          key={item.name}
+          className={`sb-item ${currentModule === item.name ? 'active' : ''}`}
+          onClick={() => setModule(item.name)}
+        >
+          <div className="sb-icon" style={{ background: 'var(--accent-dim)' }}>{item.name.charAt(0)}</div>
+          {item.name}
+          {item.isLive ? (
+            <div className="sb-dot live"></div>
+          ) : (
+            <span className="sb-badge">{item.status}</span>
+          )}
+        </div>
+      ))}
+    </div>
   );
 };
 

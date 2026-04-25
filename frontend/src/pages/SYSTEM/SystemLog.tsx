@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { KpiCard } from '@/components/ui/KpiCard';
 
 interface SystemLog {
   id: number;
@@ -62,72 +63,51 @@ const SystemLog: React.FC = () => {
     return () => clearInterval(interval);
   }, [filterLevel, filterCategory, search]);
 
-  const getLevelColor = (level: string) => {
+  const getLevelColorClass = (level: string) => {
     switch (level) {
-      case 'ERROR': return '#ef4444';
-      case 'WARN': return '#f59e0b';
-      case 'INFO': return '#3b82f6';
-      default: return '#888';
+      case 'ERROR': return 'sx-badge--red';
+      case 'WARN': return 'sx-badge--amber';
+      case 'INFO': return 'sx-badge--blue';
+      default: return 'sx-badge--gray';
     }
   };
 
   return (
-    <div className="system-log-page" style={{ 
-      padding: '24px', 
-      backgroundColor: '#1a0e00', 
-      height: '100%', 
-      overflowY: 'auto',
-      color: '#fff',
-      fontFamily: 'Inter, sans-serif'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#f59e0b', margin: 0 }}>System Monitoring</h1>
-        <div style={{ fontSize: '12px', color: '#888' }}>
-          Auto-refreshing every 5s • Last update: {new Date().toLocaleTimeString()}
+    <div className="flex flex-col h-full bg-[var(--bg-base)] p-8 space-y-8 overflow-y-auto">
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-xl font-bold text-[var(--accent)] tracking-tight">System Monitoring</h1>
+          <p className="text-sm text-[var(--text-3)] mt-1">Real-time telemetry · API logs · Exception tracking</p>
+        </div>
+        <div className="text-xs text-[var(--text-3)] text-right">
+          Auto-refreshing every 5s<br />
+          Last update: {new Date().toLocaleTimeString()}
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
-        <div style={cardStyle}>
-          <span style={cardLabelStyle}>Total Events</span>
-          <span style={cardValueStyle}>{summary?.total || 0}</span>
-        </div>
-        <div style={{ ...cardStyle, borderLeft: '4px solid #ef4444' }}>
-          <span style={cardLabelStyle}>Errors (24h)</span>
-          <span style={{ ...cardValueStyle, color: '#ef4444' }}>{summary?.errors || 0}</span>
-        </div>
-        <div style={{ ...cardStyle, borderLeft: '4px solid #f59e0b' }}>
-          <span style={cardLabelStyle}>Warnings</span>
-          <span style={{ ...cardValueStyle, color: '#f59e0b' }}>{summary?.warns || 0}</span>
-        </div>
-        <div style={cardStyle}>
-          <span style={cardLabelStyle}>Avg Latency</span>
-          <span style={cardValueStyle}>{summary?.avg_latency?.toFixed(2) || 0}ms</span>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <KpiCard label="Total Events" value={summary?.total || 0} icon="📡" />
+        <KpiCard label="Errors (24H)" value={summary?.errors || 0} icon="⚠️" deltaDir={(summary?.errors || 0) > 0 ? 'down' : 'neutral'} />
+        <KpiCard label="Warnings" value={summary?.warns || 0} icon="⚡" deltaDir={(summary?.warns || 0) > 0 ? 'down' : 'neutral'} />
+        <KpiCard label="Avg Latency" value={`${summary?.avg_latency?.toFixed(1) || 0}ms`} icon="⏱️" />
       </div>
 
       {/* Filters */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '12px', 
-        marginBottom: '16px', 
-        padding: '16px', 
-        backgroundColor: '#261a0d', 
-        borderRadius: '8px',
-        border: '1px solid #3d2b1a'
-      }}>
+      <div className="sx-card" style={{ display: 'flex', gap: '16px', marginBottom: '24px', padding: '16px 24px', alignItems: 'center' }}>
         <input 
           type="text" 
           placeholder="Search logs..." 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={inputStyle}
+          className="sx-input"
+          style={{ flex: 1 }}
         />
         <select 
           value={filterLevel} 
           onChange={(e) => setFilterLevel(e.target.value)}
-          style={inputStyle}
+          className="sx-input sx-select"
+          style={{ width: 160 }}
         >
           <option value="">All Levels</option>
           <option value="ERROR">Error Only</option>
@@ -137,7 +117,8 @@ const SystemLog: React.FC = () => {
         <select 
           value={filterCategory} 
           onChange={(e) => setFilterCategory(e.target.value)}
-          style={inputStyle}
+          className="sx-input sx-select"
+          style={{ width: 160 }}
         >
           <option value="">All Modules</option>
           <option value="AUTH">Auth</option>
@@ -146,70 +127,58 @@ const SystemLog: React.FC = () => {
           <option value="WAREHOUSE">Warehouse</option>
           <option value="API">Public API</option>
         </select>
-        <button onClick={fetchLogs} className="btn" style={{ height: '36px' }}>Refresh</button>
+        <button onClick={fetchLogs} className="sx-btn sx-btn--primary" style={{ padding: "10px 16px" }}>Refresh</button>
       </div>
 
       {/* Logs Table */}
-      <div style={{ 
-        backgroundColor: '#261a0d', 
-        borderRadius: '8px', 
-        border: '1px solid #3d2b1a',
-        overflow: 'hidden'
-      }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-          <thead style={{ backgroundColor: '#1a0e00', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      <div className="sx-card" style={{ padding: 0, overflow: "hidden" }}>
+        <table className="sx-table">
+          <thead>
             <tr>
-              <th style={thStyle}>Timestamp</th>
-              <th style={thStyle}>Level</th>
-              <th style={thStyle}>Module</th>
-              <th style={thStyle}>Message</th>
-              <th style={thStyle}>Path / Status</th>
-              <th style={thStyle}>Latency</th>
+              <th>Timestamp</th>
+              <th>Level</th>
+              <th>Module</th>
+              <th>Message</th>
+              <th>Path / Status</th>
+              <th>Latency</th>
             </tr>
           </thead>
           <tbody>
             {logs.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#555' }}>
+                <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
                   {loading ? 'Initializing telemetry...' : 'No logs found for current filters.'}
                 </td>
               </tr>
             ) : logs.map(log => (
-              <tr key={log.id} style={{ borderBottom: '1px solid #3d2b1a', verticalAlign: 'top' }}>
-                <td style={tdStyle}>
+              <tr key={log.id}>
+                <td style={{ color: "var(--text-secondary)" }}>
                   {new Date(log.created_at).toLocaleString()}
                 </td>
-                <td style={tdStyle}>
-                  <span style={{ 
-                    color: getLevelColor(log.level), 
-                    fontWeight: 'bold',
-                    fontSize: '11px',
-                    padding: '2px 6px',
-                    backgroundColor: `${getLevelColor(log.level)}15`,
-                    borderRadius: '4px',
-                    border: `1px solid ${getLevelColor(log.level)}30`
-                  }}>
+                <td>
+                  <span className={`sx-badge ${getLevelColorClass(log.level)}`}>
                     {log.level}
                   </span>
                 </td>
-                <td style={tdStyle}>
-                  <div style={{ fontWeight: '600', color: '#f59e0b', fontSize: '11px' }}>{log.category}</div>
-                  <div style={{ color: '#888', fontSize: '10px' }}>{log.operation}</div>
+                <td>
+                  <div style={{ fontWeight: '700', color: 'var(--accent)', fontSize: '11px', textTransform: "uppercase", letterSpacing: "0.05em" }}>{log.category}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: 2 }}>{log.operation}</div>
                 </td>
-                <td style={{ ...tdStyle, maxWidth: '400px' }}>
-                  <div style={{ fontWeight: '500', marginBottom: '4px' }}>{log.message}</div>
+                <td style={{ maxWidth: '400px' }}>
+                  <div style={{ fontWeight: '500', color: "var(--text-primary)" }}>{log.message}</div>
                 </td>
-                <td style={tdStyle}>
-                  <div style={{ fontFamily: 'monospace', color: '#888' }}>{log.path}</div>
+                <td>
+                  <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: 12 }}>{log.path}</div>
                   <div style={{ 
-                    color: log.status_code >= 400 ? '#ef4444' : '#10b981',
-                    fontSize: '11px',
-                    marginTop: '2px'
+                    color: log.status_code >= 400 ? 'var(--red)' : 'var(--green)',
+                    fontSize: '12px',
+                    marginTop: '4px',
+                    fontWeight: 600
                   }}>
                     HTTP {log.status_code}
                   </div>
                 </td>
-                <td style={tdStyle}>
+                <td style={{ fontWeight: 600 }}>
                   {log.duration_ms ? `${log.duration_ms}ms` : '—'}
                 </td>
               </tr>
@@ -219,50 +188,6 @@ const SystemLog: React.FC = () => {
       </div>
     </div>
   );
-};
-
-const cardStyle: React.CSSProperties = {
-  backgroundColor: '#261a0d',
-  padding: '16px',
-  borderRadius: '8px',
-  border: '1px solid #3d2b1a',
-  display: 'flex',
-  flexDirection: 'column'
-};
-
-const cardLabelStyle: React.CSSProperties = {
-  fontSize: '12px',
-  color: '#888',
-  marginBottom: '8px'
-};
-
-const cardValueStyle: React.CSSProperties = {
-  fontSize: '24px',
-  fontWeight: '700',
-  color: '#fff'
-};
-
-const thStyle: React.CSSProperties = {
-  padding: '12px 16px',
-  fontSize: '11px',
-  fontWeight: '600'
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: '12px 16px',
-  color: '#ddd',
-  lineHeight: '1.5'
-};
-
-const inputStyle: React.CSSProperties = {
-  backgroundColor: '#1a0e00',
-  border: '1px solid #3d2b1a',
-  borderRadius: '4px',
-  padding: '6px 12px',
-  color: '#fff',
-  fontSize: '13px',
-  outline: 'none',
-  minWidth: '150px'
 };
 
 export default SystemLog;

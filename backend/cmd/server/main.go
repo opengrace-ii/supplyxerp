@@ -107,6 +107,13 @@ func main() {
 	poEnrichHandler := handlers.NewPOEnrichHandler(pool)
 	systemHandler := handlers.NewSystemHandler(pool)
 	progressHandler := handlers.NewProgressHandler(pool)
+	supplyPactsHandler := handlers.NewSupplyPactsHandler(pool)
+	deliveryHandler := handlers.NewDeliveryHandler(pool)
+	usersHandler := handlers.NewUsersHandler(pool)
+	buildHandler := &handlers.BuildHandler{Pool: pool, Repo: uow}
+	qualityHandler := &handlers.QualityHandler{Pool: pool, Repo: uow}
+	dealflowHandler := &handlers.DealflowHandler{Pool: pool}
+	routeRunnerHandler := &handlers.RouteRunnerHandler{Pool: pool}
 
 	routerDeps := api.RouterDeps{
 		JWTSecret:        cfg.JWTSecret,
@@ -131,6 +138,13 @@ func main() {
 		POEnrichHandler:  poEnrichHandler,
 		ProgressHandler:  progressHandler,
 		SystemHandler:    systemHandler,
+		SupplyPactsHandler: supplyPactsHandler,
+		DeliveryHandler:  deliveryHandler,
+		UsersHandler:     usersHandler,
+		BuildHandler:     buildHandler,
+		QualityHandler:   qualityHandler,
+		DealflowHandler:  dealflowHandler,
+		RouteRunnerHandler: routeRunnerHandler,
 	}
 
 	r := api.NewRouter(routerDeps)

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../../api/client';
 import { useAppStore, Mode } from '../../store/useAppStore';
+import { KpiCard } from '@/components/ui/KpiCard';
+import { SectionTabs } from '@/components/ui/SectionTabs';
+import { ScanInput } from '@/components/ui/ScanInput';
 
 const StockFlowPanel: React.FC = () => {
     const { currentHU, setCurrentHU, currentTask, setCurrentTask, currentMode, setMode, traceSteps } = useAppStore();
@@ -510,73 +513,43 @@ const StockFlowPanel: React.FC = () => {
 
     const isScannerMode = ['Receiving', 'Production', 'Dispatch'].includes(currentMode);
 
+    const TABS = MODES.map(m => ({ key: m, label: m }));
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* Header */}
-            <div>
-                <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--theme-accent)' }}>StockFlow Core</h1>
-                <p style={{ fontSize: '13px', color: '#888', marginTop: '4px', marginBottom: '20px' }}>Real-time warehouse scanning operations</p>
+            <div className="px-0 pt-1 pb-0">
+                <h1 className="text-xl font-bold text-[var(--accent)] tracking-tight">StockFlow Core</h1>
+                <p className="text-sm text-[var(--text-3)] mt-1">Real-time warehouse scanning operations</p>
             </div>
 
             {/* Mode Tabs */}
-            <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
-                {MODES.map(mode => (
-                    <button
-                        key={mode}
-                        onClick={() => setMode(mode)}
-                        style={{
-                            padding: '4px 12px', fontSize: '12px', fontWeight: '600',
-                            borderRadius: '99px', border: 'none', cursor: 'pointer', outline: 'none',
-                            backgroundColor: currentMode === mode ? '#fff' : 'rgba(255,255,255,0.05)',
-                            color: currentMode === mode ? '#000' : '#666',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        {mode}
-                    </button>
-                ))}
-            </div>
+            <SectionTabs
+                tabs={TABS}
+                active={currentMode}
+                onChange={(key) => setMode(key as Mode)}
+            />
 
-            {/* Stat Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-4 gap-3">
                 {currentMode === 'Goods Receipt' ? (
                     <>
-                        <div style={{ backgroundColor: 'var(--theme-light)', border: '1px solid var(--theme-border)', padding: '12px 14px', borderRadius: '8px' }}>
-                            <div style={{ fontSize: '10px', color: 'var(--theme-accent)', opacity: 0.7, textTransform: 'uppercase', marginBottom: '4px' }}>GR Docs Today</div>
-                            <div style={{ fontSize: '20px', fontWeight: '600', color: '#fff' }}>{grStats?.today_count || 0}</div>
-                        </div>
-                        <div style={{ backgroundColor: 'var(--theme-light)', border: '1px solid var(--theme-border)', padding: '12px 14px', borderRadius: '8px' }}>
-                            <div style={{ fontSize: '10px', color: 'var(--theme-accent)', opacity: 0.7, textTransform: 'uppercase', marginBottom: '4px' }}>Units Received</div>
-                            <div style={{ fontSize: '20px', fontWeight: '600', color: '#fff' }}>{grStats?.today_units?.toLocaleString() || 0}</div>
-                        </div>
-                        <div style={{ backgroundColor: 'var(--theme-light)', border: '1px solid var(--theme-border)', padding: '12px 14px', borderRadius: '8px' }}>
-                            <div style={{ fontSize: '10px', color: 'var(--theme-accent)', opacity: 0.7, textTransform: 'uppercase', marginBottom: '4px' }}>Open Putaway</div>
-                            <div style={{ fontSize: '20px', fontWeight: '600', color: '#fff' }}>{grStats?.open_putaway_tasks || 0}</div>
-                        </div>
-                        <div style={{ backgroundColor: 'var(--theme-light)', border: '1px solid var(--theme-border)', padding: '12px 14px', borderRadius: '8px' }}>
-                            <div style={{ fontSize: '10px', color: 'var(--theme-accent)', opacity: 0.7, textTransform: 'uppercase', marginBottom: '4px' }}>Last GR</div>
-                            <div style={{ fontSize: '12px', fontWeight: '400', color: '#fff', marginTop: '8px' }}>{grStats?.last_gr_at ? new Date(grStats.last_gr_at).toLocaleTimeString() : 'N/A'}</div>
-                        </div>
+                        <KpiCard label="GR Docs Today"   value={grStats?.today_count ?? 0} />
+                        <KpiCard label="Units Received"  value={grStats?.today_units?.toLocaleString() ?? 0} />
+                        <KpiCard label="Open Putaway"    value={grStats?.open_putaway_tasks ?? 0} />
+                        <KpiCard label="Last GR"         value={grStats?.last_gr_at ? new Date(grStats.last_gr_at).toLocaleTimeString() : 'N/A'} />
                     </>
                 ) : (
-                    [
-                        { label: 'Scans Today', value: stats.scans_today },
-                        { label: 'Units Handled', value: stats.units_handled.toLocaleString() },
-                        { label: 'Active Tasks', value: stats.active_tasks },
-                        { label: 'Exceptions', value: stats.exceptions }
-                    ].map((stat, i) => (
-                        <div key={i} style={{ 
-                            backgroundColor: 'var(--theme-light)', border: '1px solid var(--theme-border)', 
-                            padding: '12px 14px', borderRadius: '8px' 
-                        }}>
-                            <div style={{ fontSize: '10px', color: 'var(--theme-accent)', opacity: 0.7, textTransform: 'uppercase', marginBottom: '4px' }}>
-                                {stat.label}
-                            </div>
-                            <div style={{ fontSize: '20px', fontWeight: '600', color: '#fff' }}>
-                                {stat.value}
-                            </div>
-                        </div>
-                    ))
+                    <>
+                        <KpiCard label="Scans Today"   value={stats.scans_today} />
+                        <KpiCard label="Units Handled" value={stats.units_handled.toLocaleString()} />
+                        <KpiCard label="Active Tasks"  value={stats.active_tasks} />
+                        <KpiCard
+                            label="Exceptions"
+                            value={stats.exceptions}
+                            deltaDir={stats.exceptions > 0 ? 'down' : 'neutral'}
+                        />
+                    </>
                 )}
             </div>
 
@@ -585,19 +558,46 @@ const StockFlowPanel: React.FC = () => {
             {currentMode === 'Putaway' && renderPutawayList()}
 
             {isScannerMode && (
-                <form onSubmit={handleScan} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px' }}>
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        className="input-scanner"
-                        placeholder={`Scan in ${currentMode} mode...`}
-                        value={scannedBarcode}
-                        onChange={e => setScannedBarcode(e.target.value)}
+                <div>
+                    <ScanInput
+                        mode={currentMode}
+                        onScan={async (val) => {
+                            setLoading(true);
+                            setError(null);
+                            try {
+                                const res = await api.scan({ barcode: val });
+                                if (res.type === 'HU') {
+                                    setCurrentHU(res.data);
+                                    setCurrentTask(res.open_task || null);
+                                    setCurrentProduct(null);
+                                    setConsumeNotes('');
+                                    if (currentMode === 'Production') {
+                                        const lineage = await api.lineage(res.data.public_id || res.data.code);
+                                        setHuLineage(lineage);
+                                    }
+                                } else if (res.type === 'PRODUCT') {
+                                    setCurrentProduct(res.data);
+                                    setCurrentHU(null);
+                                    setCurrentTask(null);
+                                    setHuLineage([]);
+                                } else if (res.type === 'LOCATION') {
+                                    if (currentHU && (currentMode === 'Putaway' || currentMode === 'Production')) {
+                                        setTargetLocation(res.data.code);
+                                    } else if (!currentHU) {
+                                        setError('Scan an HU first before a location');
+                                    }
+                                }
+                                fetchStats();
+                            } catch (err: any) {
+                                setError(err.response?.data?.error || 'System error during scan');
+                            } finally {
+                                setLoading(false);
+                            }
+                        }}
                         disabled={loading}
-                        style={{ flex: 1 }}
                     />
                     {renderActionButtons()}
-                </form>
+                </div>
             )}
 
             {error && (

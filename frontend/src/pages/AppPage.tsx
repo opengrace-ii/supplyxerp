@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import Shell from '../components/layout/Shell';
+import { TopBar } from './layout/TopBar';
+import { Sidebar } from './layout/Sidebar';
 import { useAppStore } from '../store/useAppStore';
 import LoginPage from './LoginPage';
 import StockFlowPanel from '../components/operation/StockFlowPanel';
@@ -14,7 +15,21 @@ import RFQManagement from './MFG/RFQManagement';
 import POBlockCancel from './MFG/POBlockCancel';
 import POAccountAssignment from './MFG/POAccountAssignment';
 import POProgressTracking from './MFG/POProgressTracking';
+import SupplyPacts from './COM/SupplyPacts';
+import VendorScorecard from './COM/VendorScorecard';
+import PriceFormulas from './Config/PriceFormulas';
+import DocumentDispatch from './Config/DocumentDispatch';
 import SystemLog from './SYSTEM/SystemLog';
+import AuditLog from './SYSTEM/AuditLog';
+import DeliveryConfirmation from './MFG/DeliveryConfirmation';
+import InvoiceMatch from './MFG/InvoiceMatch';
+import UsersRoles from './SYSTEM/UsersRoles';
+import BuildOrder from './MFG/BuildOrder';
+import QualityGate from './MFG/QualityGate';
+import DealFlow from './COM/DealFlow';
+import RouteRunner from './COM/RouteRunner';
+import ModuleConfig from './Config/ModuleConfig';
+import Notifications from './Config/Notifications';
 
 const AppPage: React.FC = () => {
   const { currentModule, user, isAuthLoading, checkSession } = useAppStore();
@@ -78,13 +93,36 @@ const AppPage: React.FC = () => {
         return <POAccountAssignment />;
       case 'Progress Tracking':
         return <POProgressTracking />;
+      case 'Supply Pacts':
+        return <SupplyPacts />;
+      case 'Vendor Scorecards':
+        return <VendorScorecard />;
+      case 'Price Formulas':
+        return <PriceFormulas />;
+      case 'Document Dispatch':
+        return <DocumentDispatch />;
       case 'System Log':
         return <SystemLog />;
       case 'Audit log':
+        return <AuditLog />;
       case 'Users & roles':
+        return <UsersRoles />;
+      case 'Delivery confirmation':
+        return <DeliveryConfirmation />;
+      case 'Invoice matching':
+        return <InvoiceMatch />;
+      case 'BuildOrder':
+        return <BuildOrder />;
+      case 'QualityGate':
+        return <QualityGate />;
+      case 'DealFlow':
+        return <DealFlow />;
+      case 'RouteRunner':
+        return <RouteRunner />;
       case 'Module config':
+        return <ModuleConfig />;
       case 'Notifications':
-        return <div style={{padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--theme-accent)'}}>{currentModule} Live Module</div>;
+        return <Notifications />;
       default:
         // Coming soon screen
         return (
@@ -131,9 +169,20 @@ const AppPage: React.FC = () => {
   };
 
   return (
-    <Shell>
-      {renderModule()}
-    </Shell>
+    <div
+      className="grid h-screen overflow-hidden"
+      style={{
+        gridTemplateRows: 'var(--topbar-height) 1fr',
+        gridTemplateColumns: 'var(--sidebar-width) 1fr',
+        background: 'var(--bg-base)',
+      }}
+    >
+      <TopBar />
+      <Sidebar />
+      <main style={{ background: 'var(--bg-base)', overflowY: 'auto' }}>
+        {renderModule()}
+      </main>
+    </div>
   );
 };
 

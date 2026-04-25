@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../../api/client';
+import { apiClient } from '../../api/client';
+import { Button } from '@/components/ui/Button';
+import { Card, CardBody, CardHeader } from '@/components/ui/Card';
+import { DataTable } from '@/components/ui/DataTable';
+import { Badge } from '@/components/ui/Badge';
+import { Field, Input, InlineAlert } from '@/components/ui/Form';
+import { cn } from '@/lib/cn';
 
 export const Tenants: React.FC = () => {
     const [tenants, setTenants] = useState<any[]>([]);
@@ -11,8 +17,8 @@ export const Tenants: React.FC = () => {
     const fetchTenants = async () => {
         setLoading(true);
         try {
-            const data = await api.getTenants();
-            setTenants(data);
+            const res = await apiClient.get('/api/tenants');
+            setTenants(res.data || []);
         } catch (err) {
             console.error("Failed to fetch tenants", err);
         } finally {
@@ -26,7 +32,7 @@ export const Tenants: React.FC = () => {
 
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const name = e.target.value;
-        const slug = name.toLowerCase().replace(/[^a-z0-p]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
         setFormData({ name, slug });
     };
 
@@ -34,7 +40,7 @@ export const Tenants: React.FC = () => {
         e.preventDefault();
         setError(null);
         try {
-            await api.createTenant(formData);
+            await apiClient.post('/api/tenants', formData);
             setFormData({ name: '', slug: '' });
             setShowForm(false);
             fetchTenants();
@@ -44,92 +50,67 @@ export const Tenants: React.FC = () => {
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="flex flex-col h-full bg-[var(--bg-base)] p-8 space-y-8 overflow-y-auto animate-in fade-in duration-500">
+            <div className="flex justify-between items-end">
                 <div>
-                    <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--theme-accent)' }}>Tenants</h1>
-                    <p style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>Manage organizational units and instances</p>
+                    <h1 className="text-xl font-bold text-[var(--accent)] tracking-tight">Tenants</h1>
+                    <p className="text-sm text-[var(--text-3)] mt-1">Manage organizational units and instances</p>
                 </div>
-                <button 
-                    className="btn btn-primary"
-                    onClick={() => setShowForm(!showForm)}
-                >
-                    {showForm ? 'Cancel' : '+ Add Tenant'}
-                </button>
+                <Button variant="primary" onClick={() => setShowForm(!showForm)}>
+                    {showForm ? 'CANCEL' : '+ ADD TENANT'}
+                </Button>
             </div>
 
-            {/* Table */}
-            <div style={{ 
-                backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid var(--theme-border)', 
-                borderRadius: '8px', overflow: 'hidden' 
-            }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                    <thead style={{ backgroundColor: 'rgba(255,255,255,0.05)', textAlign: 'left' }}>
-                        <tr>
-                            <th style={{ padding: '12px', borderBottom: '1px solid var(--theme-border)' }}>Name</th>
-                            <th style={{ padding: '12px', borderBottom: '1px solid var(--theme-border)' }}>Slug</th>
-                            <th style={{ padding: '12px', borderBottom: '1px solid var(--theme-border)' }}>Created</th>
-                            <th style={{ padding: '12px', borderBottom: '1px solid var(--theme-border)' }}>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {tenants.map((t) => (
-                            <tr key={t.id} style={{ borderBottom: '1px solid var(--theme-border)', color: '#ccc' }}>
-                                <td style={{ padding: '12px', color: '#fff', fontWeight: '500' }}>{t.name}</td>
-                                <td style={{ padding: '12px', fontFamily: 'monospace', color: 'var(--theme-accent)' }}>{t.slug}</td>
-                                <td style={{ padding: '12px' }}>{new Date(t.created_at).toLocaleDateString()}</td>
-                                <td style={{ padding: '12px' }}>
-                                    <span style={{ 
-                                        backgroundColor: '#16a34a33', color: '#22c55e', 
-                                        padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700' 
-                                    }}>ACTIVE</span>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* Add Form */}
             {showForm && (
-                <div style={{ 
-                    marginTop: '10px', padding: '20px', backgroundColor: 'var(--theme-light)', 
-                    border: '1px solid var(--theme-border)', borderRadius: '8px' 
-                }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#fff' }}>New Tenant</h3>
-                    <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                        <div>
-                            <label style={{ display: 'block', fontSize: '11px', color: '#888', marginBottom: '4px', textTransform: 'uppercase' }}>Tenant Name</label>
-                            <input 
-                                type="text" 
-                                className="input-scanner" 
-                                placeholder="e.g. TechLogix Germany" 
-                                value={formData.name}
-                                onChange={handleNameChange}
-                                required
-                                style={{ width: '100%' }}
-                            />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', fontSize: '11px', color: '#888', marginBottom: '4px', textTransform: 'uppercase' }}>Slug (Permanent)</label>
-                            <input 
-                                type="text" 
-                                className="input-scanner" 
-                                value={formData.slug}
-                                readOnly
-                                style={{ width: '100%', opacity: 0.6 }}
-                            />
-                        </div>
-                        <div style={{ gridColumn: 'span 2', display: 'flex', gap: '8px', marginTop: '8px' }}>
-                            <button type="submit" className="btn btn-primary">Save Tenant</button>
-                            <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
-                        </div>
-                    </form>
-                    {error && (
-                        <div style={{ marginTop: '12px', fontSize: '12px', color: '#ef4444' }}>{error}</div>
-                    )}
-                </div>
+                <Card className="border-[var(--accent)]/20 animate-in slide-in-from-top-4 duration-300">
+                    <CardHeader title="Create New Tenant" subtitle="Provision a new dedicated instance" />
+                    <CardBody>
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <Field label="TENANT NAME">
+                                    <Input 
+                                        placeholder="e.g. TechLogix Germany" 
+                                        value={formData.name}
+                                        onChange={handleNameChange}
+                                        required
+                                    />
+                                </Field>
+                                <Field label="SLUG (PERMANENT)">
+                                    <Input 
+                                        value={formData.slug}
+                                        readOnly
+                                        className="opacity-50 font-mono"
+                                    />
+                                </Field>
+                            </div>
+                            <div className="flex gap-3 pt-4 border-t border-[var(--border)]">
+                                <Button type="submit" variant="primary" className="px-8">PROVISION TENANT</Button>
+                                <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>CANCEL</Button>
+                            </div>
+                        </form>
+                        {error && <InlineAlert type="error" message={error} className="mt-4" />}
+                    </CardBody>
+                </Card>
             )}
+
+            <Card>
+                <CardBody>
+                    <DataTable
+                        columns={[
+                            { key: 'name', header: 'NAME', className: 'font-bold text-[var(--text-1)]' },
+                            { key: 'slug', header: 'SLUG', mono: true, className: 'text-[var(--accent)]' },
+                            { key: 'created_at', header: 'CREATED', render: (v) => new Date(v.created_at).toLocaleDateString(), className: 'opacity-50' },
+                            { 
+                                key: 'status', 
+                                header: 'STATUS', 
+                                render: () => <Badge variant="green">ACTIVE</Badge>
+                            }
+                        ]}
+                        rows={tenants}
+                        loading={loading}
+                    />
+                </CardBody>
+            </Card>
         </div>
     );
 };

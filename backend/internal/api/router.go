@@ -33,6 +33,13 @@ type RouterDeps struct {
 	POEnrichHandler  *handlers.POEnrichHandler
 	ProgressHandler  *handlers.ProgressHandler
 	SystemHandler    *handlers.SystemHandler
+	SupplyPactsHandler *handlers.SupplyPactsHandler
+	DeliveryHandler  *handlers.DeliveryHandler
+	UsersHandler     *handlers.UsersHandler
+	BuildHandler     *handlers.BuildHandler
+	QualityHandler   *handlers.QualityHandler
+	DealflowHandler  *handlers.DealflowHandler
+	RouteRunnerHandler *handlers.RouteRunnerHandler
 }
 
 func NewRouter(deps RouterDeps) *gin.Engine {
@@ -256,6 +263,120 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		{
 			secured.GET("/api/system/logs",         deps.SystemHandler.GetLogs)
 			secured.GET("/api/system/logs/summary", deps.SystemHandler.GetLogsSummary)
+		}
+
+		// Phase 4: Supply Pacts
+		pacts := secured.Group("/api/supply-pacts")
+		{
+			pacts.GET("", deps.SupplyPactsHandler.ListSupplyPacts)
+			pacts.POST("", deps.SupplyPactsHandler.CreateSupplyPact)
+			pacts.GET("/:id", deps.SupplyPactsHandler.GetSupplyPact)
+			pacts.PUT("/:id/activate", deps.SupplyPactsHandler.ActivateSupplyPact)
+			pacts.PUT("/:id/lines", deps.SupplyPactsHandler.UpdateSupplyPactLines)
+			pacts.POST("/:id/releases", deps.SupplyPactsHandler.CreatePactRelease)
+			pacts.GET("/:id/releases", deps.SupplyPactsHandler.ListPactReleases)
+		}
+
+		// Phase 4: Vendor Scorecards
+		vsc := secured.Group("/api/vendors")
+		{
+			vsc.GET("/:id/scorecard", deps.SupplyPactsHandler.GetVendorScorecards)
+			vsc.POST("/:id/scorecard", deps.SupplyPactsHandler.CreateVendorScorecard)
+			vsc.GET("/scorecard-summary", deps.SupplyPactsHandler.GetScorecardSummary)
+		}
+
+		// Phase 4: Price Formulas
+		price := secured.Group("/api/price-formulas")
+		{
+			price.GET("", deps.SupplyPactsHandler.ListPriceFormulas)
+			price.GET("/:id", deps.SupplyPactsHandler.GetPriceFormula)
+			price.PUT("/:id/rules", deps.SupplyPactsHandler.UpdatePriceFormulaRules)
+			price.POST("/:id/rules/:rule_id/records", deps.SupplyPactsHandler.CreatePriceRuleRecord)
+			price.POST("/calculate", deps.SupplyPactsHandler.CalculatePrice)
+		}
+
+		// Phase 4: Document Dispatch
+		disp := secured.Group("/api/dispatch")
+		{
+			disp.GET("/rules", deps.SupplyPactsHandler.GetDispatchRules)
+			disp.PUT("/rules", deps.SupplyPactsHandler.UpdateDispatchRules)
+			disp.POST("/send", deps.SupplyPactsHandler.SendDocument)
+			disp.GET("/log", deps.SupplyPactsHandler.GetDispatchLog)
+		}
+
+		// Delivery Confirmations
+		if deps.DeliveryHandler != nil {
+			secured.GET ("/api/delivery-confirmations",        deps.DeliveryHandler.ListDCs)
+			secured.POST("/api/delivery-confirmations",        deps.DeliveryHandler.CreateDC)
+			secured.GET ("/api/delivery-confirmations/:id",    deps.DeliveryHandler.GetDC)
+			secured.PUT ("/api/delivery-confirmations/:id/lines", deps.DeliveryHandler.UpsertDCLines)
+			secured.POST("/api/delivery-confirmations/:id/post",  deps.DeliveryHandler.PostDC)
+			secured.POST("/api/delivery-confirmations/:id/reverse", deps.DeliveryHandler.ReverseDC)
+
+			// Supplier Invoices
+			secured.GET ("/api/supplier-invoices",             deps.DeliveryHandler.ListInvoices)
+			secured.POST("/api/supplier-invoices",             deps.DeliveryHandler.CreateInvoice)
+			secured.PUT ("/api/supplier-invoices/:id/lines",   deps.DeliveryHandler.UpsertInvoiceLines)
+			secured.POST("/api/supplier-invoices/:id/approve", deps.DeliveryHandler.ApproveInvoice)
+			secured.POST("/api/supplier-invoices/:id/reject",  deps.DeliveryHandler.RejectInvoice)
+			secured.GET ("/api/supplier-invoices/:id/match-report", deps.DeliveryHandler.GetMatchReport)
+		}
+
+		// Users
+		if deps.UsersHandler != nil {
+			secured.GET ("/api/users",             deps.UsersHandler.ListUsers)
+			secured.POST("/api/users",             deps.UsersHandler.CreateUser)
+			secured.PUT ("/api/users/:id/role",    deps.UsersHandler.UpdateRole)
+			secured.PUT ("/api/users/:id/password",deps.UsersHandler.UpdatePassword)
+			secured.DELETE("/api/users/:id",       deps.UsersHandler.DeleteUser)
+		}
+
+		// Build Orders
+		if deps.BuildHandler != nil {
+			secured.GET ("/api/build-orders",                        deps.BuildHandler.ListBuildOrders)
+			secured.POST("/api/build-orders",                        deps.BuildHandler.CreateBuildOrder)
+			secured.GET ("/api/build-orders/:id",                    deps.BuildHandler.GetBuildOrder)
+			secured.PUT ("/api/build-orders/:id/components",         deps.BuildHandler.UpsertComponents)
+			secured.POST("/api/build-orders/:id/release",            deps.BuildHandler.ReleaseBuildOrder)
+			secured.POST("/api/build-orders/:id/issue-material",     deps.BuildHandler.IssueMaterial)
+			secured.POST("/api/build-orders/:id/confirm-output",     deps.BuildHandler.ConfirmOutput)
+			secured.POST("/api/build-orders/:id/cancel",             deps.BuildHandler.CancelBuildOrder)
+			secured.GET ("/api/build-orders/:id/material-status",    deps.BuildHandler.GetMaterialStatus)
+		}
+
+		// Quality Gate
+		if deps.QualityHandler != nil {
+			secured.GET ("/api/quality-checks/dashboard",            deps.QualityHandler.GetDashboard)
+			secured.GET ("/api/quality-checks",                      deps.QualityHandler.ListChecks)
+			secured.GET ("/api/quality-checks/:id",                  deps.QualityHandler.GetCheck)
+			secured.POST("/api/quality-checks/:id/start",            deps.QualityHandler.StartInspection)
+			secured.POST("/api/quality-checks/:id/record-result",    deps.QualityHandler.RecordResult)
+			secured.POST("/api/quality-checks/:id/findings",         deps.QualityHandler.AddFinding)
+		}
+
+		// Phase 4: DealFlow & RouteRunner
+		if deps.DealflowHandler != nil {
+			secured.GET ("/api/customers",        deps.DealflowHandler.ListCustomers)
+			secured.POST("/api/customers",        deps.DealflowHandler.CreateCustomer)
+			secured.GET ("/api/customers/:id",    deps.DealflowHandler.GetCustomer)
+			secured.PUT ("/api/customers/:id",    deps.DealflowHandler.UpdateCustomer)
+
+			secured.GET ("/api/deals",             deps.DealflowHandler.ListDeals)
+			secured.POST("/api/deals",             deps.DealflowHandler.CreateDeal)
+			secured.GET ("/api/deals/:id",         deps.DealflowHandler.GetDeal)
+			secured.PUT ("/api/deals/:id/lines",   deps.DealflowHandler.UpsertDealLines)
+			secured.POST("/api/deals/:id/confirm", deps.DealflowHandler.ConfirmDeal)
+			secured.POST("/api/deals/:id/cancel",  deps.DealflowHandler.CancelDeal)
+		}
+
+		if deps.RouteRunnerHandler != nil {
+			secured.GET ("/api/shipments",                              deps.RouteRunnerHandler.ListShipments)
+			secured.POST("/api/shipments",                              deps.RouteRunnerHandler.CreateShipment)
+			secured.GET ("/api/shipments/:id",                          deps.RouteRunnerHandler.GetShipment)
+			secured.PUT ("/api/shipments/:id/lines/:line_id/assign-hu", deps.RouteRunnerHandler.AssignHU)
+			secured.POST("/api/shipments/:id/pack",                     deps.RouteRunnerHandler.PackShipment)
+			secured.POST("/api/shipments/:id/dispatch",                 deps.RouteRunnerHandler.DispatchShipment)
+			secured.POST("/api/shipments/:id/confirm-delivery",         deps.RouteRunnerHandler.ConfirmDelivery)
 		}
 	}
 

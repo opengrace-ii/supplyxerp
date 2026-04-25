@@ -1,6 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../../api/client';
 import { useAppStore } from '../../store/useAppStore';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { Card, CardBody, CardHeader } from '@/components/ui/Card';
+import { DataTable } from '@/components/ui/DataTable';
+import { KpiCard } from '@/components/ui/KpiCard';
+import { Modal } from '@/components/ui/Modal';
+import { Field, Input, Select, Textarea, InlineAlert } from '@/components/ui/Form';
+import { SectionTabs } from '@/components/ui/SectionTabs';
+import { cn } from '@/lib/cn';
+
+// Sub-components (could be split to files, but keeping integrated for now as requested)
 import { RFQManagement } from './RFQManagement';
 
 export const MaterialHub: React.FC = () => {
@@ -13,17 +24,15 @@ export const MaterialHub: React.FC = () => {
     const [showAddForm, setShowAddForm] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
     const [selectedDoc, setSelectedDoc] = useState<any | null>(null);
-    const [detailTab, setDetailTab] = useState<'info' | 'barcodes' | 'uom' | 'stock' | 'pricing'>('info');
+    const [detailTab, setDetailTab] = useState<'info' | 'stock' | 'pricing' | 'barcodes' | 'uom'>('info');
     const [productStock, setProductStock] = useState<any | null>(null);
     const [error, setError] = useState<string | null>(null);
     
     const [formData, setFormData] = useState({ code: '', name: '', base_unit: 'KG', description: '' });
-    const [newBarcode, setNewBarcode] = useState('');
-    const [newUom, setNewUom] = useState({ to_unit: 'PCS', factor: 1 });
     const [stats, setStats] = useState({ total: 0, active: 0, no_barcode: 0, uom_count: 0 });
     const [suppliers, setSuppliers] = useState<any[]>([]);
 
-    const fetchProducts = async () => {
+    const fetchProducts = useCallback(async () => {
         setLoading(true);
         try {
             const data = await api.getProducts(100, 0);
@@ -40,19 +49,19 @@ export const MaterialHub: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const fetchSuppliers = async () => {
+    const fetchSuppliers = useCallback(async () => {
         try {
             const data = await api.listSuppliers();
             setSuppliers(data.suppliers || []);
         } catch (err) { console.error(err); }
-    };
+    }, []);
 
     useEffect(() => {
         if (view === 'materials') fetchProducts();
         if (view === 'rfq' || view === 'purchasing' || view === 'suppliers') fetchSuppliers();
-    }, [view]);
+    }, [view, fetchProducts, fetchSuppliers]);
 
     useEffect(() => {
         if (selectedProduct && detailTab === 'stock') {
@@ -60,13 +69,7 @@ export const MaterialHub: React.FC = () => {
         }
     }, [selectedProduct?.id, detailTab]);
 
-    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: name === 'code' ? value.toUpperCase() : value }));
-    };
-
-    const handleSaveProduct = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSaveProduct = async () => {
         setError(null);
         clearTraceSteps();
         try {
@@ -81,292 +84,282 @@ export const MaterialHub: React.FC = () => {
         }
     };
 
-    const handleRegisterBarcode = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!selectedProduct || !newBarcode) return;
-        try {
-            await api.registerBarcode({ code: newBarcode, entity_type: 'PRODUCT', entity_id: parseInt(selectedProduct.id) });
-            setNewBarcode('');
-            fetchProducts();
-        } catch (err: any) {
-            alert(err.response?.data?.error || "Failed to register barcode");
-        }
-    };
-
-    const handleAddUom = async () => {
-        if (!selectedProduct) return;
-        const currentUoms = selectedProduct.uom_conversions || [];
-        const updated = [...currentUoms, { from_unit: selectedProduct.base_unit, ...newUom }];
-        try {
-            await api.updateProductUOM(selectedProduct.public_id, updated);
-            fetchProducts();
-        } catch (err) {
-            alert("Failed to update UOM");
-        }
-    };
-
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="flex flex-col h-full bg-[var(--bg-base)]">
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end' }}>
+            <div className="p-8 border-b border-[var(--border)] bg-white/[0.01] flex justify-between items-end">
                 <div>
-                    <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#f59e0b', marginBottom: '4px' }}>MaterialHub</h1>
-                    <p style={{ fontSize: '13px', color: '#888' }}>Supply chain backbone · Material master · Purchase lifecycle</p>
+                    <h1 className="text-xl font-bold text-[var(--accent)] tracking-tight">MaterialHub</h1>
+                    <p className="text-sm text-[var(--text-3)] mt-2">Supply chain backbone · Material master · Purchase lifecycle</p>
                 </div>
                 
                 {/* Mode Switcher */}
-                <div style={{ display: 'flex', gap: '4px', backgroundColor: 'rgba(255,255,255,0.03)', padding: '6px', borderRadius: '12px', border: '1px solid var(--theme-border)' }}>
-                    {[
-                        { id: 'materials', label: 'Materials', icon: '📦' },
-                        { id: 'suppliers', label: 'Suppliers', icon: '🏢' },
-                        { id: 'rfq', label: 'RFQ Cycle', icon: '🎯' },
-                        { id: 'purchasing', label: 'Purchasing', icon: '🧾' },
-                        { id: 'gr', label: 'Goods Receipt', icon: '🚚' },
-                        { id: 'adjustments', label: 'Adjustments', icon: '⚖️' }
-                    ].map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => { setView(tab.id as any); setSelectedProduct(null); }}
-                            style={{
-                                padding: '10px 18px', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '700',
-                                cursor: 'pointer', transition: 'all 0.2s',
-                                backgroundColor: view === tab.id ? '#f59e0b' : 'transparent',
-                                color: view === tab.id ? '#000' : '#71717a',
-                                display: 'flex', alignItems: 'center', gap: '10px'
-                            }}
-                        >
-                            <span>{tab.icon}</span>
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
+            <div className="mt-4 px-8 border-b border-[var(--border)]">
+                <SectionTabs
+                    tabs={[
+                        { id: 'materials', label: 'Materials' },
+                        { id: 'suppliers', label: 'Suppliers' },
+                        { id: 'rfq', label: 'RFQ Cycle' },
+                        { id: 'purchasing', label: 'Purchasing' },
+                        { id: 'gr', label: 'Goods Receipt' },
+                        { id: 'adjustments', label: 'Adjustments' }
+                    ].map(t => ({ key: t.id, label: t.label }))}
+                    active={view}
+                    onChange={(k: string) => { setView(k as any); setSelectedProduct(null); }}
+                />
+            </div>
             </div>
 
-            {view === 'materials' && (
-                <>
-                    {/* Stat Cards */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-                        {[
-                            { label: 'Total Products', value: stats.total },
-                            { label: 'Active Products', value: stats.active },
-                            { label: 'Pending Barcodes', value: stats.no_barcode },
-                            { label: 'Units of Measure', value: stats.uom_count }
-                        ].map((stat, i) => (
-                            <div key={i} style={{ backgroundColor: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.1)', padding: '16px', borderRadius: '12px' }}>
-                                <div style={{ fontSize: '11px', color: '#f59e0b', opacity: 0.7, textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em', fontWeight: '700' }}>
-                                    {stat.label}
-                                </div>
-                                <div style={{ fontSize: '24px', fontWeight: '800', color: '#fff' }}>{stat.value}</div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '24px' }}>
-                        <div style={{ flex: 1, minWidth: '0' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                                <input type="text" className="input-scanner" placeholder="Search materials..." style={{ width: '250px' }} />
-                                <button className="btn btn-primary" onClick={() => setShowAddForm(!showAddForm)}>
-                                    {showAddForm ? 'Cancel' : '+ New Material'}
-                                </button>
-                            </div>
-
-                            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                    <thead style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                                        <tr>
-                                            <th style={{ padding: '16px', textAlign: 'left', fontSize: '11px', color: '#666', borderBottom: '1px solid var(--theme-border)' }}>CODE</th>
-                                            <th style={{ padding: '16px', textAlign: 'left', fontSize: '11px', color: '#666', borderBottom: '1px solid var(--theme-border)' }}>NAME</th>
-                                            <th style={{ padding: '16px', textAlign: 'left', fontSize: '11px', color: '#666', borderBottom: '1px solid var(--theme-border)' }}>BASE UNIT</th>
-                                            <th style={{ padding: '16px', textAlign: 'left', fontSize: '11px', color: '#666', borderBottom: '1px solid var(--theme-border)' }}>STATUS</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {products.map((p) => (
-                                            <tr key={p.id} onClick={() => setSelectedProduct(p)} style={{ cursor: 'pointer', borderBottom: '1px solid var(--theme-border)', backgroundColor: selectedProduct?.id === p.id ? 'rgba(245,158,11,0.05)' : 'transparent' }}>
-                                                <td style={{ padding: '16px', color: '#f59e0b', fontWeight: '700' }}>{p.code}</td>
-                                                <td style={{ padding: '16px', color: '#fff', fontWeight: '500' }}>{p.name}</td>
-                                                <td style={{ padding: '16px', color: '#888' }}>{p.base_unit}</td>
-                                                <td style={{ padding: '16px' }}><div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e' }} /></td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+            <div className="flex-1 overflow-y-auto p-8">
+                {view === 'materials' && (
+                    <div className="space-y-8">
+                        {/* Stat Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <KpiCard label="TOTAL PRODUCTS" value={stats.total} icon="📦" />
+                            <KpiCard label="ACTIVE" value={stats.active} icon="🟢" />
+                            <KpiCard label="PENDING BARCODES" value={stats.no_barcode} icon="🏷️" />
+                            <KpiCard label="UOM COUNT" value={stats.uom_count} icon="📏" />
                         </div>
 
-                        <div style={{ width: '450px' }}>
-                            {showAddForm ? (
-                                <div className="card" style={{ padding: '24px', border: '1px solid rgba(245,158,11,0.3)' }}>
-                                    <h2 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '24px' }}>Add New Material</h2>
-                                    <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '11px', color: '#f59e0b', marginBottom: '8px', fontWeight: '700' }}>MATERIAL CODE</label>
-                                            <input name="code" className="input-scanner" value={formData.code} onChange={handleFormChange} placeholder="e.g., FAB-001" required />
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '11px', color: '#f59e0b', marginBottom: '8px', fontWeight: '700' }}>DISPLAY NAME</label>
-                                            <input name="name" className="input-scanner" value={formData.name} onChange={handleFormChange} placeholder="e.g., Fabric Roll Blue" required />
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '16px' }}>
-                                            <div style={{ flex: 1 }}>
-                                                <label style={{ display: 'block', fontSize: '11px', color: '#f59e0b', marginBottom: '8px', fontWeight: '700' }}>BASE UNIT</label>
-                                                <select name="base_unit" className="input-scanner" value={formData.base_unit} onChange={handleFormChange}>
-                                                    {['KG', 'IMP', 'QTY', 'LTR', 'MTR', 'PCS'].map(u => <option key={u} value={u}>{u}</option>)}
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <button type="submit" className="btn btn-primary" style={{ marginTop: '12px', height: '44px' }}>Save Material</button>
-                                    </form>
-                                    
-                                    {traceSteps.length > 0 && (
-                                        <div style={{ marginTop: '24px', padding: '16px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
-                                            <div style={{ fontSize: '10px', color: '#666', marginBottom: '12px', fontWeight: '700' }}>PIPELINE EXECUTION TRACE</div>
-                                            {traceSteps.map((s, i) => (
-                                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#22c55e', marginBottom: '6px' }}>
-                                                    <span>✔</span> <span style={{ color: '#f59e0b', fontWeight: '600', minWidth: '120px' }}>{s.agent}</span> <span>{s.action}</span>
-                                                </div>
+                        <div className="flex gap-8">
+                            <div className="flex-1 space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <div className="sx-search">
+                                        <svg className="w-4 h-4 opacity-50 flex-shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
+                                          <circle cx="7" cy="7" r="4.5"/>
+                                          <path d="M11 11l2.5 2.5" strokeLinecap="round"/>
+                                        </svg>
+                                        <input type="text" placeholder="Search materials..." />
+                                    </div>
+                                    <Button variant="primary" onClick={() => setShowAddForm(true)}>+ New Material</Button>
+                                </div>
+
+                                <Card>
+                                    <CardBody>
+                                        <DataTable
+                                            columns={[
+                                                { key: 'code', header: 'CODE', mono: true, className: 'text-[var(--accent)] font-bold' },
+                                                { key: 'name', header: 'NAME' },
+                                                { key: 'base_unit', header: 'UNIT', width: '80px', className: 'opacity-50' },
+                                                { 
+                                                    key: 'status', 
+                                                    header: 'STATUS', 
+                                                    render: (p) => <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" /> 
+                                                },
+                                                {
+                                                    key: 'actions',
+                                                    header: '',
+                                                    className: 'text-right',
+                                                    render: (p) => (
+                                                        <Button variant="ghost" size="sm" onClick={() => setSelectedProduct(p)}>👁️ Details</Button>
+                                                    )
+                                                }
+                                            ]}
+                                            rows={products}
+                                            loading={loading}
+                                        />
+                                    </CardBody>
+                                </Card>
+                            </div>
+
+                            {/* Detail Panel */}
+                            <div className="w-[400px]">
+                                {selectedProduct ? (
+                                    <Card className="sticky top-0">
+                                        <div className="flex border-b border-[var(--border)]">
+                                            {['info', 'stock', 'pricing'].map(t => (
+                                                <button 
+                                                    key={t} 
+                                                    onClick={() => setDetailTab(t as any)} 
+                                                    className={cn(
+                                                        "flex-1 py-3 text-[10px] font-black tracking-widest uppercase transition-all",
+                                                        detailTab === t ? "text-[var(--accent)] border-b-2 border-[var(--accent)]" : "text-[var(--text-3)] hover:text-[var(--text-2)]"
+                                                    )}
+                                                >
+                                                    {t}
+                                                </button>
                                             ))}
                                         </div>
-                                    )}
-                                </div>
-                            ) : selectedProduct ? (
-                                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                                    <div style={{ display: 'flex', borderBottom: '1px solid var(--theme-border)' }}>
-                                        {['info', 'stock', 'pricing', 'barcodes', 'uom'].map(t => (
-                                            <button key={t} onClick={() => setDetailTab(t as any)} style={{ flex: 1, padding: '14px', background: 'none', border: 'none', color: detailTab === t ? '#f59e0b' : '#666', borderBottom: detailTab === t ? '2px solid #f59e0b' : 'none', fontSize: '11px', fontWeight: '800', cursor: 'pointer', textTransform: 'uppercase' }}>{t}</button>
-                                        ))}
-                                    </div>
-                                    <div style={{ padding: '24px' }}>
-                                        {detailTab === 'info' && (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                                <div>
-                                                    <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#fff', marginBottom: '4px' }}>{selectedProduct.name}</h3>
-                                                    <div style={{ padding: '4px 8px', backgroundColor: 'rgba(245,158,11,0.1)', color: '#f59e0b', borderRadius: '4px', fontSize: '11px', fontWeight: '800', width: 'fit-content' }}>{selectedProduct.code}</div>
-                                                </div>
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                        <CardBody className="space-y-6">
+                                            {detailTab === 'info' && (
+                                                <div className="space-y-6 animate-in fade-in duration-300">
                                                     <div>
-                                                        <label style={{ display: 'block', fontSize: '10px', color: '#666', marginBottom: '4px', fontWeight: '700' }}>BASE UNIT</label>
-                                                        <div style={{ fontSize: '14px', color: '#fff' }}>{selectedProduct.base_unit}</div>
+                                                        <h3 className="text-xl font-bold text-[var(--text-1)]">{selectedProduct.name}</h3>
+                                                        <Badge variant="amber" className="mt-2">{selectedProduct.code}</Badge>
                                                     </div>
-                                                    <div>
-                                                        <label style={{ display: 'block', fontSize: '10px', color: '#666', marginBottom: '4px', fontWeight: '700' }}>CREATION DATE</label>
-                                                        <div style={{ fontSize: '14px', color: '#fff' }}>{new Date(selectedProduct.created_at).toLocaleDateString()}</div>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="bg-white/5 p-3 rounded-lg border border-[var(--border)]">
+                                                            <div className="text-[10px] font-bold text-[var(--text-3)] uppercase mb-1">Base Unit</div>
+                                                            <div className="text-sm font-semibold text-[var(--text-1)]">{selectedProduct.base_unit}</div>
+                                                        </div>
+                                                        <div className="bg-white/5 p-3 rounded-lg border border-[var(--border)]">
+                                                            <div className="text-[10px] font-bold text-[var(--text-3)] uppercase mb-1">Created</div>
+                                                            <div className="text-sm font-semibold text-[var(--text-1)]">{new Date(selectedProduct.created_at).toLocaleDateString()}</div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        )}
-                                        {detailTab === 'stock' && (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                                <div style={{ padding: '20px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--theme-border)' }}>
-                                                    <div style={{ fontSize: '11px', color: '#666', marginBottom: '8px', fontWeight: '700' }}>TOTAL SYSTEM BALANCE</div>
-                                                    <div style={{ fontSize: '32px', fontWeight: '800', color: '#fff' }}>{productStock?.product?.total_quantity || 0} <span style={{ fontSize: '14px', color: '#888' }}>{selectedProduct.base_unit}</span></div>
-                                                </div>
-                                                <div style={{ fontSize: '11px', color: '#666', fontWeight: '700', borderBottom: '1px solid var(--theme-border)', paddingBottom: '8px' }}>ZONE-LEVEL BREAKDOWN</div>
-                                                {productStock?.zone_breakdown?.map((z: any) => (
-                                                    <div key={z.zone_code} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
-                                                        <span style={{ fontWeight: '600' }}>{z.zone_code}</span>
-                                                        <span style={{ color: '#f59e0b', fontWeight: '800' }}>{z.quantity} {selectedProduct.base_unit}</span>
+                                            )}
+                                            {detailTab === 'stock' && (
+                                                <div className="space-y-6 animate-in fade-in duration-300">
+                                                    <div className="p-4 bg-[var(--accent-dim)] rounded-xl border border-[var(--accent)]/20">
+                                                        <div className="text-[10px] font-bold text-[var(--accent)] uppercase mb-1">System Balance</div>
+                                                        <div className="text-3xl font-black text-[var(--text-1)]">
+                                                            {productStock?.product?.total_quantity || 0} 
+                                                            <span className="text-sm text-[var(--text-3)] ml-2 font-medium">{selectedProduct.base_unit}</span>
+                                                        </div>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                        {detailTab === 'pricing' && <ProductPricingTab product={selectedProduct} />}
+                                                    <div className="space-y-2">
+                                                        <h4 className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest px-1">Zone Breakdown</h4>
+                                                        {productStock?.zone_breakdown?.map((z: any) => (
+                                                            <div key={z.zone_code} className="flex justify-between items-center bg-white/5 p-3 rounded-lg border border-[var(--border)] text-xs">
+                                                                <span className="text-[var(--text-2)] font-medium">{z.zone_code}</span>
+                                                                <span className="text-[var(--text-1)] font-bold">{z.quantity}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {detailTab === 'pricing' && <ProductPricingTab product={selectedProduct} />}
+                                        </CardBody>
+                                    </Card>
+                                ) : (
+                                    <div className="h-[400px] border-2 border-dashed border-[var(--border)] rounded-2xl flex flex-col items-center justify-center text-[var(--text-4)] p-8 text-center">
+                                        <span className="text-4xl mb-4 opacity-20">📦</span>
+                                        <p className="text-sm font-medium">Select a material from the list to view its lifecycle and inventory analytics.</p>
                                     </div>
-                                </div>
-                            ) : (
-                                <div style={{ height: '400px', border: '2px dashed var(--theme-border)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', fontSize: '14px', fontWeight: '600' }}>
-                                    Select a material to analyze lifecycle
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
-                </>
-            )}
+                )}
 
-            {view === 'suppliers' && <SupplierManagement suppliers={suppliers} onRefresh={fetchSuppliers} onViewDoc={setSelectedDoc} />}
-            {view === 'rfq' && <RFQManagement products={products} suppliers={suppliers} onViewDoc={setSelectedDoc} />}
-            {view === 'purchasing' && <PurchasingManagement products={products} onViewDoc={setSelectedDoc} />}
-            {view === 'gr' && <GRManagement products={products} onViewDoc={setSelectedDoc} />}
-            {view === 'adjustments' && <StockAdjustmentManagement onViewDoc={setSelectedDoc} />}
+                {view === 'suppliers' && <SupplierManagement suppliers={suppliers} onRefresh={fetchSuppliers} onViewDoc={setSelectedDoc} />}
+                {view === 'rfq' && <RFQManagement products={products} suppliers={suppliers} onViewDoc={setSelectedDoc} />}
+                {view === 'purchasing' && <PurchasingManagement products={products} onViewDoc={setSelectedDoc} />}
+                {view === 'gr' && <GRManagement products={products} onViewDoc={setSelectedDoc} />}
+                {view === 'adjustments' && <StockAdjustmentManagement onViewDoc={setSelectedDoc} />}
+            </div>
+
+            {/* Modals */}
+            <Modal open={showAddForm} onClose={() => setShowAddForm(false)} title="Add New Material" subtitle="Register a new material in the master catalogue">
+                <div className="space-y-6">
+                    {error && <InlineAlert type="error" message={error} />}
+                    <div className="grid grid-cols-1 gap-4">
+                        <Field label="MATERIAL CODE">
+                            <Input value={formData.code} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} placeholder="e.g. FAB-001" />
+                        </Field>
+                        <Field label="DISPLAY NAME">
+                            <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. Blue Fabric Roll" />
+                        </Field>
+                        <Field label="BASE UNIT">
+                            <Select value={formData.base_unit} onChange={e => setFormData({...formData, base_unit: e.target.value})}>
+                                {['KG', 'IMP', 'QTY', 'LTR', 'MTR', 'PCS'].map(u => <option key={u} value={u}>{u}</option>)}
+                            </Select>
+                        </Field>
+                        <Field label="DESCRIPTION">
+                            <Textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="h-24" />
+                        </Field>
+                    </div>
+
+                    {traceSteps.length > 0 && (
+                        <div className="p-4 bg-[var(--bg-base)]/40 rounded-xl border border-[var(--border)] space-y-2">
+                            <div className="text-[10px] font-bold text-[var(--text-4)] uppercase tracking-widest mb-2">Pipeline Trace</div>
+                            {traceSteps.map((s, i) => (
+                                <div key={i} className="flex items-center gap-3 text-[11px]">
+                                    <span className="text-green-500">✔</span>
+                                    <span className="text-[var(--accent)] font-bold min-w-[80px]">{s.agent}</span>
+                                    <span className="text-[var(--text-3)]">{s.action}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="flex gap-3 pt-4">
+                        <Button variant="primary" className="flex-1" onClick={handleSaveProduct}>SAVE MATERIAL</Button>
+                        <Button variant="ghost" className="flex-1" onClick={() => setShowAddForm(false)}>CANCEL</Button>
+                    </div>
+                </div>
+            </Modal>
 
             {selectedDoc && (
-                <DocumentDetail doc={selectedDoc} onViewDoc={setSelectedDoc} />
+                <DocumentDetail doc={selectedDoc} onClose={() => setSelectedDoc(null)} />
             )}
         </div>
     );
 };
 
+// --- SUB-COMPONENTS ---
+
 const SupplierManagement: React.FC<{ suppliers: any[], onRefresh: () => void, onViewDoc: (doc: any) => void }> = ({ suppliers, onRefresh, onViewDoc }) => {
-    const [loading, setLoading] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [formData, setFormData] = useState({ code: '', name: '', currency: 'GBP', contact_name: '', email: '' });
+    const [error, setError] = useState<string | null>(null);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = async () => {
         try {
             await api.createSupplier(formData);
             setShowForm(false);
             setFormData({ code: '', name: '', currency: 'GBP', contact_name: '', email: '' });
             onRefresh();
-        } catch (err) { alert("Failed to add supplier"); }
+        } catch (err: any) { setError(err.response?.data?.error || "Failed to add supplier"); }
     };
 
     return (
-        <div style={{ display: 'flex', gap: '24px' }}>
-            <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                    <h2 style={{ fontSize: '18px', fontWeight: '800' }}>Supplier Portal</h2>
-                    <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>{showForm ? 'Cancel' : '+ New Supplier'}</button>
-                </div>
-                <div className="card" style={{ padding: 0 }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                            <tr>
-                                <th style={{ padding: '16px', textAlign: 'left', fontSize: '11px', color: '#666', borderBottom: '1px solid var(--theme-border)' }}>CODE</th>
-                                <th style={{ padding: '16px', textAlign: 'left', fontSize: '11px', color: '#666', borderBottom: '1px solid var(--theme-border)' }}>VENDOR NAME</th>
-                                <th style={{ padding: '16px', textAlign: 'left', fontSize: '11px', color: '#666', borderBottom: '1px solid var(--theme-border)' }}>CURRENCY</th>
-                                <th style={{ padding: '16px', textAlign: 'left', fontSize: '11px', color: '#666', borderBottom: '1px solid var(--theme-border)' }}>CONTACT</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {suppliers.map(s => (
-                                <tr key={s.id} onClick={() => onViewDoc({type: 'SUPPLIER', data: s})} style={{ borderBottom: '1px solid var(--theme-border)', cursor: 'pointer' }}>
-                                    <td style={{ padding: '16px', color: '#f59e0b', fontWeight: '700' }}>{s.code}</td>
-                                    <td style={{ padding: '16px', color: '#fff', fontWeight: '600' }}>{s.name}</td>
-                                    <td style={{ padding: '16px', color: '#888' }}>{s.currency}</td>
-                                    <td style={{ padding: '16px', color: '#666', fontSize: '11px' }}>{s.contact_name} <br/> {s.email}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+        <div className="space-y-8 animate-in fade-in duration-500">
+            <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold text-[var(--text-1)]">Supplier Portal</h2>
+                <Button variant="primary" onClick={() => setShowForm(true)}>+ New Supplier</Button>
             </div>
-            {showForm && (
-                <div style={{ width: '400px' }}>
-                    <div className="card" style={{ padding: '24px' }}>
-                        <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '20px' }}>Onboard Vendor</h3>
-                        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '10px', color: '#f59e0b', marginBottom: '6px', fontWeight: '700' }}>VENDOR CODE</label>
-                                <input className="input-scanner" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} required />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '10px', color: '#f59e0b', marginBottom: '6px', fontWeight: '700' }}>BUSINESS NAME</label>
-                                <input className="input-scanner" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '10px', color: '#f59e0b', marginBottom: '6px', fontWeight: '700' }}>SETTLEMENT CURRENCY</label>
-                                <select className="input-scanner" value={formData.currency} onChange={e => setFormData({...formData, currency: e.target.value})}>
-                                    <option value="GBP">GBP - Pound Sterling</option>
-                                    <option value="USD">USD - US Dollar</option>
-                                    <option value="EUR">EUR - Euro</option>
-                                </select>
-                            </div>
-                            <button type="submit" className="btn btn-primary" style={{ height: '40px' }}>Register Vendor</button>
-                        </form>
+
+            <Card>
+                <CardBody>
+                    <DataTable
+                        columns={[
+                            { key: 'code', header: 'CODE', mono: true, className: 'text-[var(--accent)] font-bold' },
+                            { key: 'name', header: 'VENDOR NAME' },
+                            { key: 'currency', header: 'CURRENCY', width: '100px' },
+                            { 
+                                key: 'contact', 
+                                header: 'CONTACT', 
+                                render: (s) => (
+                                    <div className="text-[11px]">
+                                        <div className="text-[var(--text-1)] font-bold">{s.contact_name}</div>
+                                        <div className="text-[var(--text-3)]">{s.email}</div>
+                                    </div>
+                                )
+                            },
+                            {
+                                key: 'actions',
+                                header: '',
+                                className: 'text-right',
+                                render: (s) => <Button variant="ghost" size="sm" onClick={() => onViewDoc({type: 'SUPPLIER', data: s})}>👁️ Profile</Button>
+                            }
+                        ]}
+                        rows={suppliers}
+                    />
+                </CardBody>
+            </Card>
+
+            <Modal open={showForm} onClose={() => setShowForm(false)} title="Onboard Vendor" subtitle="Register a new supplier for procurement">
+                <div className="space-y-4">
+                    {error && <InlineAlert type="error" message={error} />}
+                    <Field label="VENDOR CODE"><Input value={formData.code} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} /></Field>
+                    <Field label="BUSINESS NAME"><Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></Field>
+                    <Field label="SETTLEMENT CURRENCY">
+                        <Select value={formData.currency} onChange={e => setFormData({...formData, currency: e.target.value})}>
+                            <option value="GBP">GBP - Pound Sterling</option>
+                            <option value="USD">USD - US Dollar</option>
+                            <option value="EUR">EUR - Euro</option>
+                        </Select>
+                    </Field>
+                    <Field label="CONTACT NAME"><Input value={formData.contact_name} onChange={e => setFormData({...formData, contact_name: e.target.value})} /></Field>
+                    <Field label="CONTACT EMAIL"><Input value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} /></Field>
+                    <div className="flex gap-3 pt-4">
+                        <Button variant="primary" className="flex-1" onClick={handleSubmit}>REGISTER VENDOR</Button>
+                        <Button variant="ghost" className="flex-1" onClick={() => setShowForm(false)}>CANCEL</Button>
                     </div>
                 </div>
-            )}
+            </Modal>
         </div>
     );
 };
@@ -377,145 +370,129 @@ const PurchasingManagement: React.FC<{ products: any[], onViewDoc: (doc: any) =>
     const [pos, setPOs] = useState<any[]>([]);
     const [showCreatePR, setShowCreatePR] = useState(false);
     const [newPR, setNewPR] = useState({ notes: '', lines: [{ product_id: 0, quantity: 1, unit: 'KG', estimated_price: 0 }] });
+    const [error, setError] = useState<string | null>(null);
 
     const fetchPRs = async () => {
-        try {
-            const data = await api.listPRs();
-            setPRs(data.purchase_requests || []);
-        } catch (err) { console.error(err); }
+        try { const data = await api.listPRs(); setPRs(data.purchase_requests || []); } catch (err) { console.error(err); }
     };
-
     const fetchPOs = async () => {
-        try {
-            const data = await api.listPOs();
-            setPOs(data.purchase_orders || []);
-        } catch (err) { console.error(err); }
+        try { const data = await api.listPOs(); setPOs(data.purchase_orders || []); } catch (err) { console.error(err); }
     };
 
-    useEffect(() => {
-        fetchPRs();
-        fetchPOs();
-    }, []);
+    useEffect(() => { fetchPRs(); fetchPOs(); }, []);
 
-    const handleCreatePR = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleCreatePR = async () => {
+        setError(null);
         try {
             await api.createPR(newPR);
             setShowCreatePR(false);
             fetchPRs();
-        } catch (err) { alert("Failed to create PR"); }
+        } catch (err: any) { setError(err.response?.data?.error || "Failed to create PR"); }
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'flex', gap: '20px', borderBottom: '1px solid var(--theme-border)', paddingBottom: '10px' }}>
-                <button onClick={() => setSubTab('PR')} style={{ background: 'none', border: 'none', color: subTab === 'PR' ? '#f59e0b' : '#666', borderBottom: subTab === 'PR' ? '2px solid #f59e0b' : 'none', fontWeight: '800', fontSize: '13px', cursor: 'pointer', padding: '10px 0' }}>Purchase Requests ({prs.length})</button>
-                <button onClick={() => setSubTab('PO')} style={{ background: 'none', border: 'none', color: subTab === 'PO' ? '#f59e0b' : '#666', borderBottom: subTab === 'PO' ? '2px solid #f59e0b' : 'none', fontWeight: '800', fontSize: '13px', cursor: 'pointer', padding: '10px 0' }}>Purchase Orders ({pos.length})</button>
+        <div className="space-y-6 animate-in fade-in duration-500">
+            <div className="flex gap-2 border-b border-[var(--border)] pb-px">
+                {['PR', 'PO'].map(t => (
+                    <button 
+                        key={t} 
+                        onClick={() => setSubTab(t as any)} 
+                        className={cn(
+                            "px-6 py-3 text-xs font-black tracking-widest uppercase transition-all border-b-2",
+                            subTab === t ? "text-[var(--accent)] border-[var(--accent)]" : "text-[var(--text-3)] border-transparent hover:text-[var(--text-2)]"
+                        )}
+                    >
+                        {t === 'PR' ? `Purchase Requests (${prs.length})` : `Purchase Orders (${pos.length})`}
+                    </button>
+                ))}
             </div>
 
-            {subTab === 'PR' && (
-                <div style={{ display: 'flex', gap: '24px' }}>
-                    <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                            <h3 style={{ fontSize: '16px', fontWeight: '800' }}>Material Requisitions</h3>
-                            <button className="btn btn-primary" onClick={() => setShowCreatePR(true)}>+ New PR</button>
-                        </div>
-                        <div className="card" style={{ padding: 0 }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                <thead style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                                    <tr>
-                                        <th style={{ padding: '14px', textAlign: 'left', fontSize: '11px', color: '#666' }}>PR NUMBER</th>
-                                        <th style={{ padding: '14px', textAlign: 'left', fontSize: '11px', color: '#666' }}>STATUS</th>
-                                        <th style={{ padding: '14px', textAlign: 'left', fontSize: '11px', color: '#666' }}>DATE</th>
-                                        <th style={{ padding: '14px', textAlign: 'left', fontSize: '11px', color: '#666' }}>NOTES</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {prs.map(pr => (
-                                        <tr key={pr.id} onClick={() => onViewDoc({type: 'PR', data: pr})} style={{ borderBottom: '1px solid var(--theme-border)', cursor: 'pointer' }}>
-                                            <td style={{ padding: '14px', color: '#f59e0b', fontWeight: '700' }}>{pr.pr_number}</td>
-                                            <td style={{ padding: '14px' }}>
-                                                <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '800', backgroundColor: pr.status === 'APPROVED' ? 'rgba(34,197,94,0.1)' : 'rgba(245,158,11,0.1)', color: pr.status === 'APPROVED' ? '#22c55e' : '#f59e0b' }}>{pr.status}</span>
-                                            </td>
-                                            <td style={{ padding: '14px', color: '#888', fontSize: '12px' }}>{new Date(pr.created_at).toLocaleDateString()}</td>
-                                            <td style={{ padding: '14px', color: '#666', fontSize: '12px' }}>{pr.notes}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+            {subTab === 'PR' ? (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-bold text-[var(--text-1)]">Material Requisitions</h3>
+                        <Button variant="primary" onClick={() => setShowCreatePR(true)}>+ New PR</Button>
                     </div>
-                    {showCreatePR && (
-                        <div style={{ width: '450px' }}>
-                            <div className="card" style={{ padding: '24px' }}>
-                                <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '20px' }}>Create Requisition</h3>
-                                <form onSubmit={handleCreatePR} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '10px', color: '#f59e0b', marginBottom: '6px', fontWeight: '700' }}>PRODUCT</label>
-                                        <select className="input-scanner" onChange={e => setNewPR({...newPR, lines: [{...newPR.lines[0], product_id: parseInt(e.target.value)}]})}>
-                                            <option value="">Select Material...</option>
-                                            {products.map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
-                                        </select>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <label style={{ display: 'block', fontSize: '10px', color: '#f59e0b', marginBottom: '6px', fontWeight: '700' }}>QUANTITY</label>
-                                            <input type="number" className="input-scanner" value={newPR.lines[0].quantity} onChange={e => setNewPR({...newPR, lines: [{...newPR.lines[0], quantity: parseFloat(e.target.value)}]})} />
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <label style={{ display: 'block', fontSize: '10px', color: '#f59e0b', marginBottom: '6px', fontWeight: '700' }}>UNIT</label>
-                                            <select className="input-scanner" value={newPR.lines[0].unit} onChange={e => setNewPR({...newPR, lines: [{...newPR.lines[0], unit: e.target.value}]})}>
-                                                {['KG', 'IMP', 'QTY', 'LTR', 'MTR', 'PCS'].map(u => <option key={u} value={u}>{u}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '10px', color: '#f59e0b', marginBottom: '6px', fontWeight: '700' }}>REASON / NOTES</label>
-                                        <textarea className="input-scanner" style={{ height: '80px', paddingTop: '10px' }} value={newPR.notes} onChange={e => setNewPR({...newPR, notes: e.target.value})} />
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                        <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowCreatePR(false)}>Cancel</button>
-                                        <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>Submit PR</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    )}
+                    <Card>
+                        <CardBody>
+                            <DataTable
+                                columns={[
+                                    { key: 'pr_number', header: 'PR NUMBER', mono: true, className: 'text-[var(--accent)] font-bold' },
+                                    { 
+                                        key: 'status', 
+                                        header: 'STATUS', 
+                                        render: (pr) => <Badge variant={pr.status === 'APPROVED' ? 'green' : 'amber'}>{pr.status}</Badge> 
+                                    },
+                                    { key: 'created_at', header: 'DATE', render: (pr) => new Date(pr.created_at).toLocaleDateString(), className: 'opacity-40 text-xs' },
+                                    { key: 'notes', header: 'NOTES', className: 'opacity-60 text-xs' },
+                                    {
+                                        key: 'actions',
+                                        header: '',
+                                        className: 'text-right',
+                                        render: (pr) => <Button variant="ghost" size="sm" onClick={() => onViewDoc({type: 'PR', data: pr})}>👁️ View</Button>
+                                    }
+                                ]}
+                                rows={prs}
+                            />
+                        </CardBody>
+                    </Card>
+                </div>
+            ) : (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-bold text-[var(--text-1)]">External Purchase Orders</h3>
+                        <Button variant="primary" disabled>+ New PO (via PR)</Button>
+                    </div>
+                    <Card>
+                        <CardBody>
+                            <DataTable
+                                columns={[
+                                    { key: 'po_number', header: 'PO NUMBER', mono: true, className: 'text-[var(--accent)] font-bold' },
+                                    { key: 'supplier_name', header: 'VENDOR' },
+                                    { 
+                                        key: 'status', 
+                                        header: 'STATUS', 
+                                        render: (po) => <Badge variant={po.status === 'APPROVED' ? 'green' : 'amber'}>{po.status}</Badge> 
+                                    },
+                                    { key: 'total_value', header: 'TOTAL', render: (po) => `${po.total_value} ${po.currency}`, className: 'font-bold' },
+                                    {
+                                        key: 'actions',
+                                        header: '',
+                                        className: 'text-right',
+                                        render: (po) => <Button variant="ghost" size="sm" onClick={() => onViewDoc({type: 'PO', data: po})}>👁️ View</Button>
+                                    }
+                                ]}
+                                rows={pos}
+                            />
+                        </CardBody>
+                    </Card>
                 </div>
             )}
 
-            {subTab === 'PO' && (
-                <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                        <h3 style={{ fontSize: '16px', fontWeight: '800' }}>External Purchase Orders</h3>
-                        <button className="btn btn-primary" onClick={() => alert("PO creation requires selecting an approved PR or manual vendor selection.")}>+ New PO</button>
+            <Modal open={showCreatePR} onClose={() => setShowCreatePR(false)} title="Create Requisition" subtitle="Submit a new purchase request for approval">
+                <div className="space-y-4">
+                    {error && <InlineAlert type="error" message={error} />}
+                    <Field label="PRODUCT">
+                        <Select value={newPR.lines[0].product_id} onChange={e => setNewPR({...newPR, lines: [{...newPR.lines[0], product_id: parseInt(e.target.value)}]})}>
+                            <option value="">Select Material...</option>
+                            {products.map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
+                        </Select>
+                    </Field>
+                    <div className="grid grid-cols-2 gap-4">
+                        <Field label="QUANTITY"><Input type="number" value={newPR.lines[0].quantity} onChange={e => setNewPR({...newPR, lines: [{...newPR.lines[0], quantity: parseFloat(e.target.value)}]})} /></Field>
+                        <Field label="UNIT">
+                            <Select value={newPR.lines[0].unit} onChange={e => setNewPR({...newPR, lines: [{...newPR.lines[0], unit: e.target.value}]})}>
+                                {['KG', 'IMP', 'QTY', 'LTR', 'MTR', 'PCS'].map(u => <option key={u} value={u}>{u}</option>)}
+                            </Select>
+                        </Field>
                     </div>
-                    <div className="card" style={{ padding: 0 }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                                <tr>
-                                    <th style={{ padding: '14px', textAlign: 'left', fontSize: '11px', color: '#666' }}>PO NUMBER</th>
-                                    <th style={{ padding: '14px', textAlign: 'left', fontSize: '11px', color: '#666' }}>VENDOR</th>
-                                    <th style={{ padding: '14px', textAlign: 'left', fontSize: '11px', color: '#666' }}>STATUS</th>
-                                    <th style={{ padding: '14px', textAlign: 'left', fontSize: '11px', color: '#666' }}>TOTAL</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {pos.map(po => (
-                                    <tr key={po.id} onClick={() => onViewDoc({type: 'PO', data: po})} style={{ borderBottom: '1px solid var(--theme-border)', cursor: 'pointer' }}>
-                                        <td style={{ padding: '14px', color: '#f59e0b', fontWeight: '700' }}>{po.po_number}</td>
-                                        <td style={{ padding: '14px', color: '#fff', fontWeight: '600' }}>{po.supplier_name}</td>
-                                        <td style={{ padding: '14px' }}>
-                                            <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '800', backgroundColor: po.status === 'APPROVED' ? 'rgba(34,197,94,0.1)' : 'rgba(245,158,11,0.1)', color: po.status === 'APPROVED' ? '#22c55e' : '#f59e0b' }}>{po.status}</span>
-                                        </td>
-                                        <td style={{ padding: '14px', color: '#fff' }}>{po.total_value} {po.currency}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <Field label="REASON / NOTES"><Textarea className="h-24" value={newPR.notes} onChange={e => setNewPR({...newPR, notes: e.target.value})} /></Field>
+                    <div className="flex gap-3 pt-4">
+                        <Button variant="primary" className="flex-1" onClick={handleCreatePR}>SUBMIT PR</Button>
+                        <Button variant="ghost" className="flex-1" onClick={() => setShowCreatePR(false)}>CANCEL</Button>
                     </div>
                 </div>
-            )}
+            </Modal>
         </div>
     );
 };
@@ -526,55 +503,32 @@ const GRManagement: React.FC<{ products: any[], onViewDoc: (doc: any) => void }>
     const [loading, setLoading] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [zones, setZones] = useState<any[]>([]);
-    const [form, setForm] = useState({
-        product_id: 0,
-        quantity: 0,
-        unit: 'KG',
-        zone_id: 0,
-        supplier_ref: '',
-        delivery_note_number: '',
-        notes: ''
-    });
+    const [error, setError] = useState<string | null>(null);
+    const [form, setForm] = useState({ product_id: 0, quantity: 0, unit: 'KG', zone_id: 0, supplier_ref: '', delivery_note_number: '', notes: '' });
 
     const fetchGRs = async () => {
         setLoading(true);
-        try {
-            const data = await api.listGRs();
-            setGRs(data.grs || []);
-        } catch (err) { console.error(err); }
-        finally { setLoading(false); }
+        try { const data = await api.listGRs(); setGRs(data.grs || []); } catch (err) { console.error(err); } finally { setLoading(false); }
     };
 
     const fetchZones = async () => {
         try {
             const data = await api.getOrgTree();
-            // Flatten zones from tree: Org -> Sites -> Zones
             const allZones: any[] = [];
-            data.forEach((org: any) => {
-                org.sites?.forEach((site: any) => {
-                    site.zones?.forEach((zone: any) => {
-                        if (zone.type === 'RECEIVING') {
-                            allZones.push({ ...zone, siteName: site.name });
-                        }
-                    });
-                });
-            });
+            data.forEach((org: any) => org.sites?.forEach((site: any) => site.zones?.forEach((zone: any) => {
+                if (zone.type === 'RECEIVING') allZones.push({ ...zone, siteName: site.name });
+            })));
             setZones(allZones);
-            if (allZones.length > 0 && form.zone_id === 0) {
-                setForm(f => ({ ...f, zone_id: allZones[0].id }));
-            }
-        } catch (err) { console.error("Failed to fetch zones", err); }
+            if (allZones.length > 0 && form.zone_id === 0) setForm(f => ({ ...f, zone_id: allZones[0].id }));
+        } catch (err) { console.error(err); }
     };
 
-    useEffect(() => { 
-        fetchGRs();
-        fetchZones();
-    }, []);
+    useEffect(() => { fetchGRs(); fetchZones(); }, []);
 
-    const handlePost = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handlePost = async () => {
+        setError(null);
         if (form.product_id === 0 || form.zone_id === 0 || form.quantity <= 0) {
-            alert("Please fill all required fields");
+            setError("Please fill all required fields");
             return;
         }
         clearTraceSteps();
@@ -583,367 +537,267 @@ const GRManagement: React.FC<{ products: any[], onViewDoc: (doc: any) => void }>
             setShowForm(false);
             setForm({ product_id: 0, quantity: 0, unit: 'KG', zone_id: 0, supplier_ref: '', delivery_note_number: '', notes: '' });
             fetchGRs();
-        } catch (err: any) {
-            alert(err.response?.data?.error || "Failed to post GR");
-        }
+        } catch (err: any) { setError(err.response?.data?.error || "Failed to post GR"); }
     };
 
     return (
-        <div style={{ display: 'flex', gap: '24px' }}>
-            <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: '800' }}>Goods Receipt Documents</h3>
-                    <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>{showForm ? 'Cancel' : '+ New GR'}</button>
-                </div>
-                <div className="card" style={{ padding: 0 }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                            <tr>
-                                <th style={{ padding: '14px', textAlign: 'left', fontSize: '11px', color: '#666' }}>GR NUMBER</th>
-                                <th style={{ padding: '14px', textAlign: 'left', fontSize: '11px', color: '#666' }}>POSTING DATE</th>
-                                <th style={{ padding: '14px', textAlign: 'left', fontSize: '11px', color: '#666' }}>MTYPE</th>
-                                <th style={{ padding: '14px', textAlign: 'left', fontSize: '11px', color: '#666' }}>SUPPLIER REF</th>
-                                <th style={{ padding: '14px', textAlign: 'left', fontSize: '11px', color: '#666' }}>DELIVERY NOTE</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {grs.map(gr => (
-                                <tr key={gr.id} onClick={() => onViewDoc({type: 'GR', data: gr})} style={{ borderBottom: '1px solid var(--theme-border)', cursor: 'pointer' }}>
-                                    <td style={{ padding: '14px', color: '#f59e0b', fontWeight: '700' }}>{gr.gr_number}</td>
-                                    <td style={{ padding: '14px', color: '#fff', fontSize: '12px' }}>{new Date(gr.posting_date).toLocaleDateString()}</td>
-                                    <td style={{ padding: '14px', color: '#888', fontSize: '12px' }}>{gr.movement_type}</td>
-                                    <td style={{ padding: '14px', color: '#fff', fontSize: '12px' }}>{gr.supplier_ref}</td>
-                                    <td style={{ padding: '14px', color: '#fff', fontSize: '12px' }}>{gr.delivery_note_number}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+        <div className="space-y-6 animate-in fade-in duration-500">
+            <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-[var(--text-1)]">Goods Receipt Documents</h3>
+                <Button variant="primary" onClick={() => setShowForm(true)}>+ New Receipt</Button>
             </div>
 
-            {showForm && (
-                <div style={{ width: '380px', flexShrink: 0 }}>
-                    <div className="card">
-                        <h4 style={{ fontSize: '14px', fontWeight: '800', marginBottom: '20px' }}>Post New Receipt</h4>
-                        <form onSubmit={handlePost} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '10px', color: '#666', marginBottom: '8px', fontWeight: '700' }}>PRODUCT</label>
-                                <select className="input-scanner" value={form.product_id} onChange={e => setForm({...form, product_id: Number(e.target.value)})}>
-                                    <option value={0}>-- Select Product --</option>
-                                    {products.map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
-                                </select>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '10px', color: '#666', marginBottom: '8px', fontWeight: '700' }}>QTY</label>
-                                    <input type="number" className="input-scanner" value={form.quantity} onChange={e => setForm({...form, quantity: Number(e.target.value)})} />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '10px', color: '#666', marginBottom: '8px', fontWeight: '700' }}>ZONE</label>
-                                    <select className="input-scanner" value={form.zone_id} onChange={e => setForm({...form, zone_id: Number(e.target.value)})}>
-                                        {zones.map(z => <option key={z.id} value={z.id}>{z.siteName} / {z.code}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                            <button type="submit" className="btn btn-primary" style={{ marginTop: '8px' }}>Post Document</button>
-                        </form>
+            <Card>
+                <CardBody>
+                    <DataTable
+                        columns={[
+                            { key: 'gr_number', header: 'GR NUMBER', mono: true, className: 'text-[var(--accent)] font-bold' },
+                            { key: 'posting_date', header: 'POSTING DATE', render: (gr) => new Date(gr.posting_date).toLocaleDateString(), className: 'opacity-40 text-xs' },
+                            { key: 'movement_type', header: 'MTYPE', className: 'opacity-50' },
+                            { key: 'supplier_ref', header: 'SUPPLIER REF' },
+                            { key: 'delivery_note_number', header: 'DELIVERY NOTE' },
+                            {
+                                key: 'actions',
+                                header: '',
+                                className: 'text-right',
+                                render: (gr) => <Button variant="ghost" size="sm" onClick={() => onViewDoc({type: 'GR', data: gr})}>👁️ View</Button>
+                            }
+                        ]}
+                        rows={grs}
+                        loading={loading}
+                    />
+                </CardBody>
+            </Card>
+
+            <Modal open={showForm} onClose={() => setShowForm(false)} title="Post Goods Receipt" subtitle="Log an incoming shipment into a receiving zone">
+                <div className="space-y-4">
+                    {error && <InlineAlert type="error" message={error} />}
+                    <Field label="PRODUCT">
+                        <Select value={form.product_id} onChange={e => setForm({...form, product_id: Number(e.target.value)})}>
+                            <option value={0}>-- Select Product --</option>
+                            {products.map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
+                        </Select>
+                    </Field>
+                    <div className="grid grid-cols-2 gap-4">
+                        <Field label="QUANTITY"><Input type="number" value={form.quantity} onChange={e => setForm({...form, quantity: Number(e.target.value)})} /></Field>
+                        <Field label="RECEIVING ZONE">
+                            <Select value={form.zone_id} onChange={e => setForm({...form, zone_id: Number(e.target.value)})}>
+                                {zones.map(z => <option key={z.id} value={z.id}>{z.siteName} / {z.code}</option>)}
+                            </Select>
+                        </Field>
+                    </div>
+                    <Field label="SUPPLIER REFERENCE"><Input value={form.supplier_ref} onChange={e => setForm({...form, supplier_ref: e.target.value})} /></Field>
+                    <Field label="DELIVERY NOTE #"><Input value={form.delivery_note_number} onChange={e => setForm({...form, delivery_note_number: e.target.value})} /></Field>
+                    <div className="flex gap-3 pt-4">
+                        <Button variant="primary" className="flex-1" onClick={handlePost}>POST DOCUMENT</Button>
+                        <Button variant="ghost" className="flex-1" onClick={() => setShowForm(false)}>CANCEL</Button>
                     </div>
                 </div>
-            )}
+            </Modal>
         </div>
     );
 };
 
-const DocumentDetail: React.FC<{ doc: { type: 'PR' | 'PO' | 'GR' | 'SUPPLIER' | 'SA', data: any }, onViewDoc: (doc: any | null) => void }> = ({ doc, onViewDoc }) => {
+const StockAdjustmentManagement: React.FC<{ onViewDoc: (doc: any) => void }> = ({ onViewDoc }) => {
+    const [adjustments, setAdjustments] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    const fetchAdjustments = useCallback(async () => {
+        setLoading(true);
+        try { const data = await api.listAdjustments(); setAdjustments(data.adjustments || []); } catch (err) { console.error(err); } finally { setLoading(false); }
+    }, []);
+
+    useEffect(() => { fetchAdjustments(); }, [fetchAdjustments]);
+
+    return (
+        <div className="space-y-6 animate-in fade-in duration-500">
+            <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-[var(--text-1)]">Stock Adjustment Journals</h3>
+                <div className="flex gap-2">
+                    <Button variant="ghost" onClick={fetchAdjustments}>Refresh</Button>
+                    <Button variant="primary" onClick={() => {}}>View Audit Logs</Button>
+                </div>
+            </div>
+            <Card>
+                <CardBody>
+                    <DataTable
+                        columns={[
+                            { key: 'sa_number', header: 'SA NUMBER', mono: true, className: 'text-[var(--accent)] font-bold' },
+                            { key: 'posting_date', header: 'DATE', render: (sa) => new Date(sa.posting_date).toLocaleDateString(), className: 'opacity-40 text-xs' },
+                            { key: 'product_code', header: 'PRODUCT', className: 'font-bold' },
+                            { key: 'zone_code', header: 'ZONE', className: 'opacity-50' },
+                            { 
+                                key: 'difference', 
+                                header: 'DIFF', 
+                                className: 'text-right',
+                                render: (sa) => (
+                                    <span className={cn("font-black", sa.difference >= 0 ? 'text-green-500' : 'text-red-500')}>
+                                        {sa.difference > 0 ? '+' : ''}{sa.difference}
+                                    </span>
+                                )
+                            }
+                        ]}
+                        rows={adjustments}
+                        loading={loading}
+                    />
+                </CardBody>
+            </Card>
+        </div>
+    );
+};
+
+const DocumentDetail: React.FC<{ doc: any, onClose: () => void }> = ({ doc, onClose }) => {
     const [fullData, setFullData] = useState<any>(null);
     const [lines, setLines] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [suppliers, setSuppliers] = useState<any[]>([]);
     const [selectedSupplier, setSelectedSupplier] = useState<number>(0);
     const [rejectionReason, setRejectionReason] = useState("");
-    const [showConvert, setShowConvert] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const fetchData = async () => {
-        setFullData(null);
-        setLines([]);
-        if (doc.type === 'PO') {
-            const res = await api.getPO(doc.data.id);
-            setFullData(res.purchase_order);
-            setLines(res.lines || []);
-        } else if (doc.type === 'PR') {
-            const res = await api.getPR(doc.data.id);
-            setFullData(res.purchase_request);
-            setLines(res.lines || []);
-            // Fetch suppliers for conversion if approved
-            if (res.purchase_request.status === 'APPROVED') {
-                const sRes = await api.listSuppliers();
-                setSuppliers(sRes.suppliers || []);
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            if (doc.type === 'PO') {
+                const res = await api.getPO(doc.data.id);
+                setFullData(res.purchase_order);
+                setLines(res.lines || []);
+            } else if (doc.type === 'PR') {
+                const res = await api.getPR(doc.data.id);
+                setFullData(res.purchase_request);
+                setLines(res.lines || []);
+                if (res.purchase_request.status === 'APPROVED') {
+                    const sRes = await api.listSuppliers();
+                    setSuppliers(sRes.suppliers || []);
+                }
+            } else if (doc.type === 'GR') {
+                const res = await api.getGR(doc.data.id);
+                setFullData(res.gr_document);
+                setLines(res.lines || []);
+            } else {
+                setFullData(doc.data);
             }
-        } else if (doc.type === 'GR') {
-            const res = await api.getGR(doc.data.id);
-            setFullData(res.gr_document);
-            setLines(res.lines || []);
-        } else if (doc.type === 'SA') {
-            setFullData(doc.data);
-        } else if (doc.type === 'SUPPLIER') {
-            setFullData(doc.data);
-        }
-    };
-
-    useEffect(() => {
-        fetchData();
+        } catch (err) { console.error(err); } finally { setLoading(false); }
     }, [doc]);
 
+    useEffect(() => { fetchData(); }, [fetchData]);
+
     const handleAction = async (action: string) => {
-        setLoading(true);
+        setError(null);
         try {
             if (doc.type === 'PR') {
                 if (action === 'submit') await api.submitPR(doc.data.id);
                 else if (action === 'approve') await api.approvePR(doc.data.id);
-                else if (action === 'reject') await api.rejectPR(doc.data.id, rejectionReason);
+                else if (action === 'reject') {
+                    if (!rejectionReason) { setError("Please enter rejection reason"); return; }
+                    await api.rejectPR(doc.data.id, rejectionReason);
+                }
                 else if (action === 'convert') {
-                    if (!selectedSupplier) { alert("Please select a supplier"); return; }
+                    if (!selectedSupplier) { setError("Please select a supplier"); return; }
                     await api.convertPRtoPO(doc.data.id, selectedSupplier);
                 }
             } else if (doc.type === 'PO') {
                 if (action === 'submit') await api.submitPO(doc.data.id);
                 else if (action === 'approve') await api.approvePO(doc.data.id);
-                else if (action === 'reject') await api.rejectPO(doc.data.id, rejectionReason);
+                else if (action === 'reject') {
+                    if (!rejectionReason) { setError("Please enter rejection reason"); return; }
+                    await api.rejectPO(doc.data.id, rejectionReason);
+                }
             }
-            await fetchData();
-            // Refresh parent lists if possible (might need to refresh the whole page or pass a callback)
-            window.location.reload(); // Quickest way for now to ensure all states sync
-        } catch (err) {
-            alert(`Action failed: ${action}`);
-        } finally {
-            setLoading(false);
-        }
+            onClose();
+            window.location.reload(); 
+        } catch (err: any) { setError(`Action failed: ${action}`); }
     };
 
     const d = fullData || doc.data;
 
     return (
-        <div style={{ position: 'fixed', top: 0, right: 0, width: '640px', height: '100vh', backgroundColor: '#111', borderLeft: '1px solid var(--theme-border)', zIndex: 1000, padding: '40px', boxShadow: '-20px 0 40px rgba(0,0,0,0.8)', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px' }}>
-                <span style={{ fontSize: '12px', fontWeight: '800', backgroundColor: 'rgba(245,158,11,0.1)', color: '#f59e0b', padding: '4px 12px', borderRadius: '4px', letterSpacing: '0.05em' }}>{doc.type} RECORD</span>
-                <button onClick={() => onViewDoc(null)} style={{ background: 'none', border: 'none', color: '#666', fontSize: '24px', cursor: 'pointer', transition: 'color 0.2s' }}>×</button>
-            </div>
-
-            <h1 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', marginBottom: '8px', letterSpacing: '-0.02em' }}>{d.po_number || d.pr_number || d.gr_number || d.sa_number || d.code}</h1>
-            <p style={{ color: '#888', fontSize: '14px', marginBottom: '32px' }}>Operational Compliance · Audit Trail · System Verified</p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '48px', backgroundColor: 'rgba(255,255,255,0.02)', padding: '24px', borderRadius: '16px', border: '1px solid var(--theme-border)' }}>
+        <div className="fixed inset-y-0 right-0 w-[600px] bg-[var(--bg-surface2)] border-l border-[var(--border)] z-[100] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="p-8 border-b border-[var(--border)] flex justify-between items-center bg-white/[0.02]">
                 <div>
-                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '6px', textTransform: 'uppercase' }}>STATUS</div>
-                    <div style={{ color: '#f59e0b', fontWeight: '800', fontSize: '16px' }}>{d.status || 'ACTIVE'}</div>
+                    <Badge variant="amber" className="mb-2">{doc.type} RECORD</Badge>
+                    <h2 className="text-2xl font-black text-[var(--text-1)] tracking-tight">
+                        {d.po_number || d.pr_number || d.gr_number || d.sa_number || d.code}
+                    </h2>
                 </div>
-                <div>
-                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '6px', textTransform: 'uppercase' }}>{doc.type === 'SUPPLIER' ? 'CURRENCY' : 'POSTING DATE'}</div>
-                    <div style={{ color: '#fff', fontSize: '16px', fontWeight: '600' }}>{doc.type === 'SUPPLIER' ? d.currency : new Date(d.posting_date || d.created_at).toLocaleDateString()}</div>
-                </div>
-                {doc.type === 'PO' && (
-                    <>
-                        <div>
-                            <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '6px', textTransform: 'uppercase' }}>SUPPLIER</div>
-                            <div style={{ color: '#fff', fontSize: '14px' }}>{d.supplier_name}</div>
-                        </div>
-                        <div>
-                            <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '6px', textTransform: 'uppercase' }}>TOTAL VALUE</div>
-                            <div style={{ color: '#fff', fontSize: '14px', fontWeight: '800' }}>{d.total_value} {d.currency}</div>
-                        </div>
-                    </>
-                )}
-                {doc.type === 'GR' && (
-                    <>
-                        <div>
-                            <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '6px', textTransform: 'uppercase' }}>MOVEMENT TYPE</div>
-                            <div style={{ color: '#fff', fontSize: '14px' }}>{d.movement_type}</div>
-                        </div>
-                        <div>
-                            <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '6px', textTransform: 'uppercase' }}>SUPPLIER REF</div>
-                            <div style={{ color: '#fff', fontSize: '14px' }}>{d.supplier_ref || 'N/A'}</div>
-                        </div>
-                    </>
-                )}
-                {doc.type === 'SA' && (
-                    <>
-                        <div>
-                            <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '6px', textTransform: 'uppercase' }}>ADJUSTMENT TYPE</div>
-                            <div style={{ color: '#fff', fontSize: '14px' }}>{d.type}</div>
-                        </div>
-                        <div>
-                            <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '6px', textTransform: 'uppercase' }}>REASON</div>
-                            <div style={{ color: '#fff', fontSize: '14px' }}>{d.reason}</div>
-                        </div>
-                    </>
-                )}
+                <Button variant="ghost" onClick={onClose} className="rounded-full w-10 h-10 p-0 text-xl">&times;</Button>
             </div>
+            
+            <div className="flex-1 overflow-y-auto p-8 space-y-8">
+                {error && <InlineAlert type="error" message={error} />}
 
-            {(doc.type === 'PR' || doc.type === 'PO') && d.decision_factor && (
-                <div style={{ marginBottom: '40px', padding: '24px', backgroundColor: 'rgba(245,158,11,0.05)', borderRadius: '16px', border: '1px solid rgba(245,158,11,0.2)' }}>
-                    <div style={{ fontSize: '10px', color: '#f59e0b', fontWeight: '800', marginBottom: '12px', letterSpacing: '0.05em' }}>APPROVAL GOVERNANCE</div>
-                    <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: '13px', color: '#fff', fontWeight: '600', lineHeight: '1.5' }}>"{d.decision_factor}"</div>
-                            <div style={{ fontSize: '11px', color: '#666', marginTop: '8px' }}>Controlled by SupplyX Pricing Engine v1.2</div>
-                        </div>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '20px', backgroundColor: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(34,197,94,0.2)' }}>
-                            <span style={{ color: '#22c55e', fontSize: '18px' }}>✓</span>
-                        </div>
+                <div className="grid grid-cols-2 gap-6 p-6 bg-white/5 rounded-2xl border border-[var(--border)]">
+                    <div>
+                        <div className="text-[10px] font-bold text-[var(--text-4)] uppercase tracking-widest mb-1">Status</div>
+                        <div className="text-sm font-bold text-[var(--accent)]">{d.status || 'ACTIVE'}</div>
                     </div>
+                    <div>
+                        <div className="text-[10px] font-bold text-[var(--text-4)] uppercase tracking-widest mb-1">Created</div>
+                        <div className="text-sm font-bold text-[var(--text-1)]">{new Date(d.created_at || d.posting_date).toLocaleDateString()}</div>
+                    </div>
+                    {doc.type === 'PO' && (
+                        <>
+                            <div className="col-span-2 pt-4 border-t border-[var(--border)]">
+                                <div className="text-[10px] font-bold text-[var(--text-4)] uppercase tracking-widest mb-1">Supplier</div>
+                                <div className="text-sm font-bold text-[var(--text-1)]">{d.supplier_name}</div>
+                            </div>
+                            <div className="col-span-2">
+                                <div className="text-[10px] font-bold text-[var(--text-4)] uppercase tracking-widest mb-1">Value</div>
+                                <div className="text-lg font-black text-white/95">{d.total_value} {d.currency}</div>
+                            </div>
+                        </>
+                    )}
                 </div>
-            )}
 
-            {doc.type !== 'SUPPLIER' && doc.type !== 'SA' && (
-                <>
-                    <div style={{ fontSize: '11px', color: '#666', fontWeight: '800', borderBottom: '1px solid var(--theme-border)', paddingBottom: '8px', marginBottom: '16px', letterSpacing: '0.05em' }}>DOCUMENT LINE ITEMS</div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr style={{ borderBottom: '1px solid var(--theme-border)' }}>
-                                <th style={{ padding: '12px 0', textAlign: 'left', fontSize: '10px', color: '#444' }}>LINE</th>
-                                <th style={{ padding: '12px 0', textAlign: 'left', fontSize: '10px', color: '#444' }}>ITEM DETAILS</th>
-                                <th style={{ padding: '12px 0', textAlign: 'right', fontSize: '10px', color: '#444' }}>QUANTITY</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                {lines.length > 0 && (
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest px-1">Line Items</h4>
+                        <div className="space-y-3">
                             {lines.map((l: any) => (
-                                <tr key={l.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'background 0.2s' }}>
-                                    <td style={{ padding: '16px 0', color: '#f59e0b', fontSize: '12px', fontWeight: '800' }}>{l.line_number}</td>
-                                    <td style={{ padding: '16px 0', color: '#fff', fontSize: '13px', fontWeight: '500' }}>
-                                        {l.product_name} 
-                                        <div style={{fontSize: '10px', color: '#555', marginTop: '4px', fontFamily: 'monospace'}}>{l.product_code}</div>
-                                    </td>
-                                    <td style={{ padding: '16px 0', textAlign: 'right', color: '#fff', fontSize: '14px', fontWeight: '700' }}>
-                                        {l.quantity} <span style={{fontSize: '11px', color: '#666'}}>{l.unit}</span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </>
-            )}
-
-            {doc.type === 'SA' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    <div style={{ padding: '24px', backgroundColor: 'rgba(245,158,11,0.05)', borderRadius: '12px', border: '1px solid rgba(245,158,11,0.2)' }}>
-                        <div style={{ fontSize: '10px', color: '#f59e0b', fontWeight: '800', marginBottom: '12px' }}>ADJUSTMENT IMPACT</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                            <div>
-                                <span style={{ fontSize: '10px', color: '#666' }}>PRODUCT</span>
-                                <div style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>{d.product_code}</div>
-                            </div>
-                            <div>
-                                <span style={{ fontSize: '10px', color: '#666' }}>ZONE</span>
-                                <div style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>{d.zone_code}</div>
-                            </div>
-                            <div>
-                                <span style={{ fontSize: '10px', color: '#666' }}>DIFFERENCE</span>
-                                <div style={{ fontSize: '24px', fontWeight: '900', color: d.difference >= 0 ? '#22c55e' : '#ef4444' }}>
-                                    {d.difference > 0 ? '+' : ''}{d.difference} <span style={{ fontSize: '12px' }}>{d.unit}</span>
+                                <div key={l.id} className="flex justify-between items-center p-4 bg-white/[0.02] rounded-xl border border-[var(--border)]">
+                                    <div>
+                                        <div className="text-sm font-bold text-[var(--text-1)]">{l.product_name}</div>
+                                        <div className="text-[10px] font-mono text-[var(--text-3)]">{l.product_code}</div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-sm font-black text-[var(--text-1)]">{l.quantity} {l.unit}</div>
+                                        {l.net_price && <div className="text-[10px] text-[var(--text-3)]">{l.net_price} per unit</div>}
+                                    </div>
                                 </div>
-                            </div>
+                            ))}
                         </div>
                     </div>
-                </div>
-            )}
+                )}
 
-            {doc.type === 'SUPPLIER' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    <div style={{ padding: '24px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--theme-border)' }}>
-                        <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '12px', textTransform: 'uppercase' }}>Supplier Contact</div>
-                        <div style={{ color: '#fff', fontSize: '16px', fontWeight: '700' }}>{d.contact_name}</div>
-                        <div style={{ color: '#888', fontSize: '14px' }}>{d.email}</div>
-                    </div>
-
-                    <div style={{ fontSize: '11px', color: '#666', fontWeight: '800', borderBottom: '1px solid var(--theme-border)', paddingBottom: '8px', letterSpacing: '0.05em' }}>PURCHASING INFO RECORDS</div>
-                    <SupplierInfoRecords supplierId={d.public_id || d.id} />
-                </div>
-            )}
-
-            {(doc.type === 'PR' || doc.type === 'PO') && d && (
-                <div style={{ marginTop: '48px', paddingTop: '32px', borderTop: '1px solid var(--theme-border)' }}>
-                    <div style={{ fontSize: '11px', color: '#666', fontWeight: '800', marginBottom: '20px', letterSpacing: '0.05em' }}>LIFECYCLE CONTROLS</div>
-                    
-                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                        {d.status === 'DRAFT' && (
-                            <button className="btn btn-primary" onClick={() => handleAction('submit')} disabled={loading}>Submit for Approval</button>
-                        )}
-                        {d.status === 'SUBMITTED' && (
-                            <>
-                                <button className="btn btn-primary" style={{ backgroundColor: '#22c55e' }} onClick={() => handleAction('approve')} disabled={loading}>Approve Document</button>
-                                <button className="btn" style={{ borderColor: '#ef4444', color: '#ef4444' }} onClick={() => { if(rejectionReason) handleAction('reject'); else alert("Please enter rejection reason"); }} disabled={loading}>Reject</button>
-                                <input style={{ flex: 1, minWidth: '200px' }} className="input-scanner" placeholder="Reason for rejection..." value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} />
-                            </>
-                        )}
-                        {doc.type === 'PR' && d.status === 'APPROVED' && (
-                            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', fontSize: '10px', color: '#f59e0b', marginBottom: '8px', fontWeight: '700' }}>SELECT SUPPLIER FOR PO</label>
-                                        <select className="input-scanner" value={selectedSupplier} onChange={e => setSelectedSupplier(Number(e.target.value))}>
+                {/* Controls */}
+                {(doc.type === 'PR' || doc.type === 'PO') && (
+                    <div className="pt-8 border-t border-[var(--border)] space-y-6">
+                        <h4 className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">Workflow Controls</h4>
+                        <div className="flex gap-3 flex-wrap">
+                            {d.status === 'DRAFT' && <Button variant="primary" className="flex-1" onClick={() => handleAction('submit')}>SUBMIT FOR APPROVAL</Button>}
+                            {d.status === 'SUBMITTED' && (
+                                <>
+                                    <Button variant="primary" className="bg-green-600 hover:bg-green-500 text-white flex-1" onClick={() => handleAction('approve')}>APPROVE</Button>
+                                    <div className="w-full flex gap-3 mt-4">
+                                        <Input className="flex-1" placeholder="Rejection reason..." value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} />
+                                        <Button variant="danger" onClick={() => handleAction('reject')}>REJECT</Button>
+                                    </div>
+                                </>
+                            )}
+                            {doc.type === 'PR' && d.status === 'APPROVED' && (
+                                <div className="w-full space-y-4">
+                                    <Field label="CONVERT TO PO - SELECT SUPPLIER">
+                                        <Select value={selectedSupplier} onChange={e => setSelectedSupplier(Number(e.target.value))}>
                                             <option value={0}>-- Select Vendor --</option>
                                             {suppliers.map(s => <option key={s.id} value={s.id}>{s.code} - {s.name}</option>)}
-                                        </select>
-                                    </div>
-                                    <button className="btn btn-primary" onClick={() => handleAction('convert')} disabled={loading || !selectedSupplier}>Convert to PO</button>
+                                        </Select>
+                                    </Field>
+                                    <Button variant="primary" className="w-full" onClick={() => handleAction('convert')} disabled={!selectedSupplier}>GENERATE PO</Button>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
-    );
-};
-
-
-const StockAdjustmentManagement: React.FC<{ onViewDoc: (doc: any) => void }> = ({ onViewDoc }) => {
-    const [adjustments, setAdjustments] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
-
-    const fetchAdjustments = async () => {
-        setLoading(true);
-        try {
-            const data = await api.listAdjustments();
-            setAdjustments(data.adjustments || []);
-        } catch (err) { console.error(err); }
-        finally { setLoading(false); }
-    };
-
-    useEffect(() => { fetchAdjustments(); }, []);
-
-    return (
-        <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '800' }}>Stock Adjustment Journals</h3>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="btn" style={{ borderColor: 'var(--theme-border)', color: '#888' }} onClick={fetchAdjustments}>Refresh</button>
-                    <button className="btn btn-primary" onClick={() => alert("Adjustments are generated via physical count operations.")}>Audit Logs</button>
-                </div>
-            </div>
-            <div className="card" style={{ padding: 0 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                        <tr>
-                            <th style={{ padding: '14px', textAlign: 'left', fontSize: '11px', color: '#666' }}>SA NUMBER</th>
-                            <th style={{ padding: '14px', textAlign: 'left', fontSize: '11px', color: '#666' }}>DATE</th>
-                            <th style={{ padding: '14px', textAlign: 'left', fontSize: '11px', color: '#666' }}>PRODUCT</th>
-                            <th style={{ padding: '14px', textAlign: 'left', fontSize: '11px', color: '#666' }}>ZONE</th>
-                            <th style={{ padding: '14px', textAlign: 'right', fontSize: '11px', color: '#666' }}>DIFF</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {adjustments.map(sa => (
-                            <tr key={sa.id} onClick={() => onViewDoc({type: 'SA', data: sa})} style={{ borderBottom: '1px solid var(--theme-border)', cursor: 'pointer' }}>
-                                <td style={{ padding: '14px', color: '#f59e0b', fontWeight: '700' }}>{sa.sa_number}</td>
-                                <td style={{ padding: '14px', color: '#fff', fontSize: '12px' }}>{new Date(sa.posting_date).toLocaleDateString()}</td>
-                                <td style={{ padding: '14px', color: '#fff', fontSize: '12px', fontWeight: '600' }}>{sa.product_code}</td>
-                                <td style={{ padding: '14px', color: '#888', fontSize: '12px' }}>{sa.zone_code}</td>
-                                <td style={{ padding: '14px', textAlign: 'right', color: sa.difference >= 0 ? '#22c55e' : '#ef4444', fontWeight: '900' }}>{sa.difference > 0 ? '+' : ''}{sa.difference}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                )}
             </div>
         </div>
     );
@@ -955,7 +809,7 @@ const ProductPricingTab: React.FC<{ product: any }> = ({ product }) => {
     const [history, setHistory] = useState<any[]>([]);
     const [edit, setEdit] = useState({ price_control: 'V', standard_price: 0, moving_price: 0 });
 
-    const fetchPricing = async () => {
+    const fetchPricing = useCallback(async () => {
         setLoading(true);
         try {
             const data = await api.getProductPricing(product.public_id);
@@ -968,104 +822,65 @@ const ProductPricingTab: React.FC<{ product: any }> = ({ product }) => {
             });
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
-    };
+    }, [product.public_id]);
 
-    useEffect(() => { fetchPricing(); }, [product.id]);
+    useEffect(() => { fetchPricing(); }, [fetchPricing]);
 
     const handleUpdate = async () => {
         try {
             await api.updateProductPricing(product.public_id, edit);
             fetchPricing();
-        } catch (err) { alert("Update failed"); }
+        } catch (err) { console.error(err); }
     };
 
-    if (loading) return <div>Standardizing Market Data...</div>;
-    if (!pricing) return <div style={{ padding: '20px', color: '#666' }}>No pricing profile active. Standardize above.</div>;
+    if (loading) return <div className="text-xs text-[var(--text-3)] animate-pulse">Syncing market data...</div>;
+    if (!pricing) return <div className="text-xs text-[var(--text-4)]">No active pricing profile.</div>;
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div style={{ padding: '16px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--theme-border)' }}>
-                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '8px' }}>PRICE CONTROL</div>
-                    <select className="input-scanner" value={edit.price_control} onChange={e => setEdit({...edit, price_control: e.target.value})}>
-                        <option value="S">S - Standard Price</option>
-                        <option value="V">V - Moving Average</option>
-                    </select>
-                </div>
-                <div style={{ padding: '16px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--theme-border)' }}>
-                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '8px' }}>VALUATION PRICE</div>
-                    <div style={{ fontSize: '24px', fontWeight: '800', color: '#f59e0b' }}>
-                        {pricing.price_control === 'S' ? pricing.standard_price : pricing.moving_price} <span style={{ fontSize: '12px', color: '#888' }}>{pricing.currency}</span>
+        <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="grid grid-cols-2 gap-4">
+                <Field label="Price Control">
+                    <Select value={edit.price_control} onChange={e => setEdit({...edit, price_control: e.target.value})}>
+                        <option value="S">S - Standard</option>
+                        <option value="V">V - Moving Avg</option>
+                    </Select>
+                </Field>
+                <div className="bg-white/5 p-4 rounded-xl border border-[var(--border)] flex flex-col justify-center">
+                    <div className="text-[10px] font-bold text-[var(--text-3)] uppercase mb-1">Current Val</div>
+                    <div className="text-xl font-black text-[var(--accent)]">
+                        {pricing.price_control === 'S' ? pricing.standard_price : pricing.moving_price} 
+                        <span className="text-[10px] ml-1 text-[var(--text-3)] font-medium">{pricing.currency}</span>
                     </div>
                 </div>
             </div>
 
-            <div className="form-group">
-                <label style={{ fontSize: '10px', color: '#f59e0b', fontWeight: '700', marginBottom: '8px', display: 'block' }}>UPDATE MASTER PRICE</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <input 
-                        type="number" 
-                        className="input-scanner" 
-                        style={{ flex: 1 }} 
-                        value={edit.price_control === 'S' ? edit.standard_price : edit.moving_price} 
-                        onChange={e => setEdit({...edit, [edit.price_control === 'S' ? 'standard_price' : 'moving_price']: parseFloat(e.target.value)})} 
-                    />
-                    <button className="btn btn-primary" onClick={handleUpdate}>Update</button>
-                </div>
+            <div className="space-y-4 pt-4 border-t border-[var(--border)]">
+                <Field label="Update Master Price">
+                    <div className="flex gap-2">
+                        <Input 
+                            type="number" 
+                            className="flex-1"
+                            value={edit.price_control === 'S' ? edit.standard_price : edit.moving_price} 
+                            onChange={e => setEdit({...edit, [edit.price_control === 'S' ? 'standard_price' : 'moving_price']: parseFloat(e.target.value)})} 
+                        />
+                        <Button variant="primary" onClick={handleUpdate}>UPDATE</Button>
+                    </div>
+                </Field>
             </div>
 
-            <div>
-                <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '12px', textTransform: 'uppercase' }}>PRICE HISTORY LOG</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {history.map((h, i) => (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#000', borderRadius: '6px', border: '1px solid #111', fontSize: '12px' }}>
-                            <span style={{ color: '#888' }}>{new Date(h.valid_from).toLocaleDateString()}</span>
-                            <span style={{ fontWeight: '700', color: h.change_type === 'INITIAL' ? '#22c55e' : '#f59e0b' }}>{h.new_price} {pricing.currency}</span>
+            <div className="space-y-2">
+                <h4 className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest px-1">Audit Log</h4>
+                <div className="space-y-2">
+                    {history.slice(0, 5).map((h, i) => (
+                        <div key={i} className="flex justify-between items-center bg-[var(--bg-base)]/40 p-3 rounded-lg border border-[var(--border)] text-[11px]">
+                            <span className="text-[var(--text-3)]">{new Date(h.valid_from).toLocaleDateString()}</span>
+                            <span className={cn("font-bold", h.change_type === 'INITIAL' ? 'text-green-500' : 'text-[var(--accent)]')}>
+                                {h.new_price} {pricing.currency}
+                            </span>
                         </div>
                     ))}
                 </div>
             </div>
-        </div>
-    );
-};
-
-const SupplierInfoRecords: React.FC<{ supplierId: string }> = ({ supplierId }) => {
-    const [records, setRecords] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
-        api.getSupplierInfoRecords(supplierId).then(setRecords).catch(() => {});
-    }, [supplierId]);
-
-    return (
-        <div style={{ marginTop: '16px' }}>
-             {records.length === 0 ? (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#444', fontSize: '12px', border: '1px dashed #222', borderRadius: '8px' }}>
-                    No purchasing agreements found for this vendor.
-                </div>
-            ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {records.map(r => (
-                        <div key={r.id} style={{ padding: '16px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--theme-border)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                <span style={{ color: '#f59e0b', fontWeight: '800', fontSize: '12px' }}>{r.info_record_number}</span>
-                                <span style={{ color: '#22c55e', fontSize: '10px', fontWeight: '800' }}>ACTIVE</span>
-                            </div>
-                            <div style={{ fontSize: '14px', fontWeight: '600', color: '#fff', marginBottom: '4px' }}>{r.product_name}</div>
-                            <div style={{ fontSize: '11px', color: '#888', marginBottom: '12px' }}>{r.product_code}</div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                                <div>
-                                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '700' }}>NET PRICE</div>
-                                    <div style={{ fontSize: '16px', fontWeight: '800', color: '#fff' }}>{r.currency?.String} {parseFloat(r.net_price?.Int || 0) / 10000}</div>
-                                </div>
-                                <div style={{ textAlign: 'right', fontSize: '10px', color: '#666' }}>
-                                    VALID TO: {r.valid_to?.Valid ? new Date(r.valid_to.Time).toLocaleDateString() : 'INDETERMINATE'}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
         </div>
     );
 };
