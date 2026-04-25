@@ -7,49 +7,61 @@ import { SectionTabs } from '@/components/ui/SectionTabs';
 
 interface Customer {
   id: number;
-  customer_number: string;
+  public_id: string;
+  code: string;
   name: string;
   email: string;
   phone: string;
-  address_line1: string;
+  address: string;
   city: string;
   currency: string;
 }
 
 interface Deal {
   id: number;
-  deal_number: string;
+  public_id: string;
+  so_number: string;
   customer_id: number;
   customer_name: string;
+  customer_code: string;
   customer_email?: string;
-  customer_phone?: string;
-  deal_date: string;
-  requested_delivery: string;
+  order_date: string;
+  requested_date: string | null;
   status: string;
   currency: string;
   subtotal: number;
   tax_amount: number;
   total_amount: number;
-  payment_status: string;
   notes: string;
 }
 
 interface DealLine {
   id: number;
-  line_no: number;
-  material_id: number;
+  public_id: string;
+  line_number: number;
+  material_id: number | null;
   material_code: string;
   material_name: string;
   description: string;
-  ordered_qty: number;
-  confirmed_qty: number;
-  shipped_qty: number;
+  quantity: number;
+  delivered_qty: number;
   unit_of_measure: string;
   unit_price: number;
   discount_pct: number;
   line_total: number;
-  availability_status: string;
-  available_qty: number;
+  status: string;
+}
+
+interface DashboardStats {
+  total_orders: number;
+  draft: number;
+  confirmed: number;
+  dispatched: number;
+  delivered: number;
+  cancelled: number;
+  total_revenue: number;
+  pending_value: number;
+  avg_order_value: number;
 }
 
 // ─── Shared Helpers ─────────────────────────────────────────────────────────
@@ -68,16 +80,13 @@ const Badge = ({ label, status }: { label: string; status: string }) => {
   const colors: any = {
     DRAFT:       "sx-badge--gray",
     CONFIRMED:   "sx-badge--blue",
-    IN_PICK:     "sx-badge--amber",
-    SHIPPED:     "sx-badge--green",
+    PICKING:     "sx-badge--amber",
+    PACKED:      "sx-badge--amber",
+    DISPATCHED:  "sx-badge--green",
     DELIVERED:   "sx-badge--green",
     CANCELLED:   "sx-badge--red",
-    PAID:        "sx-badge--green",
-    UNPAID:      "sx-badge--amber",
-    AVAILABLE:   "sx-badge--green",
+    OPEN:        "sx-badge--gray",
     PARTIAL:     "sx-badge--amber",
-    UNAVAILABLE: "sx-badge--red",
-    UNCHECKED:   "sx-badge--gray",
   };
   const colorClass = colors[status] || "sx-badge--gray";
   return (
@@ -91,10 +100,11 @@ const Badge = ({ label, status }: { label: string; status: string }) => {
 
 export default function DealFlowPage() {
   const [deals, setDeals] = useState<Deal[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null); // UUID
   const [deal, setDeal] = useState<Deal | null>(null);
   const [lines, setLines] = useState<DealLine[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [dashboard, setDashboard] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [showCreate, setShowCreate] = useState(false);
@@ -103,29 +113,57 @@ export default function DealFlowPage() {
   // Create Modal State
   const [newDeal, setNewDeal] = useState({
     customer_id: 0,
-    deal_date: new Date().toISOString().split("T")[0],
-    requested_delivery: "",
-    currency: "USD",
-    notes: ""
+    order_date: new Date().toISOString().split("T")[0],
+    requested_date: "",
+    currency: "GBP",
+    notes: "",
+    lines: [
+      {
+        description: "",
+        quantity: 1,
+        unit_of_measure: "EA",
+        unit_price: 0,
+        discount_pct: 0
+      }
+    ]
   });
+
+  const fetchDashboard = useCallback(async () => {
+    try {
+      const res = await apiFetch("/api/com/deal-flow/dashboard");
+      if (res.ok) {
+        const data = await res.json();
+        setDashboard(data.data);
+      }
+    } catch (e) { console.error("fetchDashboard failed", e); }
+  }, []);
 
   const fetchDeals = useCallback(async () => {
     try {
-      const res = await apiFetch(`/api/deals${activeTab !== "All" ? `?status=${activeTab.toUpperCase()}` : ""}`);
+      // NOTE: The current backend ListSalesOrders doesn't natively filter by status yet,
+      // but we can pass status as a query parameter if we update it later.
+      // For now, we fetch all and filter locally, or just fetch all.
+      const res = await apiFetch("/api/com/sales-orders");
       if (res.ok) {
         const data = await res.json();
-        setDeals(data.deals || []);
+        let fetchedDeals = data.data || [];
+        if (activeTab !== "Dashboard" && activeTab !== "All") {
+           // Map tabs to statuses
+           const tabStatus = activeTab === "In Pick" ? "PICKING" : activeTab.toUpperCase();
+           fetchedDeals = fetchedDeals.filter((d: Deal) => d.status === tabStatus);
+        }
+        setDeals(fetchedDeals);
       }
     } catch (e) { console.error("fetchDeals failed", e); }
   }, [activeTab]);
 
-  const fetchDealDetail = useCallback(async (id: number) => {
+  const fetchDealDetail = useCallback(async (id: string) => {
     setLoading(true);
     try {
-      const res = await apiFetch(`/api/deals/${id}`);
+      const res = await apiFetch(`/api/com/sales-orders/${id}`);
       if (res.ok) {
         const data = await res.json();
-        setDeal(data.deal);
+        setDeal(data.data);
         setLines(data.lines || []);
       }
     } catch (e) { console.error("fetchDealDetail failed", e); }
@@ -134,62 +172,92 @@ export default function DealFlowPage() {
 
   const fetchCustomers = useCallback(async () => {
     try {
-      const res = await apiFetch("/api/customers");
-      const data = await res.json();
-      setCustomers(data.customers || []);
+      const res = await apiFetch("/api/com/customers");
+      if (res.ok) {
+        const data = await res.json();
+        setCustomers(data.data || []);
+      }
     } catch (e) { console.error(e); }
   }, []);
 
-  useEffect(() => { fetchDeals(); }, [fetchDeals]);
+  useEffect(() => { 
+    if (activeTab === "Dashboard") {
+      fetchDashboard();
+    }
+    fetchDeals(); 
+  }, [fetchDeals, fetchDashboard, activeTab]);
+
   useEffect(() => { if (selectedId) fetchDealDetail(selectedId); }, [selectedId, fetchDealDetail]);
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
 
   const handleAction = async (action: string, body?: any) => {
     if (!selectedId) return;
     try {
-      const res = await apiFetch(`/api/deals/${selectedId}/${action}`, {
+      const res = await apiFetch(`/api/com/sales-orders/${selectedId}/${action}`, {
         method: "POST",
         body: JSON.stringify(body || {})
       });
       if (res.ok) {
         fetchDealDetail(selectedId);
         fetchDeals();
+        if (activeTab === "Dashboard") fetchDashboard();
       } else {
         const err = await res.json();
-        // Use inline error or something instead of alert if possible, but keep simple for action
         console.error(err.error || "Action failed");
+        alert(err.error || "Action failed");
       }
     } catch (e) { console.error("Network error"); }
-  };
-
-  const saveLines = async () => {
-    if (!selectedId) return;
-    try {
-      const res = await apiFetch(`/api/deals/${selectedId}/lines`, {
-        method: "PUT",
-        body: JSON.stringify({ lines })
-      });
-      if (res.ok) fetchDealDetail(selectedId);
-    } catch (e) { console.error("Save failed"); }
   };
 
   const createDeal = async () => {
     try {
       setErrorMsg(null);
-      const res = await apiFetch("/api/deals", {
+      // Validate lines
+      const validLines = newDeal.lines.filter(l => l.description.trim() !== "" && l.quantity > 0);
+      if (validLines.length === 0) {
+        setErrorMsg("At least one valid line is required");
+        return;
+      }
+
+      const payload = { ...newDeal, lines: validLines };
+      if (!payload.requested_date) delete (payload as any).requested_date;
+
+      const res = await apiFetch("/api/com/sales-orders", {
         method: "POST",
-        body: JSON.stringify(newDeal)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         const data = await res.json();
         setShowCreate(false);
-        setSelectedId(data.id);
+        setSelectedId(data.data.public_id);
+        setNewDeal({
+            customer_id: 0,
+            order_date: new Date().toISOString().split("T")[0],
+            requested_date: "",
+            currency: "GBP",
+            notes: "",
+            lines: [{ description: "", quantity: 1, unit_of_measure: "EA", unit_price: 0, discount_pct: 0 }]
+        });
         fetchDeals();
+        fetchDashboard();
       } else {
         const err = await res.json();
         setErrorMsg(err.error || "Create failed");
       }
     } catch (e) { setErrorMsg("Network error"); }
+  };
+
+  const handleAddLine = () => {
+    setNewDeal({
+      ...newDeal,
+      lines: [...newDeal.lines, { description: "", quantity: 1, unit_of_measure: "EA", unit_price: 0, discount_pct: 0 }]
+    });
+  };
+
+  const updateLine = (index: number, field: string, value: any) => {
+    const newLines = [...newDeal.lines];
+    newLines[index] = { ...newLines[index], [field]: value };
+    setNewDeal({ ...newDeal, lines: newLines });
   };
 
   return (
@@ -215,7 +283,7 @@ export default function DealFlowPage() {
                 { key: "All", label: "All Deals" },
                 { key: "Confirmed", label: "Confirmed" },
                 { key: "In Pick", label: "In Pick" },
-                { key: "Shipped", label: "Shipped" }
+                { key: "Dispatched", label: "Dispatched" }
               ]}
               active={activeTab}
               onChange={setActiveTab}
@@ -226,18 +294,18 @@ export default function DealFlowPage() {
           {deals.map(d => (
             <div 
               key={d.id} 
-              onClick={() => setSelectedId(d.id)}
-              className={`sx-list-item ${selectedId === d.id ? 'sx-list-item--active' : ''}`}
+              onClick={() => setSelectedId(d.public_id)}
+              className={`sx-list-item ${selectedId === d.public_id ? 'sx-list-item--active' : ''}`}
               style={{ padding: "16px 24px", display: "block", borderBottom: "1px solid var(--border)", height: "auto" }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                <span style={{ fontWeight: 700, color: "var(--accent)" }}>{d.deal_number}</span>
+                <span style={{ fontWeight: 700, color: "var(--accent)" }}>{d.so_number}</span>
                 <Badge label={d.status} status={d.status} />
               </div>
               <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{d.customer_name}</div>
               <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4, display: "flex", justifyContent: "space-between" }}>
-                <span>{new Date(d.requested_delivery).toLocaleDateString()}</span>
-                <span style={{ color: "var(--text-primary)" }}>{d.currency} {d.total_amount.toLocaleString()}</span>
+                <span>{d.requested_date ? new Date(d.requested_date).toLocaleDateString() : 'No Delivery Date'}</span>
+                <span style={{ color: "var(--text-primary)" }}>{d.currency} {Number(d.total_amount).toLocaleString()}</span>
               </div>
             </div>
           ))}
@@ -251,12 +319,12 @@ export default function DealFlowPage() {
             {activeTab === "Dashboard" ? (
               <div className="space-y-8 animate-in fade-in duration-500">
                 <div className="grid grid-cols-4 gap-4">
-                  <KpiCard label="TOTAL DEALS" value={deals.length} />
-                  <KpiCard label="CONFIRMED" value={deals.filter(d => d.status === 'CONFIRMED').length} />
-                  <KpiCard label="SHIPPED (7D)" value={deals.filter(d => d.status === 'SHIPPED').length} deltaDir="up" />
+                  <KpiCard label="TOTAL DEALS" value={dashboard?.total_orders || 0} />
+                  <KpiCard label="CONFIRMED" value={dashboard?.confirmed || 0} />
+                  <KpiCard label="DISPATCHED" value={dashboard?.dispatched || 0} deltaDir="up" />
                   <KpiCard 
                     label="TOTAL REVENUE" 
-                    value={`${deals[0]?.currency || 'USD'} ${deals.reduce((acc, d) => acc + d.total_amount, 0).toLocaleString()}`} 
+                    value={`GBP ${(dashboard?.total_revenue || 0).toLocaleString()}`} 
                   />
                 </div>
 
@@ -268,11 +336,11 @@ export default function DealFlowPage() {
                         {deals.slice(0, 5).map(d => (
                           <div key={d.id} className="flex justify-between items-center text-sm">
                             <div>
-                              <div className="font-bold text-[var(--accent)]">{d.deal_number}</div>
+                              <div className="font-bold text-[var(--accent)]">{d.so_number}</div>
                               <div className="text-[10px] opacity-40">{d.customer_name}</div>
                             </div>
                             <div className="text-right">
-                              <div className="font-bold">{d.currency} {d.total_amount.toLocaleString()}</div>
+                              <div className="font-bold">{d.currency} {Number(d.total_amount).toLocaleString()}</div>
                               <Badge label={d.status} status={d.status} />
                             </div>
                           </div>
@@ -286,18 +354,14 @@ export default function DealFlowPage() {
                     <CardBody>
                       <div className="space-y-4">
                         <div className="flex justify-between items-center text-xs">
-                          <span className="text-[var(--text-3)]">Top Customer</span>
-                          <span className="font-bold text-[var(--accent)]">{deals[0]?.customer_name || '—'}</span>
+                          <span className="text-[var(--text-3)]">Pending Value</span>
+                          <span className="font-bold text-[var(--accent)]">GBP {Number(dashboard?.pending_value || 0).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between items-center text-xs">
                           <span className="text-[var(--text-3)]">Avg Deal Value</span>
                           <span className="font-bold">
-                            {deals[0]?.currency || 'USD'} {(deals.reduce((acc, d) => acc + d.total_amount, 0) / (deals.length || 1)).toFixed(0)}
+                            GBP {Number(dashboard?.avg_order_value || 0).toFixed(0)}
                           </span>
-                        </div>
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-[var(--text-3)]">Fulfillment Rate</span>
-                          <span className="font-bold text-green-400">94.2%</span>
                         </div>
                       </div>
                     </CardBody>
@@ -322,24 +386,22 @@ export default function DealFlowPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-                    <h1 className="sx-page-title" style={{ fontSize: '24px' }}>{deal?.deal_number}</h1>
+                    <h1 className="sx-page-title" style={{ fontSize: '24px' }}>{deal?.so_number}</h1>
                     <Badge label={deal?.status || ""} status={deal?.status || ""} />
-                    <Badge label={deal?.payment_status || ""} status={deal?.payment_status || ""} />
                   </div>
                   <div style={{ fontSize: '16px', fontWeight: 600, color: "var(--text-1)" }}>{deal?.customer_name}</div>
-                  <div className="sx-page-sub">Ordered: {deal?.deal_date} | Requested: {deal?.requested_delivery}</div>
+                  <div className="sx-page-sub">Ordered: {deal?.order_date} | Requested: {deal?.requested_date || 'N/A'}</div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   {deal?.status === "DRAFT" && (
                     <>
-                      <button onClick={saveLines} className="sx-btn">CHECK AVAILABILITY</button>
                       <button onClick={() => handleAction("confirm")} className="sx-btn sx-btn--primary">CONFIRM DEAL</button>
                     </>
                   )}
                   {deal?.status === "CONFIRMED" && (
                     <button className="sx-btn sx-btn--primary" style={{ background: 'var(--green)', color: '#000' }}>CREATE SHIPMENT</button>
                   )}
-                  {deal?.status !== "SHIPPED" && deal?.status !== "DELIVERED" && deal?.status !== "CANCELLED" && (
+                  {deal?.status !== "DISPATCHED" && deal?.status !== "DELIVERED" && deal?.status !== "CANCELLED" && (
                     <button onClick={() => handleAction("cancel")} className="sx-btn" style={{ color: 'var(--red)', borderColor: 'var(--red-dim)' }}>CANCEL</button>
                   )}
                 </div>
@@ -348,15 +410,14 @@ export default function DealFlowPage() {
 
             {/* Content */}
             <div style={{ flex: 1, overflowY: "auto", padding: 32 }}>
-              {/* Customer Collapsible Placeholder */}
               {/* Customer Info */}
               <div className="sx-card" style={{ marginBottom: 24, padding: '20px' }}>
                  <div className="sx-label" style={{ marginBottom: '16px' }}>Customer Details</div>
                  <div className="sx-form-grid">
                     <div>
                       <div style={{ fontSize: '14px', fontWeight: 700, color: "var(--text-1)" }}>{deal?.customer_name}</div>
-                      <div style={{ color: "var(--text-2)", fontSize: '13px', marginTop: '4px' }}>{deal?.customer_email}</div>
-                      <div style={{ color: "var(--text-2)", fontSize: '13px' }}>{deal?.customer_phone}</div>
+                      <div style={{ color: "var(--text-2)", fontSize: '13px', marginTop: '4px' }}>{deal?.customer_email || 'No email provided'}</div>
+                      <div style={{ color: "var(--text-2)", fontSize: '13px' }}>{deal?.customer_code}</div>
                     </div>
                     <div>
                       <div className="sx-label">Notes</div>
@@ -371,41 +432,33 @@ export default function DealFlowPage() {
                   <thead>
                     <tr>
                       <th>Line</th>
-                      <th>Material</th>
+                      <th>Material / Description</th>
                       <th style={{ textAlign: "right" }}>Ordered</th>
-                      <th style={{ textAlign: "right" }}>Confirmed</th>
-                      <th style={{ textAlign: "right" }}>Shipped</th>
+                      <th style={{ textAlign: "right" }}>Delivered</th>
                       <th style={{ textAlign: "right" }}>Price</th>
+                      <th style={{ textAlign: "right" }}>Discount %</th>
                       <th style={{ textAlign: "right" }}>Total</th>
-                      <th style={{ textAlign: "center" }}>Availability</th>
+                      <th style={{ textAlign: "center" }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {lines.map(l => (
                       <tr key={l.id}>
-                        <td>{l.line_no}</td>
+                        <td>{l.line_number}</td>
                         <td>
-                          <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{l.material_name}</div>
-                          <div className="sx-mono">{l.material_code}</div>
+                          <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{l.description}</div>
+                          {l.material_code && <div className="sx-mono">{l.material_code} - {l.material_name}</div>}
                         </td>
-                        <td style={{ textAlign: "right" }}>{l.ordered_qty} {l.unit_of_measure}</td>
-                        <td style={{ textAlign: "right" }}>{l.confirmed_qty}</td>
-                        <td style={{ textAlign: "right" }}>{l.shipped_qty}</td>
-                        <td style={{ textAlign: "right" }}>{l.unit_price.toFixed(2)}</td>
-                        <td style={{ textAlign: "right", fontWeight: 700, color: "var(--text-1)" }}>{l.line_total.toFixed(2)}</td>
+                        <td style={{ textAlign: "right" }}>{Number(l.quantity)} {l.unit_of_measure}</td>
+                        <td style={{ textAlign: "right" }}>{Number(l.delivered_qty)}</td>
+                        <td style={{ textAlign: "right" }}>{Number(l.unit_price).toFixed(2)}</td>
+                        <td style={{ textAlign: "right" }}>{Number(l.discount_pct).toFixed(2)}%</td>
+                        <td style={{ textAlign: "right", fontWeight: 700, color: "var(--text-1)" }}>{Number(l.line_total).toFixed(2)}</td>
                         <td style={{ textAlign: "center" }}>
-                          <Badge label={l.availability_status} status={l.availability_status} />
-                          {l.availability_status === 'PARTIAL' && <div style={{ fontSize: 10, color: "var(--amber)", marginTop: 4 }}>{l.available_qty} avail</div>}
+                          <Badge label={l.status} status={l.status} />
                         </td>
                       </tr>
                     ))}
-                    {deal?.status === "DRAFT" && (
-                      <tr>
-                        <td colSpan={8} style={{ padding: '12px', textAlign: "center" }}>
-                           <button className="sx-btn" style={{ borderStyle: "dashed", width: "100%", justifyContent: "center" }}>+ ADD LINE</button>
-                        </td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
               </div>
@@ -415,15 +468,15 @@ export default function DealFlowPage() {
                 <div className="sx-card" style={{ width: 300, padding: '20px' }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
                     <span style={{ color: "var(--text-3)", fontSize: '13px', fontWeight: 600 }}>Subtotal</span>
-                    <span style={{ color: "var(--text-1)", fontSize: '13px' }}>{deal?.subtotal.toFixed(2)}</span>
+                    <span style={{ color: "var(--text-1)", fontSize: '13px' }}>{Number(deal?.subtotal || 0).toFixed(2)}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-                    <span style={{ color: "var(--text-3)", fontSize: '13px', fontWeight: 600 }}>Tax (20%)</span>
-                    <span style={{ color: "var(--text-1)", fontSize: '13px' }}>{deal?.tax_amount.toFixed(2)}</span>
+                    <span style={{ color: "var(--text-3)", fontSize: '13px', fontWeight: 600 }}>Tax</span>
+                    <span style={{ color: "var(--text-1)", fontSize: '13px' }}>{Number(deal?.tax_amount || 0).toFixed(2)}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 16, fontWeight: 700, fontSize: '18px' }}>
                     <span style={{ color: "var(--accent)" }}>TOTAL</span>
-                    <span style={{ color: "var(--accent)" }}>{deal?.currency} {deal?.total_amount.toFixed(2)}</span>
+                    <span style={{ color: "var(--accent)" }}>{deal?.currency} {Number(deal?.total_amount || 0).toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -435,7 +488,7 @@ export default function DealFlowPage() {
       {/* Create Modal */}
       {showCreate && (
         <div className="sx-modal-overlay">
-          <div className="sx-modal">
+          <div className="sx-modal" style={{ width: '600px' }}>
             <h3 className="sx-modal-title">New Deal</h3>
             <div className="sx-modal-sub">Create a new customer sales deal</div>
             {errorMsg && (
@@ -452,22 +505,61 @@ export default function DealFlowPage() {
                   className="sx-select"
                 >
                   <option value={0}>Select Customer...</option>
-                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {customers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
                 </select>
               </div>
               <div className="sx-field">
                 <label className="sx-label">DATE</label>
-                <input type="date" className="sx-input" value={newDeal.deal_date} onChange={e => setNewDeal({...newDeal, deal_date: e.target.value})} />
+                <input type="date" className="sx-input" value={newDeal.order_date} onChange={e => setNewDeal({...newDeal, order_date: e.target.value})} />
               </div>
               <div className="sx-field">
                 <label className="sx-label">REQ. DELIVERY</label>
-                <input type="date" className="sx-input" value={newDeal.requested_delivery} onChange={e => setNewDeal({...newDeal, requested_delivery: e.target.value})} />
+                <input type="date" className="sx-input" value={newDeal.requested_date} onChange={e => setNewDeal({...newDeal, requested_date: e.target.value})} />
               </div>
               <div className="sx-field sx-field--full">
                 <label className="sx-label">NOTES</label>
                 <textarea className="sx-textarea" value={newDeal.notes} onChange={e => setNewDeal({...newDeal, notes: e.target.value})} />
               </div>
             </div>
+
+            <div style={{ marginTop: '24px' }}>
+              <div className="sx-label" style={{ marginBottom: '8px' }}>LINE ITEMS</div>
+              {newDeal.lines.map((line, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                  <input 
+                    type="text" 
+                    className="sx-input" 
+                    style={{ flex: 2 }} 
+                    placeholder="Description" 
+                    value={line.description} 
+                    onChange={e => updateLine(idx, 'description', e.target.value)} 
+                  />
+                  <input 
+                    type="number" 
+                    className="sx-input" 
+                    style={{ flex: 1 }} 
+                    placeholder="Qty" 
+                    value={line.quantity} 
+                    min={1}
+                    onChange={e => updateLine(idx, 'quantity', parseFloat(e.target.value))} 
+                  />
+                  <input 
+                    type="number" 
+                    className="sx-input" 
+                    style={{ flex: 1 }} 
+                    placeholder="Price" 
+                    value={line.unit_price} 
+                    min={0}
+                    step={0.01}
+                    onChange={e => updateLine(idx, 'unit_price', parseFloat(e.target.value))} 
+                  />
+                </div>
+              ))}
+              <button className="sx-btn" onClick={handleAddLine} style={{ marginTop: '8px', fontSize: '12px' }}>
+                + Add Line
+              </button>
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
               <button className="sx-btn" onClick={() => setShowCreate(false)}>Cancel</button>
               <button className="sx-btn sx-btn--primary" onClick={createDeal}>Create Deal</button>

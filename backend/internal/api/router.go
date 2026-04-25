@@ -38,7 +38,7 @@ type RouterDeps struct {
 	UsersHandler     *handlers.UsersHandler
 	BuildHandler     *handlers.BuildHandler
 	QualityHandler   *handlers.QualityHandler
-	DealflowHandler  *handlers.DealflowHandler
+	DealFlowHandler  *handlers.DealFlowHandler
 	RouteRunnerHandler *handlers.RouteRunnerHandler
 }
 
@@ -356,18 +356,18 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		}
 
 		// Phase 4: DealFlow & RouteRunner
-		if deps.DealflowHandler != nil {
-			secured.GET ("/api/customers",        deps.DealflowHandler.ListCustomers)
-			secured.POST("/api/customers",        deps.DealflowHandler.CreateCustomer)
-			secured.GET ("/api/customers/:id",    deps.DealflowHandler.GetCustomer)
-			secured.PUT ("/api/customers/:id",    deps.DealflowHandler.UpdateCustomer)
-
-			secured.GET ("/api/deals",             deps.DealflowHandler.ListDeals)
-			secured.POST("/api/deals",             deps.DealflowHandler.CreateDeal)
-			secured.GET ("/api/deals/:id",         deps.DealflowHandler.GetDeal)
-			secured.PUT ("/api/deals/:id/lines",   deps.DealflowHandler.UpsertDealLines)
-			secured.POST("/api/deals/:id/confirm", deps.DealflowHandler.ConfirmDeal)
-			secured.POST("/api/deals/:id/cancel",  deps.DealflowHandler.CancelDeal)
+		if deps.DealFlowHandler != nil {
+			com := secured.Group("/api/com")
+			com.GET("/customers",     deps.DealFlowHandler.ListCustomers)
+			com.POST("/customers",    deps.DealFlowHandler.CreateCustomer)
+			
+			com.GET("/sales-orders",              deps.DealFlowHandler.ListSalesOrders)
+			com.POST("/sales-orders",             deps.DealFlowHandler.CreateSalesOrder)
+			com.GET("/sales-orders/:id",          deps.DealFlowHandler.GetSalesOrder)
+			com.POST("/sales-orders/:id/confirm", deps.DealFlowHandler.ConfirmSalesOrder)
+			com.POST("/sales-orders/:id/cancel",  deps.DealFlowHandler.CancelSalesOrder)
+			
+			com.GET("/deal-flow/dashboard",       deps.DealFlowHandler.GetDashboard)
 		}
 
 		if deps.RouteRunnerHandler != nil {

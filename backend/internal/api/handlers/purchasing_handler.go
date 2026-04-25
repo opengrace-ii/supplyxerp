@@ -567,9 +567,9 @@ func (h *PurchasingHandler) ListPOItems(c *gin.Context) {
 		}
 		flatRows[i] = FlatRow{
 			GetPurchaseOrderWithLinesRow: r,
-			MaterialName:                 r.MaterialName.String,
-			MaterialCode:                 r.MaterialCode.String,
-			SupplierName:                 r.SupplierName.String,
+			MaterialName:                 r.MaterialName,
+			MaterialCode:                 r.MaterialCode,
+			SupplierName:                 r.SupplierName,
 			ItemNo:                       itemNo,
 		}
 	}
