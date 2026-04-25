@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { TopBar } from './layout/TopBar';
 import { Sidebar } from './layout/Sidebar';
 import { useAppStore } from '../store/useAppStore';
+import { useSectionStore } from '../store/sectionStore';
 import LoginPage from './LoginPage';
 import StockFlowPanel from '../components/operation/StockFlowPanel';
 import Tenants from './Config/Tenants';
@@ -32,7 +33,8 @@ import ModuleConfig from './Config/ModuleConfig';
 import Notifications from './Config/Notifications';
 
 const AppPage: React.FC = () => {
-  const { currentModule, user, isAuthLoading, checkSession } = useAppStore();
+  const { currentModule, currentTab, user, isAuthLoading, checkSession } = useAppStore();
+  const { setSection } = useSectionStore();
 
   useEffect(() => {
     if (user && !(window as any).supplyxerpWs) {
@@ -54,6 +56,8 @@ const AppPage: React.FC = () => {
   useEffect(() => {
     checkSession();
   }, [checkSession]);
+
+
 
   if (isAuthLoading) {
     return (

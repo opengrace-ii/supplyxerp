@@ -95,20 +95,30 @@ const SystemLog: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="sx-card" style={{ display: 'flex', gap: '16px', marginBottom: '24px', padding: '16px 24px', alignItems: 'center' }}>
-        <Input 
-          type="text" 
-          placeholder="Search logs..." 
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="sx-input"
-          style={{ flex: 1 }}
-        />
+      <div style={{ 
+        display: 'flex', 
+        gap: '12px', 
+        marginBottom: '16px', 
+        padding: '16px 0', 
+        alignItems: 'center',
+        borderBottom: '1px solid var(--border)',
+        margin: '0 4px'
+      }}>
+        <div style={{ flex: 1, position: 'relative' }}>
+          <Input 
+            type="text" 
+            placeholder="Search logs..." 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="sx-input"
+            style={{ width: '100%' }}
+          />
+        </div>
         <Select 
           value={filterLevel} 
           onChange={(e) => setFilterLevel(e.target.value)}
           className="sx-input sx-select"
-          style={{ width: 160 }}
+          style={{ width: 140 }}
         >
           <option value="">All Levels</option>
           <option value="ERROR">Error Only</option>
@@ -119,7 +129,7 @@ const SystemLog: React.FC = () => {
           value={filterCategory} 
           onChange={(e) => setFilterCategory(e.target.value)}
           className="sx-input sx-select"
-          style={{ width: 160 }}
+          style={{ width: 140 }}
         >
           <option value="">All Modules</option>
           <option value="AUTH">Auth</option>
@@ -128,7 +138,7 @@ const SystemLog: React.FC = () => {
           <option value="WAREHOUSE">Warehouse</option>
           <option value="API">Public API</option>
         </Select>
-        <button onClick={fetchLogs} className="sx-btn sx-btn--primary" style={{ padding: "10px 16px" }}>Refresh</button>
+        <button onClick={fetchLogs} className="sx-btn sx-btn--primary" style={{ padding: "8px 20px", height: '36px' }}>Refresh</button>
       </div>
 
       {/* Logs Table */}

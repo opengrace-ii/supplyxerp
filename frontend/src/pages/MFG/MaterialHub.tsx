@@ -129,7 +129,7 @@ export const MaterialHub: React.FC = () => {
                                           <circle cx="7" cy="7" r="4.5"/>
                                           <path d="M11 11l2.5 2.5" strokeLinecap="round"/>
                                         </svg>
-                                        <input  style={{ background:'var(--bg-input)', color:'var(--text-1)', border:'1px solid var(--border-hi)', borderRadius:'6px', padding:'0 10px', height:'36px', width:'100%', fontFamily:'var(--font-sans)', fontSize:'13px', outline:'none' }} type="text" placeholder="Search materials..." />
+                                        <input type="text" placeholder="Search materials..." />
                                     </div>
                                     <Button variant="primary" onClick={() => setShowAddForm(true)}>+ New Material</Button>
                                 </div>

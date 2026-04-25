@@ -20,9 +20,10 @@ const FIRST_MODULE: Record<Section, string> = {
 
 export function TopBar() {
   const { section, theme, setSection, toggleTheme } = useSectionStore()
-  const { setModule, user, logout } = useAppStore()
+  const { setTab, setModule, user, logout } = useAppStore()
 
   const handleSectionClick = (key: Section) => {
+    setTab(key)
     setSection(key)
     setModule(FIRST_MODULE[key])
   }
@@ -237,20 +238,27 @@ export function TopBar() {
         </button>
 
         {/* Notifications */}
-        <button style={{
-          height: '28px',
-          padding: '0 10px',
-          borderRadius: '6px',
-          border: '1px solid var(--border)',
-          background: 'var(--bg-surface2)',
-          color: 'var(--text-2)',
-          fontFamily: 'Inter, system-ui, sans-serif',
-          fontSize: '11px',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '5px',
-        }}>
+        <button 
+          onClick={() => {
+            setTab('cfg');
+            setSection('cfg');
+            setModule('Notifications');
+          }}
+          style={{
+            height: '28px',
+            padding: '0 10px',
+            borderRadius: '6px',
+            border: '1px solid var(--border)',
+            background: 'var(--bg-surface2)',
+            color: 'var(--text-2)',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: '11px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+          }}
+        >
           Notifications
           <span style={{
             background: 'var(--accent)',

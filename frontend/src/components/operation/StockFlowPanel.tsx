@@ -513,12 +513,14 @@ const StockFlowPanel: React.FC = () => {
     const TABS = MODES.map(m => ({ key: m, label: m }));
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {/* Header */}
-            <div className="px-0 pt-1 pb-0">
+        <div className="flex flex-col h-full bg-[var(--bg-base)] overflow-y-auto">
+            {/* Module Header */}
+            <div className="p-8 border-b border-[var(--border)] bg-white/[0.01]">
                 <h1 className="text-xl font-bold text-[var(--accent)] tracking-tight">StockFlow Core</h1>
                 <p className="text-sm text-[var(--text-3)] mt-1">Real-time warehouse scanning operations</p>
             </div>
+
+            <div className="flex-1 p-8 space-y-8">
 
             {/* Mode Tabs */}
             <SectionTabs
@@ -821,6 +823,7 @@ const StockFlowPanel: React.FC = () => {
                     </div>
                 </div>
             )}
+            </div>
         </div>
     );
 };

@@ -49,7 +49,7 @@ function lightenSidebarBg(s: Section): string {
 }
 
 export const useSectionStore = create<SectionStore>((set, get) => ({
-  section: 'mfg',
+  section: (localStorage.getItem('supplyxerp_last_tab') as Section) || 'ops',
   theme: (localStorage.getItem('sx-theme') as Theme) || 'dark',
 
   setSection(s) {
@@ -66,5 +66,6 @@ export const useSectionStore = create<SectionStore>((set, get) => ({
 }))
 
 // Apply on app load
-const saved = (localStorage.getItem('sx-theme') as Theme) || 'dark'
-applySection('mfg', saved)
+const savedTheme = (localStorage.getItem('sx-theme') as Theme) || 'dark'
+const savedSection = (localStorage.getItem('supplyxerp_last_tab') as Section) || 'ops'
+applySection(savedSection, savedTheme)

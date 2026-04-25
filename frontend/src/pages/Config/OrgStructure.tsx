@@ -81,7 +81,12 @@ const OrgStructure: React.FC = () => {
     setTimeout(() => setToast(null), 3000); 
   };
 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const results = await Promise.allSettled([
         apiClient.get('/api/org/companies'),
@@ -91,13 +96,22 @@ const OrgStructure: React.FC = () => {
         apiClient.get('/api/org/procurement-teams'),
       ]);
       
-      if (results[0].status === 'fulfilled') setCompanies((results[0].value as any).data?.companies || []);
+      const res0 = results[0];
+      if (res0.status === 'fulfilled') {
+        setCompanies((res0.value as any).data?.companies || []);
+      } else {
+        setError("Failed to load companies data.");
+      }
+
       if (results[1].status === 'fulfilled') setSites((results[1].value as any).data?.sites || []);
       if (results[2].status === 'fulfilled') setCalendars((results[2].value as any).data?.calendars || []);
       if (results[3].status === 'fulfilled') setProcUnits((results[3].value as any).data?.procurement_units || []);
       if (results[4].status === 'fulfilled') setProcTeams((results[4].value as any).data?.procurement_teams || []);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Refresh failed", err);
+      setError("An unexpected error occurred while loading organisational data.");
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -110,16 +124,29 @@ const OrgStructure: React.FC = () => {
           <h1 className="text-xl font-bold text-[var(--accent)] tracking-tight">Organisational Structure</h1>
           <p className="text-sm text-[var(--text-3)] mt-1">Manage tenants, companies, sites and procurement units</p>
         </div>
-        <Button variant="ghost" onClick={refresh}>RELOAD STRUCTURE</Button>
+        <Button onClick={refresh} disabled={loading}>{loading ? 'Refreshing...' : 'RELOAD STRUCTURE'}</Button>
       </div>
+
+      {error && (
+        <div className="px-8 py-4">
+          <InlineAlert type="error" message={error} />
+        </div>
+      )}
 
       <div className="flex flex-1 overflow-hidden">
         {/* LEFT TREE */}
         <div className="w-[300px] border-r border-[var(--border)] overflow-y-auto bg-white/[0.01] flex flex-col p-4 space-y-6">
-        <div>
-          <h2 className="text-[10px] font-bold text-[var(--accent)] tracking-widest uppercase opacity-60 mb-4 px-2">
-            Organisational Master
-          </h2>
+        {loading && companies.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-[var(--text-4)] animate-pulse">
+            <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin mb-4" />
+            <span className="text-[11px] font-medium tracking-wider uppercase">Loading Structure...</span>
+          </div>
+        ) : (
+          <>
+            <div>
+              <h2 className="text-[10px] font-bold text-[var(--accent)] tracking-widest uppercase opacity-60 mb-4 px-2">
+                Organisational Master
+              </h2>
           <TreeItem label="Tenant Profile" icon="🏢" type="tenant" selected={selected} onClick={setSelected} />
         </div>
 
@@ -189,6 +216,8 @@ const OrgStructure: React.FC = () => {
             </button>
           </div>
         </div>
+        </>
+      )}
       </div>
 
       {/* MIDDLE PANEL */}

@@ -111,7 +111,7 @@ export default function UsersRoles() {
     <div className="p-10 max-w-6xl mx-auto space-y-8 bg-[var(--bg-base)]">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white/95">Users & Roles</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-[var(--accent)]">Users & Roles</h1>
           <p className="text-sm text-[var(--text-2)] mt-2">Manage system access and permissions</p>
         </div>
         <Button variant="primary" onClick={() => setShowAdd(true)}>+ New User</Button>
