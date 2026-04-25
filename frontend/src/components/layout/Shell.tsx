@@ -1,6 +1,6 @@
 import React from 'react';
-import Sidebar from './Sidebar';
-import TopBar from './TopBar';
+import { Sidebar } from '../../pages/layout/Sidebar';
+import { TopBar } from '../../pages/layout/TopBar';
 import { useAppStore } from '../../store/useAppStore';
 
 const Shell: React.FC<{children: React.ReactNode}> = ({ children }) => {

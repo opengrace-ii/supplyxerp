@@ -247,7 +247,7 @@ export const Setup: React.FC = () => {
                                     <div className="grid grid-cols-2 gap-6">
                                         <div className="space-y-3">
                                             <div className="text-[10px] font-black text-[var(--text-4)] uppercase tracking-widest px-1">Material Master</div>
-                                            <input type="file" accept=".csv" className="hidden" id="csv-p" onChange={(e) => e.target.files && handleFileUpload('products', e.target.files[0])} />
+                                            <input  style={{ background:'var(--bg-input)', color:'var(--text-1)', border:'1px solid var(--border-hi)', borderRadius:'6px', padding:'0 10px', height:'36px', width:'100%', fontFamily:'var(--font-sans)', fontSize:'13px', outline:'none' }} type="file" accept=".csv" className="hidden" id="csv-p" onChange={(e) => e.target.files && handleFileUpload('products', e.target.files[0])} />
                                             <label htmlFor="csv-p" className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-[var(--border)] rounded-2xl cursor-pointer hover:bg-white/5 hover:border-[var(--accent)]/40 transition-all text-[var(--text-4)] hover:text-[var(--text-2)]">
                                                 <span className="text-2xl mb-2">📦</span>
                                                 <span className="text-xs font-bold uppercase tracking-widest">Upload Materials CSV</span>
@@ -255,7 +255,7 @@ export const Setup: React.FC = () => {
                                         </div>
                                         <div className="space-y-3">
                                             <div className="text-[10px] font-black text-[var(--text-4)] uppercase tracking-widest px-1">Opening Balances</div>
-                                            <input type="file" accept=".csv" className="hidden" id="csv-ob" onChange={(e) => e.target.files && handleFileUpload('ob', e.target.files[0])} />
+                                            <input  style={{ background:'var(--bg-input)', color:'var(--text-1)', border:'1px solid var(--border-hi)', borderRadius:'6px', padding:'0 10px', height:'36px', width:'100%', fontFamily:'var(--font-sans)', fontSize:'13px', outline:'none' }} type="file" accept=".csv" className="hidden" id="csv-ob" onChange={(e) => e.target.files && handleFileUpload('ob', e.target.files[0])} />
                                             <label htmlFor="csv-ob" className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-[var(--border)] rounded-2xl cursor-pointer hover:bg-white/5 hover:border-[var(--accent)]/40 transition-all text-[var(--text-4)] hover:text-[var(--text-2)]">
                                                 <span className="text-2xl mb-2">⚖️</span>
                                                 <span className="text-xs font-bold uppercase tracking-widest">Upload Balances CSV</span>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { KpiCard } from '@/components/ui/KpiCard';
+import { Input, Select } from '@/components/ui/Form';
 
 interface SystemLog {
   id: number;
@@ -95,7 +96,7 @@ const SystemLog: React.FC = () => {
 
       {/* Filters */}
       <div className="sx-card" style={{ display: 'flex', gap: '16px', marginBottom: '24px', padding: '16px 24px', alignItems: 'center' }}>
-        <input 
+        <Input 
           type="text" 
           placeholder="Search logs..." 
           value={search}
@@ -103,7 +104,7 @@ const SystemLog: React.FC = () => {
           className="sx-input"
           style={{ flex: 1 }}
         />
-        <select 
+        <Select 
           value={filterLevel} 
           onChange={(e) => setFilterLevel(e.target.value)}
           className="sx-input sx-select"
@@ -113,8 +114,8 @@ const SystemLog: React.FC = () => {
           <option value="ERROR">Error Only</option>
           <option value="WARN">Warning</option>
           <option value="INFO">Info</option>
-        </select>
-        <select 
+        </Select>
+        <Select 
           value={filterCategory} 
           onChange={(e) => setFilterCategory(e.target.value)}
           className="sx-input sx-select"
@@ -126,7 +127,7 @@ const SystemLog: React.FC = () => {
           <option value="PO">PO Enrich</option>
           <option value="WAREHOUSE">Warehouse</option>
           <option value="API">Public API</option>
-        </select>
+        </Select>
         <button onClick={fetchLogs} className="sx-btn sx-btn--primary" style={{ padding: "10px 16px" }}>Refresh</button>
       </div>
 

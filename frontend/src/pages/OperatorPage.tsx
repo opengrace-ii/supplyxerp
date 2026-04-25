@@ -44,7 +44,7 @@ const OperatorPage: React.FC = () => {
           {loginError && <div className="bg-red-900 text-red-100 p-3 mb-4 rounded border border-red-700 text-sm">{loginError}</div>}
           <div className="mb-4">
             <label className="block text-zinc-400 mb-2">Username</label>
-            <input 
+            <input  style={{ background:'var(--bg-input)', color:'var(--text-1)', border:'1px solid var(--border-hi)', borderRadius:'6px', padding:'0 10px', height:'36px', width:'100%', fontFamily:'var(--font-sans)', fontSize:'13px', outline:'none' }} 
               type="text" 
               className="w-full p-2 bg-zinc-900 text-white rounded border border-zinc-700 focus:outline-none focus:border-indigo-500" 
               value={username} onChange={e => setUsername(e.target.value)} 
@@ -52,7 +52,7 @@ const OperatorPage: React.FC = () => {
           </div>
           <div className="mb-6">
             <label className="block text-zinc-400 mb-2">Password</label>
-            <input 
+            <input  style={{ background:'var(--bg-input)', color:'var(--text-1)', border:'1px solid var(--border-hi)', borderRadius:'6px', padding:'0 10px', height:'36px', width:'100%', fontFamily:'var(--font-sans)', fontSize:'13px', outline:'none' }} 
               type="password" 
               className="w-full p-2 bg-zinc-900 text-white rounded border border-zinc-700 focus:outline-none focus:border-indigo-500" 
               value={password} onChange={e => setPassword(e.target.value)} 

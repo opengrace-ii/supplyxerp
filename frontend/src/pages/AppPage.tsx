@@ -170,11 +170,14 @@ const AppPage: React.FC = () => {
 
   return (
     <div
-      className="grid h-screen overflow-hidden"
       style={{
-        gridTemplateRows: 'var(--topbar-height) 1fr',
-        gridTemplateColumns: 'var(--sidebar-width) 1fr',
+        display: 'grid',
+        gridTemplateRows: 'var(--topbar-height, 46px) 1fr',
+        gridTemplateColumns: 'auto 1fr',  // auto = sidebar width
+        height: '100vh',
+        overflow: 'hidden',
         background: 'var(--bg-base)',
+        fontFamily: 'Inter, system-ui, sans-serif',
       }}
     >
       <TopBar />

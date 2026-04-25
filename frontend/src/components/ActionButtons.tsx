@@ -86,7 +86,7 @@ const ActionButtons: React.FC = () => {
           ) : (
             <>
               <label className="text-zinc-400 text-sm">Select Target Location:</label>
-              <select 
+              <select  style={{ background:'var(--bg-input)', color:'var(--text-1)', border:'1px solid var(--border-hi)', borderRadius:'6px', padding:'0 10px', height:'36px', width:'100%', fontFamily:'var(--font-sans)', fontSize:'13px', outline:'none', cursor:'pointer' }} 
                 className="w-full bg-zinc-800 border border-zinc-700 text-white rounded p-3 focus:ring-indigo-500 focus:border-indigo-500"
                 value={targetLocation}
                 onChange={e => setTargetLocation(e.target.value)}
@@ -132,7 +132,7 @@ const ActionButtons: React.FC = () => {
                       <span>Enter Quantity ({currentHU.uom}):</span>
                       <span className="text-zinc-500 text-sm font-normal">Max: {currentHU.quantity} {currentHU.uom}</span>
                     </label>
-                    <input 
+                    <input  style={{ background:'var(--bg-input)', color:'var(--text-1)', border:'1px solid var(--border-hi)', borderRadius:'6px', padding:'0 10px', height:'36px', width:'100%', fontFamily:'var(--font-sans)', fontSize:'13px', outline:'none' }} 
                       type="number" 
                       autoFocus
                       className="w-full bg-zinc-950 border border-zinc-700 text-white text-2xl p-4 rounded-lg mb-4 focus:ring-emerald-500 focus:border-emerald-500 outline-none" 

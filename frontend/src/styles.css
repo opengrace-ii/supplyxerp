@@ -6,7 +6,12 @@
 
 @layer base {
   * { box-sizing: border-box; }
-  html { font-family: 'Inter', system-ui, sans-serif; }
+  html, body, * {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  }
+  code, pre, .font-mono, .sx-mono {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+  }
   body { background: var(--bg-base); color: var(--text-1); margin: 0; overflow: hidden; }
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }

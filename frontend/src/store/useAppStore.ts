@@ -22,10 +22,11 @@ interface AppState {
   clearTraceSteps: () => void;
   setWsStatus: (status: 'connecting' | 'connected' | 'disconnected' | 'reconnecting') => void;
   setUser: (user: any | null) => void;
+  logout: () => Promise<void>;
   checkSession: () => Promise<void>;
 }
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   currentTab: 'ops',
   currentModule: 'StockFlow',
   currentMode: 'Production',
@@ -50,6 +51,16 @@ export const useAppStore = create<AppState>((set) => ({
   clearTraceSteps: () => set({ traceSteps: [] }),
   setWsStatus: (status) => set({ wsStatus: status }),
   setUser: (user) => set({ user }),
+  logout: async () => {
+    try {
+      await api.logout();
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+    localStorage.removeItem('supplyxerp_last_tab');
+    localStorage.removeItem('supplyxerp_last_mod');
+    set({ user: null, currentTab: 'ops', currentModule: 'StockFlow' });
+  },
   checkSession: async () => {
     try {
       const response = await api.getMe();

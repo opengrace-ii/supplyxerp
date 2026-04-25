@@ -1,7 +1,6 @@
-import type { ReactNode } from 'react'
+import React from 'react'
 import { useSectionStore, SECTIONS, type Section } from '@/store/sectionStore'
 import { useAppStore } from '@/store/useAppStore'
-import { Button } from '@/components/ui/Button'
 
 const RIBBON: { key: Section; label: string }[] = [
   { key: 'ops', label: 'Operations'    },
@@ -21,97 +20,290 @@ const FIRST_MODULE: Record<Section, string> = {
 
 export function TopBar() {
   const { section, theme, setSection, toggleTheme } = useSectionStore()
-  const { setModule } = useAppStore()
+  const { setModule, user, logout } = useAppStore()
 
   const handleSectionClick = (key: Section) => {
     setSection(key)
     setModule(FIRST_MODULE[key])
   }
 
+  const getInitials = () => {
+    if (!user) return '??'
+    const first = user.first_name ? user.first_name.charAt(0) : ''
+    const last = user.last_name ? user.last_name.charAt(0) : ''
+    return (first + last).toUpperCase() || 'U'
+  }
+
   return (
-    <header
-      className="col-span-2 flex items-center px-4 gap-3 select-none z-50"
-      style={{ height: 'var(--topbar-height)', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)' }}
-    >
-      {/* Logo */}
-      <span className="text-sm font-bold tracking-tight flex-shrink-0 mr-2">
-        <span className="sx-logo-supply">Supply</span>
-        <span className="sx-logo-x">X</span>
-        <span className="sx-logo-erp text-xs"> ERP</span>
-      </span>
+    <header style={{
+      gridColumn: '1 / -1',
+      height: 'var(--topbar-height, 46px)',
+      background: 'var(--bg-surface)',
+      borderBottom: '1px solid var(--border)',
+      display: 'flex',
+      alignItems: 'center',
+      padding: '0 16px',
+      gap: '12px',
+      position: 'relative',
+      zIndex: 100,
+      flexShrink: 0,
+    }}>
 
-      {/* Separator */}
-      <div className="w-px h-4 flex-shrink-0" style={{ background: 'var(--border-hi)' }} />
+      {/* ── LOGO ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: '1px',
+        flexShrink: 0,
+        marginRight: '8px',
+      }}>
+        <span style={{
+          fontFamily: 'Inter, system-ui, sans-serif',
+          fontSize: '15px',
+          fontWeight: 700,
+          color: 'var(--text-1)',
+          letterSpacing: '-0.03em',
+        }}>Supply</span>
+        <span style={{
+          fontFamily: 'Inter, system-ui, sans-serif',
+          fontSize: '15px',
+          fontWeight: 700,
+          color: 'var(--accent)',
+          letterSpacing: '-0.03em',
+        }}>X</span>
+        <span style={{
+          fontFamily: 'Inter, system-ui, sans-serif',
+          fontSize: '12px',
+          fontWeight: 400,
+          color: 'var(--text-3)',
+          marginLeft: '2px',
+          letterSpacing: '0.02em',
+        }}>ERP</span>
+      </div>
 
-      {/* Breadcrumb */}
-      <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-3)' }}>
+      {/* ── SEPARATOR ── */}
+      <div style={{
+        width: '1px',
+        height: '18px',
+        background: 'var(--border)',
+        flexShrink: 0,
+      }} />
+
+      {/* ── BREADCRUMB ── */}
+      <span style={{
+        fontFamily: 'Inter, system-ui, sans-serif',
+        fontSize: '11px',
+        color: 'var(--text-3)',
+        flexShrink: 0,
+        whiteSpace: 'nowrap',
+      }}>
         {SECTIONS[section].label} · TechLogix UK
       </span>
 
-      {/* Search */}
-      <div className="flex-1 max-w-[260px] ml-2">
-        <div className="sx-search" style={{ height: '28px', minWidth: 0 }}>
-          <svg className="w-3 h-3 flex-shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <circle cx="7" cy="7" r="4.5"/>
-            <path d="M11 11l2.5 2.5" strokeLinecap="round"/>
-          </svg>
-          <input placeholder="Search anything…" readOnly />
-          <kbd className="ml-auto text-[10px] px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: 'var(--bg-surface3)', color: 'var(--text-3)' }}>⌘K</kbd>
-        </div>
+      {/* ── SEARCH — ONE AND ONLY ONE ── */}
+      <div style={{
+        flex: 1,
+        maxWidth: '280px',
+        marginLeft: '8px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        height: '30px',
+        padding: '0 10px',
+        background: 'var(--bg-input)',
+        border: '1px solid var(--border)',
+        borderRadius: '6px',
+        cursor: 'text',
+        transition: 'border-color 150ms ease',
+      }}>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"
+          stroke="var(--text-3)" strokeWidth="1.8">
+          <circle cx="7" cy="7" r="4.5"/>
+          <path d="M11 11l2.5 2.5" strokeLinecap="round"/>
+        </svg>
+        <span style={{
+          fontSize: '12px',
+          color: 'var(--text-3)',
+          fontFamily: 'Inter, system-ui, sans-serif',
+          flex: 1,
+        }}>Search anything…</span>
+        <kbd style={{
+          fontSize: '10px',
+          color: 'var(--text-4)',
+          background: 'var(--bg-surface2)',
+          padding: '1px 5px',
+          borderRadius: '3px',
+          fontFamily: 'inherit',
+        }}>⌘K</kbd>
       </div>
 
-      {/* Ribbon tabs */}
-      <nav className="flex items-stretch ml-4 gap-0.5 h-full">
+      {/* ── RIBBON TABS ── */}
+      <nav style={{
+        display: 'flex',
+        alignItems: 'stretch',
+        height: '100%',
+        marginLeft: '8px',
+        gap: '0',
+        flexShrink: 0,
+      }}>
         {RIBBON.map(({ key, label }) => {
-          const active = section === key
+          const isActive = section === key
           const accent = SECTIONS[key].accent
           return (
             <button
               key={key}
               onClick={() => handleSectionClick(key)}
-              className="relative flex items-center gap-1.5 px-3.5 text-xs font-medium cursor-pointer border-none bg-transparent transition-colors duration-150 h-full whitespace-nowrap"
-              style={{ color: active ? accent : 'var(--text-3)' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '7px',
+                padding: '0 14px',
+                height: '100%',
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                position: 'relative',
+                fontFamily: 'Inter, system-ui, sans-serif',
+                fontSize: '12.5px',
+                fontWeight: isActive ? 600 : 400,
+                color: isActive ? accent : 'var(--text-3)',
+                whiteSpace: 'nowrap',
+                transition: 'color 150ms ease',
+                borderBottom: isActive
+                  ? `2px solid ${accent}`
+                  : '2px solid transparent',
+                marginBottom: '-1px',
+              }}
             >
-              <span className="w-2 h-2 rounded-[2px] flex-shrink-0 transition-opacity" style={{ background: accent, opacity: active ? 1 : 0.35 }} />
+              <span style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '2px',
+                background: accent,
+                opacity: isActive ? 1 : 0.35,
+                flexShrink: 0,
+                display: 'inline-block',
+              }} />
               {label}
-              {active && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t" style={{ background: accent }} />
-              )}
             </button>
           )
         })}
       </nav>
 
-      {/* Right side */}
-      <div className="ml-auto flex items-center gap-2">
-        <div className="flex items-center gap-1.5 text-xs">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-          <span className="text-green-400 font-medium">Live</span>
+      {/* ── RIGHT SIDE ── */}
+      <div style={{
+        marginLeft: 'auto',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        flexShrink: 0,
+      }}>
+        {/* Live indicator */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span style={{
+            width: '7px', height: '7px', borderRadius: '50%',
+            background: '#22c55e',
+            display: 'inline-block',
+            boxShadow: '0 0 0 0 rgba(34,197,94,0.4)',
+            animation: 'pulse-green 2s infinite',
+          }} />
+          <span style={{
+            fontSize: '11px',
+            color: '#22c55e',
+            fontWeight: 500,
+            fontFamily: 'Inter, system-ui, sans-serif',
+          }}>Live</span>
         </div>
 
+        {/* Theme toggle */}
         <button
           onClick={toggleTheme}
-          className="text-xs px-2 py-1 rounded transition-all"
-          style={{ background: 'var(--bg-surface2)', color: 'var(--text-2)', border: '1px solid var(--border)', cursor: 'pointer' }}
+          style={{
+            height: '28px',
+            padding: '0 10px',
+            borderRadius: '6px',
+            border: '1px solid var(--border)',
+            background: 'var(--bg-surface2)',
+            color: 'var(--text-2)',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: '11px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+          }}
         >
-          {theme === 'dark' ? '☀ Light' : '🌙 Dark'}
+          {theme === 'dark' ? '☀' : '🌙'} {theme === 'dark' ? 'Light' : 'Dark'}
         </button>
 
-        <button
-          className="text-xs px-2 py-1 rounded transition-all flex items-center gap-1.5"
-          style={{ background: 'var(--bg-surface2)', color: 'var(--text-2)', border: '1px solid var(--border)', cursor: 'pointer' }}
-        >
+        {/* Notifications */}
+        <button style={{
+          height: '28px',
+          padding: '0 10px',
+          borderRadius: '6px',
+          border: '1px solid var(--border)',
+          background: 'var(--bg-surface2)',
+          color: 'var(--text-2)',
+          fontFamily: 'Inter, system-ui, sans-serif',
+          fontSize: '11px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '5px',
+        }}>
           Notifications
-          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--accent)', color: 'var(--accent-text)' }}>3</span>
+          <span style={{
+            background: 'var(--accent)',
+            color: 'var(--accent-text)',
+            fontSize: '9px',
+            fontWeight: 700,
+            padding: '1px 5px',
+            borderRadius: '3px',
+          }}>3</span>
         </button>
 
-        <div
-          className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold cursor-pointer"
-          style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--accent)' }}
+        {/* Logout */}
+        <button
+          onClick={logout}
+          style={{
+            height: '28px',
+            padding: '0 10px',
+            borderRadius: '6px',
+            border: '1px solid var(--border)',
+            background: 'var(--bg-surface2)',
+            color: 'var(--text-2)',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: '11px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+          }}
         >
-          TK
+          Logout
+        </button>
+
+        {/* Avatar */}
+        <div
+          title={user?.email || 'User Profile'}
+          style={{
+            width: '28px',
+            height: '28px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            background: 'var(--accent-dim)',
+            color: 'var(--accent)',
+            border: '1px solid var(--accent)',
+          }}
+        >
+          {getInitials()}
         </div>
       </div>
+
     </header>
   )
 }

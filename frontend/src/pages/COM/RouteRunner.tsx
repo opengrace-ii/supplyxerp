@@ -288,7 +288,7 @@ export default function RouteRunnerPage() {
             <div className="sx-form-grid">
               <div className="sx-field sx-field--full">
                 <label className="sx-label">HU BARCODE</label>
-                <input 
+                <input  style={{ background:'var(--bg-input)', color:'var(--text-1)', border:'1px solid var(--border-hi)', borderRadius:'6px', padding:'0 10px', height:'36px', width:'100%', fontFamily:'var(--font-sans)', fontSize:'13px', outline:'none' }} 
                   autoFocus 
                   type="text" 
                   value={huCode} 
@@ -299,7 +299,7 @@ export default function RouteRunnerPage() {
               </div>
               <div className="sx-field sx-field--full">
                 <label className="sx-label">PICK QUANTITY</label>
-                <input 
+                <input  style={{ background:'var(--bg-input)', color:'var(--text-1)', border:'1px solid var(--border-hi)', borderRadius:'6px', padding:'0 10px', height:'36px', width:'100%', fontFamily:'var(--font-sans)', fontSize:'13px', outline:'none' }} 
                   type="number" 
                   value={huQty} 
                   onChange={e => setHuQty(parseFloat(e.target.value))} 

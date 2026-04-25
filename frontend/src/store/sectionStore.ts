@@ -42,8 +42,8 @@ function applySection(s: Section, theme: Theme) {
 
 function lightenSidebarBg(s: Section): string {
   const map: Record<Section, string> = {
-    ops: '#f0fff4', mfg: '#fffbf0', com: '#eff6ff',
-    sys: '#f5f0ff', cfg: '#fff0f8',
+    ops: '#e2f9e9', mfg: '#fdf2e2', com: '#e0eefe',
+    sys: '#e9e4fd', cfg: '#fde4f2',
   }
   return map[s]
 }

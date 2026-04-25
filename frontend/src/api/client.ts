@@ -50,6 +50,14 @@ export const api = {
     const res = await apiClient.get('/api/stats/stockflow');
     return res.data;
   },
+  getSystemLogs: async (params: any) => {
+    const res = await apiClient.get('/api/system/logs', { params });
+    return res.data;
+  },
+  getSystemLogsSummary: async () => {
+    const res = await apiClient.get('/api/system/logs/summary');
+    return res.data;
+  },
   getTenants: async () => {
     const res = await apiClient.get('/api/tenants');
     return res.data;

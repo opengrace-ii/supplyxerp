@@ -152,7 +152,7 @@ export default function Notifications() {
                 buildDone: 'Build order completed'
               }).map(([key, label]) => (
                 <label key={key} className="flex items-center gap-3 cursor-pointer group">
-                  <input 
+                  <input  style={{ background:'var(--bg-input)', color:'var(--text-1)', border:'1px solid var(--border-hi)', borderRadius:'6px', padding:'0 10px', height:'36px', width:'100%', fontFamily:'var(--font-sans)', fontSize:'13px', outline:'none' }} 
                     type="checkbox" 
                     className="w-4 h-4 rounded border-[var(--border)] bg-white/5 text-[var(--accent)] focus:ring-0 focus:ring-offset-0 transition-colors"
                     checked={(config.inApp.events as any)[key]} 

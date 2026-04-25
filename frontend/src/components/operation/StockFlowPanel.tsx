@@ -4,6 +4,7 @@ import { useAppStore, Mode } from '../../store/useAppStore';
 import { KpiCard } from '@/components/ui/KpiCard';
 import { SectionTabs } from '@/components/ui/SectionTabs';
 import { ScanInput } from '@/components/ui/ScanInput';
+import { Input, Select } from '@/components/ui/Form';
 
 const StockFlowPanel: React.FC = () => {
     const { currentHU, setCurrentHU, currentTask, setCurrentTask, currentMode, setMode, traceSteps } = useAppStore();
@@ -234,14 +235,12 @@ const StockFlowPanel: React.FC = () => {
             case 'Receiving':
                 return (
                     <div style={{ display: 'flex', gap: '8px' }}>
-                        <button type="submit" className="btn btn-primary" disabled={loading || !scannedBarcode}>Scan</button>
                         <button type="button" className="btn btn-secondary" title="Phase 2" disabled>Create HU</button>
                     </div>
                 );
             case 'Production':
                 return (
                     <div style={{ display: 'flex', gap: '8px' }}>
-                        <button type="submit" className="btn btn-primary" disabled={loading}>Scan</button>
                         {currentHU && (
                             <>
                                 <button type="button" className="btn" style={{ backgroundColor: '#22c55e', color: '#000', fontWeight: '700' }} disabled={loading} onClick={() => handleAction('Consume')}>Full Consume</button>
@@ -254,10 +253,9 @@ const StockFlowPanel: React.FC = () => {
             case 'Putaway':
                 return (
                     <div style={{ display: 'flex', gap: '8px' }}>
-                        <button type="submit" className="btn btn-primary" disabled={loading || (!scannedBarcode && !targetLocation)}>Scan</button>
                         {currentHU && (
-                            <select 
-                                className="input-scanner"
+                            <Select 
+                                className="sx-select"
                                 value={targetLocation}
                                 onChange={e => setTargetLocation(e.target.value)}
                                 style={{ width: '150px' }}
@@ -272,7 +270,7 @@ const StockFlowPanel: React.FC = () => {
                                         ))}
                                     </optgroup>
                                 ))}
-                            </select>
+                            </Select>
                         )}
                         <button type="button" className="btn btn-secondary" disabled={!targetLocation || !currentHU || loading} onClick={() => handleAction('Move')}>Move</button>
                     </div>
@@ -280,7 +278,6 @@ const StockFlowPanel: React.FC = () => {
             case 'Dispatch':
                 return (
                     <div style={{ display: 'flex', gap: '8px' }}>
-                        <button type="submit" className="btn btn-primary" disabled={loading || !scannedBarcode}>Scan</button>
                         <button type="button" className="btn btn-secondary" title="Phase 2" disabled>Pick</button>
                     </div>
                 );
@@ -299,8 +296,8 @@ const StockFlowPanel: React.FC = () => {
                     
                     <div className="form-group">
                         <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>Purchase Order (PO)</label>
-                        <select 
-                            className="input-scanner" 
+                        <Select 
+                            className="sx-select" 
                             style={{ width: '100%' }}
                             value={grForm.po_id}
                             onChange={e => {
@@ -311,14 +308,14 @@ const StockFlowPanel: React.FC = () => {
                         >
                             <option value="0">Manual (No PO)</option>
                             {purchaseOrders.map(po => <option key={po.id} value={po.id}>{po.po_number} - {po.supplier_name}</option>)}
-                        </select>
+                        </Select>
                     </div>
 
                     {grForm.po_id !== 0 && (
                         <div className="form-group">
                             <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>PO Line Item</label>
-                            <select 
-                                className="input-scanner" 
+                            <Select 
+                                className="sx-select" 
                                 style={{ width: '100%' }}
                                 value={grForm.po_line_id}
                                 onChange={e => {
@@ -340,14 +337,14 @@ const StockFlowPanel: React.FC = () => {
                                 {purchaseOrders.find(p => p.id === grForm.po_id)?.lines?.map((l: any) => (
                                     <option key={l.id} value={l.id}>[{l.product_code}] {l.qty_ordered} {l.unit} (Left: {l.qty_ordered - l.qty_received})</option>
                                 ))}
-                            </select>
+                            </Select>
                         </div>
                     )}
 
                     <div className="form-group">
                         <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>Product</label>
-                        <select 
-                            className="input-scanner" 
+                        <Select 
+                            className="sx-select" 
                             style={{ width: '100%' }}
                             value={grForm.product_id}
                             disabled={grForm.po_line_id !== 0}
@@ -358,15 +355,15 @@ const StockFlowPanel: React.FC = () => {
                         >
                             <option value="">Select Product...</option>
                             {products.map(p => <option key={p.id} value={p.id}>[{p.code}] {p.name}</option>)}
-                        </select>
+                        </Select>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         <div className="form-group">
                             <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>Quantity</label>
-                            <input 
+                            <Input 
                                 type="number" 
-                                className="input-scanner" 
+                                className="sx-input" 
                                 style={{ width: '100%' }}
                                 value={grForm.quantity}
                                 onChange={e => setGRForm({ ...grForm, quantity: parseFloat(e.target.value) })}
@@ -374,31 +371,31 @@ const StockFlowPanel: React.FC = () => {
                         </div>
                         <div className="form-group">
                             <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>Unit</label>
-                            <input type="text" className="input-scanner" style={{ width: '100%' }} value={grForm.unit} readOnly />
+                            <Input type="text" className="sx-input" style={{ width: '100%' }} value={grForm.unit} readOnly />
                         </div>
                     </div>
 
                     <div className="form-group">
                         <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>Receiving Zone</label>
-                        <select 
-                            className="input-scanner" 
+                        <Select 
+                            className="sx-select" 
                             style={{ width: '100%' }}
                             value={grForm.zone_id}
                             onChange={e => setGRForm({ ...grForm, zone_id: parseInt(e.target.value) })}
                         >
                             <option value="">Select Zone...</option>
                             {receivingZones.map((z: any) => <option key={z.id} value={z.id}>{z.code} — {z.name}</option>)}
-                        </select>
+                        </Select>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         <div className="form-group">
                             <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>Supplier Ref</label>
-                            <input type="text" className="input-scanner" style={{ width: '100%' }} value={grForm.supplier_ref} onChange={e => setGRForm({ ...grForm, supplier_ref: e.target.value })} />
+                            <Input type="text" className="sx-input" style={{ width: '100%' }} value={grForm.supplier_ref} onChange={e => setGRForm({ ...grForm, supplier_ref: e.target.value })} />
                         </div>
                         <div className="form-group">
                             <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>Batch Ref</label>
-                            <input type="text" className="input-scanner" style={{ width: '100%' }} value={grForm.batch_ref} onChange={e => setGRForm({ ...grForm, batch_ref: e.target.value })} />
+                            <Input type="text" className="sx-input" style={{ width: '100%' }} value={grForm.batch_ref} onChange={e => setGRForm({ ...grForm, batch_ref: e.target.value })} />
                         </div>
                     </div>
 
@@ -460,8 +457,8 @@ const StockFlowPanel: React.FC = () => {
                                 <td style={{ padding: '12px 8px', color: '#fff' }}>{task.hu_code || `HU-${task.hu_id}`}</td>
                                 <td style={{ padding: '12px 8px', color: '#aaa' }}>{task.from_zone_code || 'RECV-01'}</td>
                                 <td style={{ padding: '12px 8px' }}>
-                                    <select 
-                                        className="input-scanner" 
+                                    <Select 
+                                        className="sx-select" 
                                         style={{ fontSize: '11px', padding: '2px 4px' }}
                                         onChange={(e) => {
                                             if (e.target.value) handleCompletePutaway(task.id, parseInt(e.target.value));
@@ -471,7 +468,7 @@ const StockFlowPanel: React.FC = () => {
                                         {storageZones.map((z: any) => (
                                             <option key={z.id} value={z.id}>[{z.zone_type}] {z.code}</option>
                                         ))}
-                                    </select>
+                                    </Select>
                                 </td>
                                 <td style={{ padding: '12px 8px' }}>
                                     <span style={{ color: task.priority > 2 ? '#ef4444' : '#22c55e' }}>●</span> {task.priority}
@@ -744,8 +741,8 @@ const StockFlowPanel: React.FC = () => {
                         <div className="form-group">
                             <label style={{ fontSize: '10px', color: 'var(--theme-accent)', textTransform: 'uppercase' }}>Quantity to Extract</label>
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                <input 
-                                    type="number" className="input-scanner" style={{ flex: 1 }} 
+                                <Input 
+                                    type="number" className="sx-input" style={{ flex: 1 }} 
                                     max={currentHU.quantity} min={0.0001} step={0.0001}
                                     value={splitQty} onChange={e => setSplitQty(parseFloat(e.target.value))}
                                 />
@@ -755,8 +752,8 @@ const StockFlowPanel: React.FC = () => {
 
                         <div className="form-group">
                             <label style={{ fontSize: '10px', color: 'var(--theme-accent)', textTransform: 'uppercase' }}>Notes / Reason</label>
-                            <input 
-                                type="text" className="input-scanner" placeholder="e.g. Production use, Lab sample..."
+                            <Input 
+                                type="text" className="sx-input" placeholder="e.g. Production use, Lab sample..."
                                 value={consumeNotes} onChange={e => setConsumeNotes(e.target.value)}
                             />
                         </div>

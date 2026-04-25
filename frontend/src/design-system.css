@@ -64,6 +64,83 @@
   :root { --sidebar-width: 180px; --fs-base: 12.5px; }
 }
 
+/* ── TYPOGRAPHY HIERARCHY ─────────────────── */
+/* These override everything. Non-negotiable.  */
+
+.sx-logo-text {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.03em;
+}
+
+.sx-page-title {
+  font-size: clamp(18px, 1.8vw, 24px) !important;
+  font-weight: 700 !important;
+  color: var(--accent) !important;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.sx-page-sub {
+  font-size: 13px !important;
+  color: var(--text-3) !important;
+  font-weight: 400 !important;
+  margin-top: 4px;
+}
+
+.sx-kpi-value {
+  font-size: clamp(24px, 2.5vw, 36px) !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.sx-kpi-label {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sx-card-title {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+/* Table hierarchy */
+.sx-table th {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.09em;
+}
+
+.sx-table td {
+  font-size: 13px !important;
+}
+
+/* Sidebar hierarchy */
+.sx-nav-group {
+  font-size: 9.5px !important;
+  font-weight: 700 !important;
+}
+
+.sx-nav-item {
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+}
+
+/* Topbar hierarchy */
+.sx-breadcrumb { font-size: 11px !important; }
+
+/* Form labels */
+.sx-label {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
 /* ── DARK MODE (default) ─────────────────────── */
 :root, [data-theme="dark"] {
   --bg-base:     #0d0d12;
@@ -92,10 +169,10 @@
   --bg-surface3: #eeeef6;
   --bg-surface4: #e4e4ee;
   --bg-input:    rgba(0,0,0,0.04);
-  --border:      rgba(0,0,0,0.09);
-  --border-hi:   rgba(0,0,0,0.16);
+  --border:      rgba(0,0,0,0.14);
+  --border-hi:   rgba(0,0,0,0.22);
   --border-focus: var(--accent);
-  --text-1: #111118;
+  --text-1: #222230;
   --text-2: #44445a;
   --text-3: #88889a;
   --text-4: #bbbbcc;
@@ -162,6 +239,19 @@ body {
   width: 100%;
 }
 .sx-search input::placeholder { color: var(--text-3); }
+
+/* ── KPI CARD ────────────────────────────────── */
+.sx-kpi-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--t-base), background var(--t-base);
+}
+.sx-kpi-card:hover { border-color: var(--border-hi); background: var(--bg-surface2); }
+.sx-kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); opacity: 0.8; }
 
 /* ── BUTTONS ─────────────────────────────────── */
 .sx-btn {

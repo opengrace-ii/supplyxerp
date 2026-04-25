@@ -446,7 +446,7 @@ export default function DealFlowPage() {
             <div className="sx-form-grid">
               <div className="sx-field sx-field--full">
                 <label className="sx-label">CUSTOMER</label>
-                <select 
+                <select  style={{ background:'var(--bg-input)', color:'var(--text-1)', border:'1px solid var(--border-hi)', borderRadius:'6px', padding:'0 10px', height:'36px', width:'100%', fontFamily:'var(--font-sans)', fontSize:'13px', outline:'none', cursor:'pointer' }} 
                   value={newDeal.customer_id} 
                   onChange={e => setNewDeal({...newDeal, customer_id: parseInt(e.target.value)})}
                   className="sx-select"

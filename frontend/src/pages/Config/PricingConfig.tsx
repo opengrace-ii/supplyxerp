@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../api/client';
+import { Input, Select } from '@/components/ui/Form';
 import { useAppStore } from '../../store/useAppStore';
 
 const PricingConfig: React.FC = () => {
@@ -118,23 +119,23 @@ const PricingConfig: React.FC = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         <div className="form-group">
                             <label style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Approval Mode</label>
-                            <select 
-                                className="input-scanner" 
-                                style={{ width: '100%', backgroundColor: '#000', border: '1px solid #333' }}
+                            <Select 
+                                className="sx-select" 
+                                style={{ width: '100%' }}
                                 value={editConfig.approval_mode}
                                 onChange={e => setEditConfig({...editConfig, approval_mode: e.target.value})}
                             >
                                 <option value="FLAT">Flat Threshold (Global)</option>
                                 <option value="MRP_BASED">MRP Based (Consumption Velocity)</option>
-                            </select>
+                            </Select>
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                             <div className="form-group">
                                 <label style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>PR Threshold ({editConfig.default_currency})</label>
-                                <input 
+                                <Input 
                                     type="number"
-                                    className="input-scanner" 
+                                    className="sx-input" 
                                     style={{ width: '100%' }}
                                     value={editConfig.flat_pr_threshold}
                                     onChange={e => setEditConfig({...editConfig, flat_pr_threshold: parseFloat(e.target.value)})}
@@ -142,9 +143,9 @@ const PricingConfig: React.FC = () => {
                             </div>
                             <div className="form-group">
                                 <label style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>PO Threshold ({editConfig.default_currency})</label>
-                                <input 
+                                <Input 
                                     type="number"
-                                    className="input-scanner" 
+                                    className="sx-input" 
                                     style={{ width: '100%' }}
                                     value={editConfig.flat_po_threshold}
                                     onChange={e => setEditConfig({...editConfig, flat_po_threshold: parseFloat(e.target.value)})}
@@ -155,9 +156,9 @@ const PricingConfig: React.FC = () => {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                             <div className="form-group">
                                 <label style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Auto-Approve Tolerance %</label>
-                                <input 
+                                <Input 
                                     type="number"
-                                    className="input-scanner" 
+                                    className="sx-input" 
                                     style={{ width: '100%' }}
                                     value={editConfig.default_tolerance_pct}
                                     onChange={e => setEditConfig({...editConfig, default_tolerance_pct: parseFloat(e.target.value)})}
@@ -165,8 +166,8 @@ const PricingConfig: React.FC = () => {
                             </div>
                             <div className="form-group">
                                 <label style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>System Currency</label>
-                                <input 
-                                    className="input-scanner" 
+                                <Input 
+                                    className="sx-input" 
                                     style={{ width: '100%' }}
                                     value={editConfig.default_currency}
                                     onChange={e => setEditConfig({...editConfig, default_currency: e.target.value})}
