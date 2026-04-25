@@ -301,11 +301,12 @@ export function TopBar() {
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '10px',
-            fontWeight: 'bold',
+            fontWeight: 700,
             cursor: 'pointer',
             background: 'var(--accent-dim)',
             color: 'var(--accent)',
-            border: '1px solid var(--accent)',
+            border: '1.5px solid var(--accent)',
+            flexShrink: 0,
           }}
         >
           {getInitials()}

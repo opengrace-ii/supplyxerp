@@ -316,7 +316,7 @@ export function RFQManagement({ products: propProducts = [], suppliers: propSupp
                                     <Button variant="ghost" size="sm" onClick={addLine}>+ Add Line</Button>
                                 </div>
                                 {newRFQ.lines.map((l, i) => (
-                                    <div key={i} className="p-4 bg-white/5 rounded-xl border border-[var(--border)] space-y-4">
+                                    <div key={i} className="p-4 bg-[var(--bg-input)] rounded-xl border border-[var(--border)] space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <Select value={l.product_id} onChange={e => {
                                                 const lines = [...newRFQ.lines];
@@ -389,7 +389,7 @@ export function RFQManagement({ products: propProducts = [], suppliers: propSupp
                         {/* Comparison Matrix */}
                         <Card className="border-[var(--accent)]/20">
                             <CardHeader title="SupplyX Comparison Engine">
-                                <div className="flex gap-1 bg-white/5 p-1 rounded-lg">
+                                <div className="flex gap-1 bg-[var(--bg-input)] p-1 rounded-lg">
                                     {['MIN', 'MEAN', 'MAX'].map(b => (
                                         <button 
                                             key={b} 
@@ -482,7 +482,7 @@ export function RFQManagement({ products: propProducts = [], suppliers: propSupp
                             <CardBody className="space-y-4">
                                 <div className="space-y-2">
                                     {rfqVendors.map(v => (
-                                        <div key={v.id} className="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-[var(--border)]">
+                                        <div key={v.id} className="flex justify-between items-center p-3 bg-[var(--bg-input)] rounded-lg border border-[var(--border)]">
                                             <div>
                                                 <div className="text-sm font-bold text-[var(--text-1)]">{v.supplier_name}</div>
                                                 <div className={cn("text-[9px] font-black uppercase tracking-tighter", v.has_quoted ? "text-green-500" : "text-[var(--text-4)]")}>

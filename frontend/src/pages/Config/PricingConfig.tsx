@@ -88,14 +88,14 @@ const PricingConfig: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <div>
-                    <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#f472b6' }}>PRICING ENGINE CONFIG</h1>
+                    <h1 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--accent)' }}>PRICING ENGINE CONFIG</h1>
                     <p style={{ fontSize: '14px', color: '#888' }}>Global procurement rules and pricing master settings</p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
                     {!config?.condition_types_seeded && (
                         <button 
                             className="btn" 
-                            style={{ backgroundColor: '#f472b6', color: '#000', fontWeight: '800', padding: '10px 20px' }}
+                            style={{ backgroundColor: 'var(--accent)', color: '#000', fontWeight: '800', padding: '10px 20px' }}
                             onClick={handleSeedDefaults}
                             disabled={seeding}
                         >
@@ -112,7 +112,7 @@ const PricingConfig: React.FC = () => {
                 {/* Approval Logic Section */}
                 <div style={{ backgroundColor: 'var(--theme-light)', border: '1px solid var(--theme-border)', borderRadius: '12px', padding: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#f472b6' }}></div>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--accent)' }}></div>
                         <h2 style={{ fontSize: '16px', fontWeight: '800' }}>APPROVAL ENGINE LOGIC</h2>
                     </div>
 
@@ -189,7 +189,7 @@ const PricingConfig: React.FC = () => {
                 {/* Pricing Rules Overview */}
                 <div style={{ backgroundColor: 'var(--theme-light)', border: '1px solid var(--theme-border)', borderRadius: '12px', padding: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#f472b6' }}></div>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--accent)' }}></div>
                         <h2 style={{ fontSize: '16px', fontWeight: '800' }}>ACTIVE PRICING SCHEMA</h2>
                     </div>
 
@@ -202,15 +202,15 @@ const PricingConfig: React.FC = () => {
                          </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ padding: '12px', backgroundColor: '#000', borderRadius: '8px', border: '1px solid #222' }}>
-                                <div style={{ fontSize: '10px', color: '#f472b6', fontWeight: '900', marginBottom: '4px' }}>SCHEMA CODE</div>
+                            <div style={{ padding: '12px', backgroundColor: 'var(--bg-base)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                <div style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: '900', marginBottom: '4px' }}>SCHEMA CODE</div>
                                 <div style={{ fontSize: '16px', fontWeight: '800' }}>SXMM01</div>
-                                <div style={{ fontSize: '12px', color: '#888' }}>Standard SupplyX Purchasing Procedure</div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-3)' }}>Standard SupplyX Purchasing Procedure</div>
                             </div>
                             
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                                 <thead>
-                                    <tr style={{ color: '#888', textAlign: 'left', borderBottom: '1px solid #222' }}>
+                                    <tr style={{ color: 'var(--text-3)', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                                         <th style={{ padding: '8px' }}>STP</th>
                                         <th style={{ padding: '8px' }}>CTYP</th>
                                         <th style={{ padding: '8px' }}>CONDITION</th>
@@ -220,9 +220,9 @@ const PricingConfig: React.FC = () => {
                                 </thead>
                                 <tbody>
                                     {(config?.condition_types || []).map((ct: any) => (
-                                        <tr key={ct.step_number} style={{ borderBottom: '1px solid #111' }}>
+                                        <tr key={ct.step_number} style={{ borderBottom: '1px solid var(--border)' }}>
                                             <td style={{ padding: '8px', color: '#888' }}>{ct.step_number}</td>
-                                            <td style={{ padding: '8px', color: '#f472b6', fontWeight: '700' }}>{ct.code}</td>
+                                            <td style={{ padding: '8px', color: 'var(--accent)', fontWeight: '700' }}>{ct.code}</td>
                                             <td style={{ padding: '8px' }}>{ct.name}</td>
                                             <td style={{ padding: '8px', fontSize: '10px' }}>
                                                 <span style={{ backgroundColor: '#222', padding: '2px 4px', borderRadius: '3px' }}>{ct.calculation_type}</span>
@@ -240,14 +240,14 @@ const PricingConfig: React.FC = () => {
             {/* Global Info Records Oversight */}
             <div style={{ backgroundColor: 'var(--theme-light)', border: '1px solid var(--theme-border)', borderRadius: '12px', padding: '24px' }}>
                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#f472b6' }}></div>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--accent)' }}></div>
                     <h2 style={{ fontSize: '16px', fontWeight: '800' }}>SYSTEM-WIDE INFO RECORDS</h2>
                 </div>
 
                 <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                         <thead>
-                            <tr style={{ color: '#888', textAlign: 'left', borderBottom: '1px solid #222' }}>
+                            <tr style={{ color: 'var(--text-3)', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                                 <th style={{ padding: '12px' }}>RECORD #</th>
                                 <th style={{ padding: '12px' }}>SUPPLIER</th>
                                 <th style={{ padding: '12px' }}>PRODUCT</th>
@@ -262,8 +262,8 @@ const PricingConfig: React.FC = () => {
                                     <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#666' }}>No active agreements found in system</td>
                                 </tr>
                             ) : infoRecords.map(ir => (
-                                <tr key={ir.id} style={{ borderBottom: '1px solid #111' }}>
-                                    <td style={{ padding: '12px', fontWeight: '700', color: '#f472b6' }}>{ir.info_record_number}</td>
+                                <tr key={ir.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                    <td style={{ padding: '12px', fontWeight: '700', color: 'var(--accent)' }}>{ir.info_record_number}</td>
                                     <td style={{ padding: '12px' }}>{ir.supplier_name}</td>
                                     <td style={{ padding: '12px' }}>
                                         <div style={{ fontWeight: '600' }}>{ir.product_code}</div>

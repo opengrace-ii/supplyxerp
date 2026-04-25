@@ -141,6 +141,21 @@ const OrgStructure: React.FC = () => {
             <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin mb-4" />
             <span className="text-[11px] font-medium tracking-wider uppercase">Loading Structure...</span>
           </div>
+        ) : companies.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+            <div className="text-4xl mb-4 opacity-20">🏢</div>
+            <h3 className="text-sm font-bold text-[var(--text-2)] mb-1">No Companies Found</h3>
+            <p className="text-[11px] text-[var(--text-3)] max-w-[200px]">
+              Add your first company to start building your organisational hierarchy.
+            </p>
+            <Button 
+              variant="primary" 
+              className="mt-6 scale-90"
+              onClick={() => setSelected({ type: 'company', id: undefined })}
+            >
+              + ADD COMPANY
+            </Button>
+          </div>
         ) : (
           <>
             <div>

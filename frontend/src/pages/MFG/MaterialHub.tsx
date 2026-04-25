@@ -87,7 +87,7 @@ export const MaterialHub: React.FC = () => {
     return (
         <div className="flex flex-col h-full bg-[var(--bg-base)]">
             {/* Header */}
-            <div className="p-8 border-b border-[var(--border)] bg-white/[0.01] flex justify-between items-end">
+            <div className="p-8 border-b border-[var(--border)] bg-[var(--bg-surface2)] flex justify-between items-end">
                 <div>
                     <h1 className="text-xl font-bold text-[var(--accent)] tracking-tight">MaterialHub</h1>
                     <p className="text-sm text-[var(--text-3)] mt-2">Supply chain backbone · Material master · Purchase lifecycle</p>
@@ -188,11 +188,11 @@ export const MaterialHub: React.FC = () => {
                                                         <Badge variant="amber" className="mt-2">{selectedProduct.code}</Badge>
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-4">
-                                                        <div className="bg-white/5 p-3 rounded-lg border border-[var(--border)]">
+                                                        <div className="bg-[var(--bg-input)] p-3 rounded-lg border border-[var(--border)]">
                                                             <div className="text-[10px] font-bold text-[var(--text-3)] uppercase mb-1">Base Unit</div>
                                                             <div className="text-sm font-semibold text-[var(--text-1)]">{selectedProduct.base_unit}</div>
                                                         </div>
-                                                        <div className="bg-white/5 p-3 rounded-lg border border-[var(--border)]">
+                                                        <div className="bg-[var(--bg-input)] p-3 rounded-lg border border-[var(--border)]">
                                                             <div className="text-[10px] font-bold text-[var(--text-3)] uppercase mb-1">Created</div>
                                                             <div className="text-sm font-semibold text-[var(--text-1)]">{new Date(selectedProduct.created_at).toLocaleDateString()}</div>
                                                         </div>
@@ -211,7 +211,7 @@ export const MaterialHub: React.FC = () => {
                                                     <div className="space-y-2">
                                                         <h4 className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest px-1">Zone Breakdown</h4>
                                                         {productStock?.zone_breakdown?.map((z: any) => (
-                                                            <div key={z.zone_code} className="flex justify-between items-center bg-white/5 p-3 rounded-lg border border-[var(--border)] text-xs">
+                                                            <div key={z.zone_code} className="flex justify-between items-center bg-[var(--bg-input)] p-3 rounded-lg border border-[var(--border)] text-xs">
                                                                 <span className="text-[var(--text-2)] font-medium">{z.zone_code}</span>
                                                                 <span className="text-[var(--text-1)] font-bold">{z.quantity}</span>
                                                             </div>
@@ -713,7 +713,7 @@ const DocumentDetail: React.FC<{ doc: any, onClose: () => void }> = ({ doc, onCl
 
     return (
         <div className="fixed inset-y-0 right-0 w-[600px] bg-[var(--bg-surface2)] border-l border-[var(--border)] z-[100] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-            <div className="p-8 border-b border-[var(--border)] flex justify-between items-center bg-white/[0.02]">
+            <div className="p-8 border-b border-[var(--border)] flex justify-between items-center bg-[var(--bg-surface3)]">
                 <div>
                     <Badge variant="amber" className="mb-2">{doc.type} RECORD</Badge>
                     <h2 className="text-2xl font-black text-[var(--text-1)] tracking-tight">
@@ -726,7 +726,7 @@ const DocumentDetail: React.FC<{ doc: any, onClose: () => void }> = ({ doc, onCl
             <div className="flex-1 overflow-y-auto p-8 space-y-8">
                 {error && <InlineAlert type="error" message={error} />}
 
-                <div className="grid grid-cols-2 gap-6 p-6 bg-white/5 rounded-2xl border border-[var(--border)]">
+                <div className="grid grid-cols-2 gap-6 p-6 bg-[var(--bg-input)] rounded-2xl border border-[var(--border)]">
                     <div>
                         <div className="text-[10px] font-bold text-[var(--text-4)] uppercase tracking-widest mb-1">Status</div>
                         <div className="text-sm font-bold text-[var(--accent)]">{d.status || 'ACTIVE'}</div>
@@ -754,7 +754,7 @@ const DocumentDetail: React.FC<{ doc: any, onClose: () => void }> = ({ doc, onCl
                         <h4 className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest px-1">Line Items</h4>
                         <div className="space-y-3">
                             {lines.map((l: any) => (
-                                <div key={l.id} className="flex justify-between items-center p-4 bg-white/[0.02] rounded-xl border border-[var(--border)]">
+                                <div key={l.id} className="flex justify-between items-center p-4 bg-[var(--bg-surface3)] rounded-xl border border-[var(--border)]">
                                     <div>
                                         <div className="text-sm font-bold text-[var(--text-1)]">{l.product_name}</div>
                                         <div className="text-[10px] font-mono text-[var(--text-3)]">{l.product_code}</div>
@@ -845,7 +845,7 @@ const ProductPricingTab: React.FC<{ product: any }> = ({ product }) => {
                         <option value="V">V - Moving Avg</option>
                     </Select>
                 </Field>
-                <div className="bg-white/5 p-4 rounded-xl border border-[var(--border)] flex flex-col justify-center">
+                <div className="bg-[var(--bg-input)] p-4 rounded-xl border border-[var(--border)] flex flex-col justify-center">
                     <div className="text-[10px] font-bold text-[var(--text-3)] uppercase mb-1">Current Val</div>
                     <div className="text-xl font-black text-[var(--accent)]">
                         {pricing.price_control === 'S' ? pricing.standard_price : pricing.moving_price} 

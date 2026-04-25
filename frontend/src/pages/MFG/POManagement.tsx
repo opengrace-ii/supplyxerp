@@ -142,22 +142,22 @@ interface NewPOForm {
 // ─── Theme — matches SupplyXERP dark palette ───────────────────────────────
 
 const T = {
-  bg:        "#1a0e00",   // deepest background
-  surface:   "#2a1a00",   // card/panel background
-  surface2:  "#3a2800",   // slightly lighter surface
-  border:    "#4a3800",   // standard border
-  borderHi:  "#6b5200",   // highlighted border
-  amber:     "#f59e0b",   // primary accent
-  amberDim:  "#b45309",   // dimmer amber
-  text:      "#fef3c7",   // primary text
-  textMuted: "#92400e",   // muted text
-  textDim:   "#78350f",   // very dim text
-  pink:      "#ec4899",   // secondary accent (CFG theme carry-over)
+  bg:        "var(--bg-base)",
+  surface:   "var(--bg-surface)",
+  surface2:  "var(--bg-surface2)",
+  border:    "var(--border)",
+  borderHi:  "var(--accent)",
+  amber:     "var(--accent)",
+  amberDim:  "var(--accent-dim)",
+  text:      "var(--text-1)",
+  textMuted: "var(--text-3)",
+  textDim:   "var(--text-4)",
+  pink:      "#ec4899",
   green:     "#22c55e",
   red:       "#ef4444",
   blue:      "#3b82f6",
   yellow:    "#eab308",
-  white:     "#fff8f0",
+  white:     "var(--text-1)",
 };
 
 // ─── Shared helpers ────────────────────────────────────────────────────────
@@ -345,19 +345,20 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
 }
 
 function Btn({
-  children, onClick, color = "amber", small, disabled,
+  children, onClick, color = "amber", small, disabled, style,
 }: {
   children: React.ReactNode;
   onClick?: () => void;
   color?: "amber" | "ghost" | "red" | "green";
   small?: boolean;
   disabled?: boolean;
+  style?: React.CSSProperties;
 }) {
   const styles: Record<string, React.CSSProperties> = {
-    amber: { background: T.amber, color: "#1a0e00", border: "none", fontWeight: 700 },
+    amber: { background: T.amber, color: "var(--accent-text)", border: "none", fontWeight: 700 },
     ghost: { background: "transparent", color: T.text, border: `1px solid ${T.border}` },
-    red:   { background: "#7f1d1d", color: T.red, border: `1px solid #b91c1c` },
-    green: { background: "#14532d", color: T.green, border: `1px solid #166534` },
+    red:   { background: "var(--bg-error-dim, #7f1d1d)", color: T.red, border: `1px solid var(--border-error, #b91c1c)` },
+    green: { background: "var(--bg-success-dim, #14532d)", color: T.green, border: `1px solid var(--border-success, #166534)` },
   };
   return (
     <button
@@ -371,6 +372,7 @@ function Btn({
         opacity: disabled ? 0.6 : 1,
         fontFamily: "inherit",
         ...styles[color],
+        ...style,
       }}
     >
       {children}
@@ -1031,9 +1033,16 @@ export default function POManagement() {
 
   const onSearch = (v: string) => {
     setSearch(v);
-    if (searchRef.current) clearTimeout(searchRef.current);
-    searchRef.current = setTimeout(() => loadPOs(v), 350);
   };
+
+  const filteredPOs = pos.filter(po => {
+    const q = search.toLowerCase();
+    return (
+      po.po_number?.toLowerCase().includes(q) ||
+      po.vendor_name?.toLowerCase().includes(q) ||
+      po.supplier_name?.toLowerCase().includes(q)
+    );
+  });
 
   const HEADER_TABS = ["Conditions", "Texts", "Partners", "Additional Data", "Org. Data", "Status", "Output"];
   const ITEM_TABS   = ["Delivery", "Invoice", "Confirmations", "Delivery Schedule", "Delivery Address", "Quantities/Weights", "Condition Control"];
@@ -1047,7 +1056,18 @@ export default function POManagement() {
           value={search}
           onChange={(e) => onSearch(e.target.value)}
           placeholder="Search PO number, vendor…"
-          style={{ flex: 1, maxWidth: 300, padding: "5px 10px", background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 5, color: T.text, fontSize: 12, fontFamily: "inherit", outline: "none" }}
+          style={{
+            background: 'var(--bg-input)',
+            border: '1px solid var(--border)',
+            borderRadius: '6px',
+            color: 'var(--text-1)',
+            padding: '0 10px',
+            height: '32px',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: '13px',
+            outline: 'none',
+            width: '260px',
+          }}
         />
         <div style={{ marginLeft: "auto" }}>
           <Btn onClick={() => setShowNewPO(true)}>+ New PO</Btn>
@@ -1061,14 +1081,30 @@ export default function POManagement() {
             Document Overview
           </div>
           {loading && <div style={{ padding: 20, textAlign: "center", color: T.textMuted, fontSize: 12 }}>Loading…</div>}
-          {!loading && pos.length === 0 && (
+          {!loading && filteredPOs.length === 0 && (
             <div style={{ padding: 24, textAlign: "center" }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
+              <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.3 }}>📋</div>
               <div style={{ fontSize: 12, color: T.textMuted }}>No purchase orders found.</div>
-              <div style={{ fontSize: 11, color: T.textDim, marginTop: 6 }}>Create one from MaterialHub or click "+ New PO".</div>
+              <Btn
+                onClick={() => setShowNewPO(true)}
+                style={{
+                  marginTop: '12px',
+                  background: 'var(--accent)',
+                  color: 'var(--accent-text)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '8px 16px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                }}
+              >
+                + New PO
+              </Btn>
             </div>
           )}
-          {pos.map((po) => (
+          {filteredPOs.map((po) => (
             <div
               key={po.id}
               onClick={() => selectPO(po)}

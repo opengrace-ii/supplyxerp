@@ -291,11 +291,11 @@ const StockFlowPanel: React.FC = () => {
 
         return (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '10px' }}>
-                <form onSubmit={handlePostGR} style={{ display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--theme-border)' }}>
-                    <h3 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--theme-accent)', marginBottom: '8px' }}>POST GOODS RECEIPT</h3>
+                <form onSubmit={handlePostGR} style={{ display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'var(--bg-input)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                    <h3 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--accent)', marginBottom: '8px' }}>POST GOODS RECEIPT</h3>
                     
                     <div className="form-group">
-                        <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>Purchase Order (PO)</label>
+                        <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Purchase Order (PO)</label>
                         <Select 
                             className="sx-select" 
                             style={{ width: '100%' }}
@@ -313,7 +313,7 @@ const StockFlowPanel: React.FC = () => {
 
                     {grForm.po_id !== 0 && (
                         <div className="form-group">
-                            <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>PO Line Item</label>
+                            <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>PO Line Item</label>
                             <Select 
                                 className="sx-select" 
                                 style={{ width: '100%' }}
@@ -342,7 +342,7 @@ const StockFlowPanel: React.FC = () => {
                     )}
 
                     <div className="form-group">
-                        <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>Product</label>
+                        <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Product</label>
                         <Select 
                             className="sx-select" 
                             style={{ width: '100%' }}
@@ -360,7 +360,7 @@ const StockFlowPanel: React.FC = () => {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         <div className="form-group">
-                            <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>Quantity</label>
+                            <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Quantity</label>
                             <Input 
                                 type="number" 
                                 className="sx-input" 
@@ -370,13 +370,13 @@ const StockFlowPanel: React.FC = () => {
                             />
                         </div>
                         <div className="form-group">
-                            <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>Unit</label>
+                            <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Unit</label>
                             <Input type="text" className="sx-input" style={{ width: '100%' }} value={grForm.unit} readOnly />
                         </div>
                     </div>
 
                     <div className="form-group">
-                        <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>Receiving Zone</label>
+                        <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Receiving Zone</label>
                         <Select 
                             className="sx-select" 
                             style={{ width: '100%' }}
@@ -390,11 +390,11 @@ const StockFlowPanel: React.FC = () => {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         <div className="form-group">
-                            <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>Supplier Ref</label>
+                            <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Supplier Ref</label>
                             <Input type="text" className="sx-input" style={{ width: '100%' }} value={grForm.supplier_ref} onChange={e => setGRForm({ ...grForm, supplier_ref: e.target.value })} />
                         </div>
                         <div className="form-group">
-                            <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>Batch Ref</label>
+                            <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Batch Ref</label>
                             <Input type="text" className="sx-input" style={{ width: '100%' }} value={grForm.batch_ref} onChange={e => setGRForm({ ...grForm, batch_ref: e.target.value })} />
                         </div>
                     </div>
@@ -404,10 +404,10 @@ const StockFlowPanel: React.FC = () => {
                     </button>
                 </form>
 
-                <div style={{ backgroundColor: '#000', borderRadius: '12px', border: '1px solid #222', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ backgroundColor: 'var(--bg-surface2)', borderRadius: '12px', border: '1px solid #222', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: loading ? '#22c55e' : '#444', boxShadow: loading ? '0 0 10px #22c55e' : 'none' }}></div>
-                        <h3 style={{ fontSize: '12px', fontWeight: '700', color: '#fff' }}>GR AGENT PIPELINE</h3>
+                        <h3 style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-1)' }}>GR AGENT PIPELINE</h3>
                     </div>
                     {traceSteps && traceSteps.length > 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -427,7 +427,7 @@ const StockFlowPanel: React.FC = () => {
                             ))}
                         </div>
                     ) : (
-                        <div style={{ color: '#444', fontSize: '12px', textAlign: 'center', marginTop: '40px' }}>Ready for inbound processing...</div>
+                        <div style={{ color: 'var(--text-4)', fontSize: '12px', textAlign: 'center', marginTop: '40px' }}>Ready for inbound processing...</div>
                     )}
                 </div>
             </div>
@@ -441,7 +441,7 @@ const StockFlowPanel: React.FC = () => {
             <div style={{ marginTop: '10px' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                     <thead>
-                        <tr style={{ textAlign: 'left', borderBottom: '1px solid #222', color: '#666' }}>
+                        <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', color: 'var(--text-3)' }}>
                             <th style={{ padding: '12px 8px' }}>TASK</th>
                             <th style={{ padding: '12px 8px' }}>HU CODE</th>
                             <th style={{ padding: '12px 8px' }}>FROM</th>
@@ -452,10 +452,10 @@ const StockFlowPanel: React.FC = () => {
                     </thead>
                     <tbody>
                         {putawayTasks.map(task => (
-                            <tr key={task.id} style={{ borderBottom: '1px solid #111' }}>
-                                <td style={{ padding: '12px 8px', color: 'var(--theme-accent)', fontWeight: '600' }}>PUTAWAY</td>
-                                <td style={{ padding: '12px 8px', color: '#fff' }}>{task.hu_code || `HU-${task.hu_id}`}</td>
-                                <td style={{ padding: '12px 8px', color: '#aaa' }}>{task.from_zone_code || 'RECV-01'}</td>
+                            <tr key={task.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                <td style={{ padding: '12px 8px', color: 'var(--accent)', fontWeight: '600' }}>PUTAWAY</td>
+                                <td style={{ padding: '12px 8px', color: 'var(--text-1)' }}>{task.hu_code || `HU-${task.hu_id}`}</td>
+                                <td style={{ padding: '12px 8px', color: 'var(--text-3)' }}>{task.from_zone_code || 'RECV-01'}</td>
                                 <td style={{ padding: '12px 8px' }}>
                                     <Select 
                                         className="sx-select" 
@@ -480,7 +480,7 @@ const StockFlowPanel: React.FC = () => {
                         ))}
                         {putawayTasks.length === 0 && (
                             <tr>
-                                <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#444' }}>No pending putaway tasks</td>
+                                <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-4)' }}>No pending putaway tasks</td>
                             </tr>
                         )}
                     </tbody>
@@ -616,7 +616,7 @@ const StockFlowPanel: React.FC = () => {
                         <span style={{ fontSize: '16px' }}>⚠️</span>
                         <div>
                             <div style={{ fontSize: '12px', fontWeight: '700', color: '#f59e0b' }}>PUTAWAY REQUIRED</div>
-                            <div style={{ fontSize: '11px', color: '#888' }}>This HU is currently in a receiving zone. Resolve the putaway task to move it to storage.</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-3)' }}>This HU is currently in a receiving zone. Resolve the putaway task to move it to storage.</div>
                         </div>
                     </div>
                     <button 
@@ -638,10 +638,10 @@ const StockFlowPanel: React.FC = () => {
                             backgroundColor: step.status === 'SUCCESS' ? 'rgba(22,163,74,0.05)' : step.status === 'BLOCKED' ? 'rgba(245,158,11,0.05)' : 'rgba(239,68,68,0.05)',
                             borderRadius: '6px', padding: '5px 8px'
                         }}>
-                            <span style={{ color: 'var(--theme-accent)', fontWeight: '600', fontSize: '11px' }}>{step.agent || 'SYSTEM'}</span>
-                            <span style={{ color: '#888', fontSize: '11px', flex: 1 }}>{step.action}</span>
+                            <span style={{ color: 'var(--accent)', fontWeight: '600', fontSize: '11px' }}>{step.agent || 'SYSTEM'}</span>
+                            <span style={{ color: 'var(--text-3)', fontSize: '11px', flex: 1 }}>{step.action}</span>
                             {renderTraceStepStatus(step.status)}
-                            <span style={{ fontSize: '10px', color: '#666' }}>{step.timestamp || new Date().toLocaleTimeString()}</span>
+                            <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{step.timestamp || new Date().toLocaleTimeString()}</span>
                         </div>
                     ))}
                 </div>
@@ -656,28 +656,28 @@ const StockFlowPanel: React.FC = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                         <div>
                             <div style={{ fontSize: '10px', color: '#f59e0b', opacity: 0.8, textTransform: 'uppercase', marginBottom: '2px' }}>Product Code</div>
-                            <div style={{ color: '#fff', fontWeight: '600', fontSize: '14px' }}>{currentProduct.code}</div>
+                            <div style={{ color: 'var(--text-1)', fontWeight: '600', fontSize: '14px' }}>{currentProduct.code}</div>
                         </div>
                         <div>
                             <div style={{ fontSize: '10px', color: '#f59e0b', opacity: 0.8, textTransform: 'uppercase', marginBottom: '2px' }}>Name</div>
-                            <div style={{ color: '#fff', fontWeight: '500', fontSize: '14px' }}>{currentProduct.name}</div>
+                            <div style={{ color: 'var(--text-1)', fontWeight: '500', fontSize: '14px' }}>{currentProduct.name}</div>
                         </div>
                         <div>
                             <div style={{ fontSize: '10px', color: '#f59e0b', opacity: 0.8, textTransform: 'uppercase', marginBottom: '2px' }}>Base Unit</div>
-                            <div style={{ color: '#fff', fontWeight: '500', fontSize: '13px' }}>1 {currentProduct.base_unit}</div>
+                            <div style={{ color: 'var(--text-1)', fontWeight: '500', fontSize: '13px' }}>1 {currentProduct.base_unit}</div>
                         </div>
                         <div>
                             <div style={{ fontSize: '10px', color: '#f59e0b', opacity: 0.8, textTransform: 'uppercase', marginBottom: '2px' }}>Stock Info</div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <span style={{ fontSize: '12px', color: '#888' }}>Checking live ledger...</span>
+                                <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>Checking live ledger...</span>
                             </div>
                         </div>
                         <div style={{ gridColumn: 'span 2', borderTop: '1px solid rgba(245,158,11,0.1)', paddingTop: '10px', marginTop: '4px' }}>
-                            <div style={{ fontSize: '10px', color: '#888', marginBottom: '6px' }}>REGISTERED BARCODES</div>
+                            <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '6px' }}>REGISTERED BARCODES</div>
                             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: '11px', fontFamily: 'monospace', color: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', padding: '2px 6px', borderRadius: '4px' }}>{currentProduct.code}</span>
                                 {(currentProduct.barcodes || []).map((b: any) => (
-                                    <span key={b.code} style={{ fontSize: '11px', fontFamily: 'monospace', color: '#aaa', backgroundColor: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>{b.code}</span>
+                                    <span key={b.code} style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--text-3)', backgroundColor: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>{b.code}</span>
                                 ))}
                             </div>
                         </div>
@@ -688,27 +688,27 @@ const StockFlowPanel: React.FC = () => {
             {/* HU Context Card */}
             {currentHU && (
                 <div style={{ 
-                    border: '1px solid var(--theme-border)', backgroundColor: 'var(--theme-light)', 
+                    border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface2)', 
                     borderRadius: '8px', padding: '14px', marginTop: '16px' 
                 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                         <div>
-                            <div style={{ fontSize: '10px', color: 'var(--theme-accent)', opacity: 0.8, textTransform: 'uppercase', marginBottom: '2px' }}>HU Code</div>
-                            <div style={{ color: '#fff', fontWeight: '600', fontSize: '13px' }}>{currentHU.public_id || currentHU.code}</div>
+                            <div style={{ fontSize: '10px', color: 'var(--accent)', opacity: 0.8, textTransform: 'uppercase', marginBottom: '2px' }}>HU Code</div>
+                            <div style={{ color: 'var(--text-1)', fontWeight: '600', fontSize: '13px' }}>{currentHU.public_id || currentHU.code}</div>
                         </div>
                         <div>
-                            <div style={{ fontSize: '10px', color: 'var(--theme-accent)', opacity: 0.8, textTransform: 'uppercase', marginBottom: '2px' }}>Material</div>
-                            <div style={{ color: '#fff', fontWeight: '500', fontSize: '13px' }}>{currentHU.product_name || currentHU.product_code || 'Generic Product'}</div>
+                            <div style={{ fontSize: '10px', color: 'var(--accent)', opacity: 0.8, textTransform: 'uppercase', marginBottom: '2px' }}>Material</div>
+                            <div style={{ color: 'var(--text-1)', fontWeight: '500', fontSize: '13px' }}>{currentHU.product_name || currentHU.product_code || 'Generic Product'}</div>
                         </div>
                         <div>
-                            <div style={{ fontSize: '10px', color: 'var(--theme-accent)', opacity: 0.8, textTransform: 'uppercase', marginBottom: '2px' }}>Quantity</div>
-                            <div style={{ color: '#fff', fontWeight: '500', fontSize: '13px' }}>{currentHU.quantity} {currentHU.unit || currentHU.base_unit}</div>
+                            <div style={{ fontSize: '10px', color: 'var(--accent)', opacity: 0.8, textTransform: 'uppercase', marginBottom: '2px' }}>Quantity</div>
+                            <div style={{ color: 'var(--text-1)', fontWeight: '500', fontSize: '13px' }}>{currentHU.quantity} {currentHU.unit || currentHU.base_unit}</div>
                         </div>
                         <div>
-                            <div style={{ fontSize: '10px', color: 'var(--theme-accent)', opacity: 0.8, textTransform: 'uppercase', marginBottom: '2px' }}>Status</div>
+                            <div style={{ fontSize: '10px', color: 'var(--accent)', opacity: 0.8, textTransform: 'uppercase', marginBottom: '2px' }}>Status</div>
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                                 <span style={{
-                                    backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--theme-accent)',
+                                    backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--accent)',
                                     fontSize: '11px', borderRadius: '12px', padding: '2px 8px', fontWeight: '600'
                                 }}>
                                     {currentHU.status || 'AVAILABLE'}
@@ -716,9 +716,9 @@ const StockFlowPanel: React.FC = () => {
                             </div>
                         </div>
                         {targetLocation && (
-                            <div style={{ gridColumn: 'span 2', borderTop: '1px solid var(--theme-border)', paddingTop: '10px', marginTop: '4px' }}>
-                                <div style={{ fontSize: '10px', color: 'var(--theme-accent)', marginBottom: '2px' }}>TARGET DESTINATION</div>
-                                <div style={{ color: '#fff', fontWeight: '700', fontSize: '14px' }}>{targetLocation}</div>
+                            <div style={{ gridColumn: 'span 2', borderTop: '1px solid var(--border)', paddingTop: '10px', marginTop: '4px' }}>
+                                <div style={{ fontSize: '10px', color: 'var(--accent)', marginBottom: '2px' }}>TARGET DESTINATION</div>
+                                <div style={{ color: 'var(--text-1)', fontWeight: '700', fontSize: '14px' }}>{targetLocation}</div>
                             </div>
                         )}
                     </div>
@@ -732,28 +732,28 @@ const StockFlowPanel: React.FC = () => {
                     backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
                 }}>
                     <div style={{
-                        backgroundColor: '#18181b', border: '1px solid var(--theme-border)',
+                        backgroundColor: 'var(--bg-surface2)', border: '1px solid var(--border)',
                         padding: '30px', borderRadius: '12px', width: '400px', display: 'flex', flexDirection: 'column', gap: '20px'
                     }}>
                         <div>
-                            <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#fff' }}>Partial Consumption / Split</h2>
-                            <p style={{ fontSize: '12px', color: '#888' }}>Parent HU: {currentHU.public_id || currentHU.code} ({currentHU.quantity} {currentHU.unit})</p>
+                            <h2 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-1)' }}>Partial Consumption / Split</h2>
+                            <p style={{ fontSize: '12px', color: 'var(--text-3)' }}>Parent HU: {currentHU.public_id || currentHU.code} ({currentHU.quantity} {currentHU.unit})</p>
                         </div>
 
                         <div className="form-group">
-                            <label style={{ fontSize: '10px', color: 'var(--theme-accent)', textTransform: 'uppercase' }}>Quantity to Extract</label>
+                            <label style={{ fontSize: '10px', color: 'var(--accent)', textTransform: 'uppercase' }}>Quantity to Extract</label>
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                 <Input 
                                     type="number" className="sx-input" style={{ flex: 1 }} 
                                     max={currentHU.quantity} min={0.0001} step={0.0001}
                                     value={splitQty} onChange={e => setSplitQty(parseFloat(e.target.value))}
                                 />
-                                <span style={{ fontSize: '14px', color: '#fff' }}>{currentHU.unit}</span>
+                                <span style={{ fontSize: '14px', color: 'var(--text-1)' }}>{currentHU.unit}</span>
                             </div>
                         </div>
 
                         <div className="form-group">
-                            <label style={{ fontSize: '10px', color: 'var(--theme-accent)', textTransform: 'uppercase' }}>Notes / Reason</label>
+                            <label style={{ fontSize: '10px', color: 'var(--accent)', textTransform: 'uppercase' }}>Notes / Reason</label>
                             <Input 
                                 type="text" className="sx-input" placeholder="e.g. Production use, Lab sample..."
                                 value={consumeNotes} onChange={e => setConsumeNotes(e.target.value)}
@@ -772,11 +772,11 @@ const StockFlowPanel: React.FC = () => {
             {/* Lineage Tree Viewer */}
             {currentMode === 'Production' && huLineage.length > 0 && (
                 <div style={{ 
-                    marginTop: '20px', backgroundColor: 'rgba(255,255,255,0.02)', 
-                    border: '1px solid var(--theme-border)', borderRadius: '12px', padding: '20px' 
+                    marginTop: '20px', backgroundColor: 'var(--bg-input)', 
+                    border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' 
                 }}>
-                    <h3 style={{ fontSize: '12px', fontWeight: '700', color: 'var(--theme-accent)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                         <span style={{ color: '#fff' }}>IDENTITY LINEAGE</span>
+                    <h3 style={{ fontSize: '12px', fontWeight: '700', color: 'var(--accent)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                         <span style={{ color: 'var(--text-1)' }}>IDENTITY LINEAGE</span>
                          <span style={{ fontSize: '10px', fontWeight: '400', opacity: 0.5 }}>Real-time Trace</span>
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
@@ -814,7 +814,7 @@ const StockFlowPanel: React.FC = () => {
                                             {node.product_code} · {node.quantity} {node.base_unit} · {node.zone_code}
                                         </div>
                                     </div>
-                                    <div style={{ textAlign: 'right', fontSize: '10px', color: '#444' }}>
+                                    <div style={{ textAlign: 'right', fontSize: '10px', color: 'var(--text-4)' }}>
                                         {new Date(node.created_at).toLocaleDateString()}
                                     </div>
                                 </div>

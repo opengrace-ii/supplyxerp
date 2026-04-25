@@ -75,3 +75,35 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": gin.H{"user": claims}})
 }
+
+func (h *AuthHandler) Refresh(c *gin.Context) {
+	tokenValue, err := c.Cookie("supplyxerp_token")
+	if err != nil || tokenValue == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": gin.H{"message": "no refresh token found"}})
+		return
+	}
+
+	claims, err := security.ParseToken(tokenValue, h.jwtSecret)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": gin.H{"message": "invalid or expired token"}})
+		return
+	}
+
+	// Issue a new token
+	newToken, expiresAt, err := security.GenerateToken(claims, h.jwtSecret, h.jwtTTLMinutes)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": gin.H{"message": "failed to refresh token"}})
+		return
+	}
+
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("supplyxerp_token", newToken, int(time.Until(expiresAt).Seconds()), "/", "", h.cookieSecure, true)
+	
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"user": claims,
+			"access_token": newToken,
+		},
+	})
+}

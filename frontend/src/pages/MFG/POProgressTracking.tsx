@@ -2,17 +2,17 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 
 // ─── Theme Tokens (Ambient/Amber MFG) ─────────────────────────────────────────
 const T = {
-  bg: "#1a0e00",
-  surface: "#201405",
-  surface2: "#2d1b0a",
-  surface3: "#3d250d",
-  border: "#4a3319",
-  borderMuted: "#332211",
-  amber: "#f59e0b",
-  amberDim: "#b45309",
-  text: "#fef3c7",
-  textMuted: "#d48d3b",
-  textDim: "#92400e",
+  bg: "var(--bg-base)",
+  surface: "var(--bg-surface)",
+  surface2: "var(--bg-surface2)",
+  surface3: "var(--bg-surface3, var(--bg-surface2))",
+  border: "var(--border)",
+  borderMuted: "var(--border)",
+  amber: "var(--accent)",
+  amberDim: "var(--accent-dim)",
+  text: "var(--text-1)",
+  textMuted: "var(--text-3)",
+  textDim: "var(--text-4)",
   green: "#22c55e",
   yellow: "#eab308",
   red: "#ef4444",
@@ -140,6 +140,7 @@ export default function POProgressTracking() {
   const [initForm, setInitForm] = useState({ scenario: "IMPORT", baseline: new Date().toISOString().split("T")[0] });
   const [editRow, setEditRow] = useState<string | null>(null); // event_code
   const [editForm, setEditForm] = useState({ actual: "", forecast: "", notes: "" });
+  const [searchQuery, setSearchQuery] = useState("");
 
   const apiFetch = useCallback((url: string, opts: any = {}) => {
     return fetch(url, { ...opts, credentials: "include" });
@@ -237,6 +238,15 @@ export default function POProgressTracking() {
     }
   };
 
+  const filteredPOs = pos.filter(po => {
+    const q = searchQuery.toLowerCase();
+    return (
+      po.po_number?.toLowerCase().includes(q) ||
+      po.vendor_name?.toLowerCase().includes(q) ||
+      po.supplier_name?.toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: T.bg, color: T.text, fontSize: 13 }}>
       
@@ -290,7 +300,28 @@ export default function POProgressTracking() {
           <div style={{ padding: "0 12px 12px", fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Select Purchase Order
           </div>
-          {pos.map(po => (
+          
+          <div style={{ padding: "0 12px 12px" }}>
+            <input
+              type="text"
+              placeholder="Filter POs..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{
+                width: "100%",
+                background: "var(--bg-input)",
+                border: `1px solid ${T.border}`,
+                borderRadius: 6,
+                padding: "6px 10px",
+                color: T.text,
+                fontSize: 12,
+                outline: "none",
+                fontFamily: "Inter, system-ui, sans-serif"
+              }}
+            />
+          </div>
+
+          {filteredPOs.map(po => (
             <div key={po.id} onClick={() => selectPO(po)} style={{ padding: "10px 16px", cursor: "pointer", background: selectedPO?.id === po.id ? T.surface2 : "transparent", borderLeft: selectedPO?.id === po.id ? `3px solid ${T.amber}` : "3px solid transparent", borderBottom: `1px solid ${T.borderMuted}` }}>
               <div style={{ color: T.amber, fontWeight: 700 }}>{po.po_number}</div>
               <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>{po.vendor_name ?? po.supplier_name ?? "Unknown Vendor"}</div>

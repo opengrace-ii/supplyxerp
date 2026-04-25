@@ -230,11 +230,37 @@ export function Sidebar() {
         )}
       </div>
 
+      <div style={{
+        padding: '12px 14px',
+        borderTop: '1px solid var(--border)',
+        flexShrink: 0,
+      }}>
+        {!collapsed && (
+          <>
+            <div style={{
+              fontSize: '12px',
+              fontWeight: 600,
+              color: 'var(--text-1)',
+              marginBottom: '2px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}>TechLogix UK</div>
+            <div style={{
+              fontSize: '10px',
+              color: 'var(--text-3)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}>Site: LHR-01</div>
+          </>
+        )}
+      </div>
+
       <div
         onClick={toggle}
         style={{
-          padding: '12px',
-          borderTop: '1px solid var(--border)',
+          padding: '10px 14px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: collapsed ? 'center' : 'flex-end',
@@ -242,14 +268,15 @@ export function Sidebar() {
           color: 'var(--text-3)',
           transition: 'color 150ms ease',
           flexShrink: 0,
+          background: 'rgba(0,0,0,0.02)'
         }}
         onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.color = 'var(--text-1)'}
         onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.color = 'var(--text-3)'}
         title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
         <svg
-          width="16" height="16" viewBox="0 0 24 24"
-          fill="none" stroke="currentColor" strokeWidth="2"
+          width="14" height="14" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" strokeWidth="2.5"
           strokeLinecap="round" strokeLinejoin="round"
           style={{
             transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -258,13 +285,6 @@ export function Sidebar() {
         >
           <path d="M15 18l-6-6 6-6" />
         </svg>
-        {!collapsed && (
-          <span style={{
-            fontSize: '11px',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            marginLeft: '6px',
-          }}>Collapse</span>
-        )}
       </div>
     </aside>
   )

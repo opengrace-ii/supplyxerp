@@ -61,7 +61,7 @@ const AppPage: React.FC = () => {
 
   if (isAuthLoading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#111', color: '#fff' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: 'var(--bg-base)', color: 'var(--text-1)' }}>
         Loading session...
       </div>
     );
