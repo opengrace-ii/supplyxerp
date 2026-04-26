@@ -836,12 +836,17 @@ func (h *SupplyPactsHandler) CalculatePrice(c *gin.Context) {
 		MaterialID int64   `json:"material_id"`
 		Quantity   float64 `json:"quantity"`
 		BasePrice  float64 `json:"base_price"`
+		CostPrice  float64 `json:"cost_price"`
 		Date       string  `json:"date"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	if req.BasePrice == 0 && req.CostPrice != 0 {
+		req.BasePrice = req.CostPrice
 	}
 
 	calcDate, err := time.Parse("2006-01-02", req.Date)
@@ -878,7 +883,7 @@ func (h *SupplyPactsHandler) CalculatePrice(c *gin.Context) {
 	}
 
 	steps := []Step{}
-	runningSubtotal := req.BasePrice
+	runningSubtotal := 0.0
 	subtotalsBySeq := make(map[int]float64)
 
 	for _, r := range rules {
@@ -886,7 +891,10 @@ func (h *SupplyPactsHandler) CalculatePrice(c *gin.Context) {
 
 		if r.RuleType == "BASE" {
 			stepAmount = req.BasePrice
-			runningSubtotal = req.BasePrice
+			if r.CalcMethod == "QTY" {
+				stepAmount = req.BasePrice * req.Quantity
+			}
+			runningSubtotal = stepAmount
 		} else if r.RuleType == "SUBTOTAL" {
 			stepAmount = 0
 			// runningSubtotal stays same

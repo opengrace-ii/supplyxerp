@@ -6,31 +6,30 @@ import { SectionTabs } from '@/components/ui/SectionTabs';
 
 interface QualityCheck {
   id: number;
-  check_number: string;
-  trigger_type: string;
-  trigger_id: number;
-  material_id: number;
-  supplier_id?: number;
-  quantity_to_inspect: number;
-  quantity_passed: number;
-  quantity_failed: number;
-  quantity_pending: number;
+  public_id: string;
+  qc_number: string;
+  reference_type: string;
+  reference_code: { String: string; Valid: boolean };
+  material_id: { Int64: number; Valid: boolean };
+  supplier_id: { Int64: number; Valid: boolean };
+  inspect_qty: number;
+  passed_qty: number;
+  failed_qty: number;
   status: string;
-  result: string;
-  inspector?: string;
-  inspection_date?: string;
-  failure_category?: string;
-  storage_zone?: string;
-  quarantine_zone?: string;
-  notes?: string;
+  result: { String: string; Valid: boolean };
+  inspector_id: { Int64: number; Valid: boolean };
+  started_at: { Time: string; Valid: boolean };
+  completed_at: { Time: string; Valid: boolean };
+  notes: { String: string; Valid: boolean };
   created_at: string;
+  material_code?: string;
   material_name?: string;
   supplier_name?: string;
 }
 
 interface Finding {
   id: number;
-  finding_no: number;
+  finding_number: number;
   finding_type: string;
   category: string;
   description: string;
@@ -39,11 +38,10 @@ interface Finding {
 }
 
 interface Dashboard {
-  open_checks: number;
-  overdue_checks: number;
-  passed_this_week: number;
-  failed_this_week: number;
-  rejection_rate_pct: number;
+  pending: number;
+  passed: number;
+  failed: number;
+  pass_rate_pct: number;
   top_failure_categories: { category: string; count: number }[];
   supplier_quality_alerts: { supplier_name: string; failed_count: number; current_score: number }[];
 }
@@ -62,12 +60,11 @@ function apiFetch(url: string, opts: RequestInit = {}) {
 
 function Badge({ label, status }: { label: string; status: string }) {
   const colors: Record<string, string> = {
-    OPEN:        "sx-badge--gray",
+    PENDING:     "sx-badge--gray",
     IN_PROGRESS: "sx-badge--amber",
     PASSED:      "sx-badge--green",
     FAILED:      "sx-badge--red",
-    PARTIAL:     "sx-badge--blue",
-    PASS:        "sx-badge--green",
+    ACCEPT:      "sx-badge--green",
     REJECT:      "sx-badge--red",
     CRITICAL:    "sx-badge--red",
     MAJOR:       "sx-badge--amber",
@@ -148,12 +145,10 @@ export default function QualityGatePage() {
       const res = await apiFetch(`/api/quality-checks/${selectedId}/record-result`, {
         method: "POST",
         body: JSON.stringify({
+          status: result === 'ACCEPT' ? 'PASSED' : 'FAILED',
           result,
-          quantity_passed: result === 'PASS' ? check.quantity_to_inspect : 0,
-          quantity_failed: result === 'REJECT' ? check.quantity_to_inspect : 0,
-          inspector: "CURRENT_USER",
-          storage_zone: check.storage_zone || "STOCK-A1",
-          quarantine_zone: "QUARANTINE-X",
+          passed_qty: result === 'ACCEPT' ? check.inspect_qty : 0,
+          failed_qty: result === 'REJECT' ? check.inspect_qty : 0,
           notes: "Recorded via QualityGate UI"
         })
       });
@@ -190,10 +185,10 @@ export default function QualityGatePage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
             {/* Stats */}
           <div className="grid grid-cols-4 gap-3 mb-8">
-             <KpiCard label="Open Checks" value={dashboard?.open_checks ?? 0} />
-             <KpiCard label="Overdue (>3D)" value={dashboard?.overdue_checks ?? 0} deltaDir={(dashboard?.overdue_checks ?? 0) > 0 ? 'down' : 'neutral'} />
-             <KpiCard label="Passed (7D)" value={dashboard?.passed_this_week ?? 0} deltaDir={(dashboard?.passed_this_week ?? 0) > 0 ? 'up' : 'neutral'} />
-             <KpiCard label="Rejection Rate" value={`${(dashboard?.rejection_rate_pct ?? 0).toFixed(1)}%`} deltaDir={(dashboard?.rejection_rate_pct ?? 0) > 0 ? 'down' : 'neutral'} />
+             <KpiCard label="Open Checks" value={dashboard?.pending ?? 0} />
+             <KpiCard label="Passed" value={dashboard?.passed ?? 0} />
+             <KpiCard label="Failed" value={dashboard?.failed ?? 0} />
+             <KpiCard label="Pass Rate" value={`${(dashboard?.pass_rate_pct ?? 0)}%`} deltaDir={(dashboard?.pass_rate_pct ?? 0) > 90 ? 'up' : 'down'} />
           </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
@@ -234,7 +229,7 @@ export default function QualityGatePage() {
                 {activeTab === "History" ? "Inspection History" : "Pending Queue"}
               </div>
               <div style={{ flex: 1, overflowY: "auto" }}>
-                {checks.filter(c => activeTab === "History" ? (c.status === 'PASSED' || c.status === 'FAILED') : (c.status === 'OPEN' || c.status === 'IN_PROGRESS')).map(c => (
+                {checks.filter(c => activeTab === "History" ? (c.status === 'PASSED' || c.status === 'FAILED') : (c.status === 'PENDING' || c.status === 'IN_PROGRESS')).map(c => (
                     <div 
                     key={c.id} 
                     onClick={() => setSelectedId(c.id)}
@@ -242,12 +237,12 @@ export default function QualityGatePage() {
                     style={{ padding: "16px", display: "block", borderBottom: "1px solid var(--border)", height: "auto" }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                      <span className="sx-mono" style={{ fontWeight: 700, color: "var(--accent)" }}>{c.check_number}</span>
+                      <span className="sx-mono" style={{ fontWeight: 700, color: "var(--accent)" }}>{c.qc_number}</span>
                       <Badge label={c.status} status={c.status} />
                     </div>
                     <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{c.material_name}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>{c.trigger_type} ID: {c.trigger_id}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Qty: {c.quantity_to_inspect}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>{c.reference_type} Ref: {c.reference_code.String}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Qty: {c.inspect_qty}</div>
                   </div>
                 ))}
               </div>
@@ -265,7 +260,7 @@ export default function QualityGatePage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div>
-                      <h2 className="sx-page-title" style={{ fontSize: '24px' }}>{check?.check_number}</h2>
+                      <h2 className="sx-page-title" style={{ fontSize: '24px' }}>{check?.qc_number}</h2>
                       <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-1)", marginTop: '4px' }}>{check?.material_name}</div>
                       <div style={{ color: "var(--text-3)", marginTop: 6, fontSize: '13px' }}>Supplier: {check?.supplier_name || "Internal"}</div>
                     </div>
@@ -273,12 +268,12 @@ export default function QualityGatePage() {
                   </div>
 
                   <div className="sx-form-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-                    <Fld label="Trigger">{check?.trigger_type}</Fld>
-                    <Fld label="Quantity">{check?.quantity_to_inspect}</Fld>
+                    <Fld label="Reference">{check?.reference_type} {check?.reference_code.String}</Fld>
+                    <Fld label="Quantity">{check?.inspect_qty}</Fld>
                     <Fld label="Created At">{check?.created_at ? new Date(check.created_at).toLocaleString() : ""}</Fld>
                   </div>
 
-                  {check?.status === 'OPEN' && (
+                  {check?.status === 'PENDING' && (
                     <div style={{ padding: 48, border: "1px dashed var(--border)", textAlign: "center", borderRadius: "var(--r-lg)", background: "var(--bg-surface2)" }}>
                       <p style={{ color: "var(--text-3)", marginBottom: 24, fontSize: 14 }}>Inspection not yet started.</p>
                       <button onClick={handleStart} className="sx-btn sx-btn--primary">START INSPECTION</button>
@@ -290,7 +285,7 @@ export default function QualityGatePage() {
                       <div style={{ background: "var(--bg-surface2)", padding: 24, borderRadius: "var(--r-md)", border: '1px solid var(--border)' }}>
                         <div className="sx-label" style={{ marginBottom: '20px', color: 'var(--accent)' }}>Record Inspection Results</div>
                         <div style={{ display: "flex", gap: 16 }}>
-                          <button onClick={() => handleRecord('PASS')} className="sx-btn" style={{ flex: 1, background: 'var(--green)', color: '#000', justifyContent: "center", padding: "16px" }}>PASS / ACCEPT</button>
+                          <button onClick={() => handleRecord('ACCEPT')} className="sx-btn" style={{ flex: 1, background: 'var(--green)', color: '#000', justifyContent: "center", padding: "16px" }}>PASS / ACCEPT</button>
                           <button onClick={() => handleRecord('REJECT')} className="sx-btn" style={{ flex: 1, background: 'var(--red)', color: '#000', justifyContent: "center", padding: "16px" }}>FAIL / REJECT</button>
                         </div>
                       </div>
@@ -325,13 +320,12 @@ export default function QualityGatePage() {
 
                   {(check?.status === 'PASSED' || check?.status === 'FAILED' || check?.status === 'PARTIAL') && (
                     <div className="sx-form-grid" style={{ gridTemplateColumns: "1fr 1fr", background: "var(--bg-surface2)", padding: 24, borderRadius: "var(--r-md)", border: '1px solid var(--border)' }}>
-                      <Fld label="Result"><Badge label={check?.result || ""} status={check?.result || ""} /></Fld>
-                      <Fld label="Inspector">{check?.inspector}</Fld>
-                      <Fld label="Quantity Passed">{check?.quantity_passed}</Fld>
-                      <Fld label="Quantity Failed">{check?.quantity_failed}</Fld>
-                      <Fld label="Category">{check?.failure_category || "N/A"}</Fld>
-                      <Fld label="Target Zone"><span className="sx-mono">{check?.storage_zone || check?.quarantine_zone}</span></Fld>
-                      <Fld label="Inspector Notes" span={2}>{check?.notes}</Fld>
+                      <Fld label="Result"><Badge label={check?.result.String || ""} status={check?.result.String || ""} /></Fld>
+                      <Fld label="Inspector ID">{check?.inspector_id.Int64}</Fld>
+                      <Fld label="Quantity Passed">{check?.passed_qty}</Fld>
+                      <Fld label="Quantity Failed">{check?.failed_qty}</Fld>
+                      <Fld label="Target Zone"><span className="sx-mono">STOCK-MAIN</span></Fld>
+                      <Fld label="Inspector Notes" span={2}>{check?.notes.String}</Fld>
                     </div>
                   )}
                 </div>

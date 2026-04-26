@@ -134,7 +134,7 @@ export default function RouteRunnerPage() {
   return (
     <div className="sx-split">
       {/* Sidebar */}
-      <div className="sx-split-left">
+      <div className="sx-split-left" style={{ width: '300px', minWidth: '300px' }}>
         <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div>
             <h2 className="text-xl font-bold text-[var(--accent)] tracking-tight">RouteRunner</h2>
@@ -165,8 +165,8 @@ export default function RouteRunnerPage() {
                 <span style={{ fontWeight: 700, color: "var(--accent)" }}>{s.shipment_number}</span>
                 <Badge label={s.status} status={s.status} />
               </div>
-              <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{s.customer_name}</div>
-              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Ref: {s.deal_number} | Sch: {s.scheduled_dispatch}</div>
+              <div style={{ fontWeight: 600, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "180px" }}>{s.customer_name}</div>
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "180px" }}>Ref: {s.deal_number} | Sch: {s.scheduled_dispatch}</div>
             </div>
           ))}
         </div>

@@ -110,9 +110,9 @@ func main() {
 	supplyPactsHandler := handlers.NewSupplyPactsHandler(pool)
 	deliveryHandler := handlers.NewDeliveryHandler(pool)
 	usersHandler := handlers.NewUsersHandler(pool)
-	buildHandler := &handlers.BuildHandler{Pool: pool, Repo: uow}
-	qualityHandler := &handlers.QualityHandler{Pool: pool, Repo: uow}
-	dealflowHandler := &handlers.DealflowHandler{Pool: pool}
+	buildOrderHandler := handlers.NewBuildOrderHandler(queries)
+	qualityHandler := handlers.NewQualityHandler(pool)
+	dealFlowHandler := handlers.NewDealFlowHandler(queries)
 	routeRunnerHandler := &handlers.RouteRunnerHandler{Pool: pool}
 
 	routerDeps := api.RouterDeps{
@@ -141,9 +141,9 @@ func main() {
 		SupplyPactsHandler: supplyPactsHandler,
 		DeliveryHandler:  deliveryHandler,
 		UsersHandler:     usersHandler,
-		BuildHandler:     buildHandler,
+		BuildOrderHandler:     buildOrderHandler,
 		QualityHandler:   qualityHandler,
-		DealflowHandler:  dealflowHandler,
+		DealFlowHandler:  dealFlowHandler,
 		RouteRunnerHandler: routeRunnerHandler,
 	}
 

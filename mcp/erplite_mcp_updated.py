@@ -356,7 +356,13 @@ CURRENT_STATUS = {
         "RouteRunner": {"backend": "BUILT", "api_smoke": "200", "frontend": "LIVE", "verified": True},
         "SupplyPacts": {"backend": "BUILT", "api_smoke": "200", "frontend": "LIVE", "verified": True},
         "VendorScorecard": {"backend": "BUILT", "api_smoke": "200", "frontend": "LIVE", "verified": True},
-        "PriceFormulas": {"backend": "BUILT", "api_smoke": "200", "frontend": "LIVE", "verified": True},
+        "PriceFormulas": {
+            "backend": "BUILT",
+            "api_smoke": "200",
+            "frontend": "LIVE",
+            "verified": True,
+            "completed_date": "2026-04-26"
+        },
         "OrgStructure": {"backend": "BUILT", "api_smoke": "200", "frontend": "LIVE (Reported Blank)", "verified": False},
         "SystemLog": {"backend": "BUILT", "api_smoke": "200", "frontend": "LIVE", "verified": True},
         "UsersRoles": {"backend": "BUILT", "api_smoke": "200", "frontend": "LIVE", "verified": True},

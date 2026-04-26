@@ -36,6 +36,11 @@ export default function PriceFormulas() {
   const [loading, setLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
+  const [testBasePrice, setTestBasePrice] = useState("100.00");
+  const [testQuantity, setTestQuantity] = useState("1");
+  const [calcResult, setCalcResult] = useState<any>(null);
+  const [calcLoading, setCalcLoading] = useState(false);
+
   const apiFetch = useCallback((url: string, opts: any = {}) => {
     return fetch(url, { ...opts, credentials: "include" });
   }, []);
@@ -55,11 +60,41 @@ export default function PriceFormulas() {
     setLoading(true);
     setRules([]);
     setSaveStatus(null);
+    setCalcResult(null);
     try {
       const res = await apiFetch(`/api/price-formulas/${f.id}`);
       const d = await res.json();
       setRules(d.rules ?? []);
     } finally { setLoading(false); }
+  };
+
+  const handleCalculate = async () => {
+    if (!selectedFormula) return;
+    setCalcLoading(true);
+    setCalcResult(null);
+    try {
+      const res = await apiFetch('/api/price-formulas/calculate', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          formula_id: selectedFormula.id,
+          base_price: parseFloat(testBasePrice) || 0,
+          quantity: parseFloat(testQuantity) || 1,
+          date: new Date().toISOString().split('T')[0]
+        })
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setCalcResult(d);
+      } else {
+        alert("Calculation failed");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error calling calculation endpoint");
+    } finally {
+      setCalcLoading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -194,19 +229,44 @@ export default function PriceFormulas() {
             </Card>
 
             {/* Simulation Console */}
-            <div className="mt-12 space-y-4">
+            <div className="mt-12 space-y-4 pb-12">
               <h3 className="text-sm font-bold tracking-widest uppercase text-[var(--text-3)]">Simulation Console</h3>
               <Card>
                 <CardBody className="grid grid-cols-3 gap-6 items-end">
                   <Field label="BASE PRICE">
-                    <Input type="number" defaultValue="100.00" />
+                    <Input type="number" value={testBasePrice} onChange={(e: any) => setTestBasePrice(e.target.value)} />
                   </Field>
                   <Field label="QUANTITY">
-                    <Input type="number" defaultValue="1" />
+                    <Input type="number" value={testQuantity} onChange={(e: any) => setTestQuantity(e.target.value)} />
                   </Field>
-                  <Button variant="secondary" className="w-full h-9">Run Calculation Test</Button>
+                  <Button variant="secondary" className="w-full h-9" onClick={handleCalculate} disabled={calcLoading}>
+                    {calcLoading ? "Calculating..." : "Run Calculation Test"}
+                  </Button>
                 </CardBody>
               </Card>
+
+              {calcResult && (
+                <Card className="mt-6">
+                  <CardBody>
+                    <div className="mb-4">
+                      <div className="text-sm text-[var(--text-3)]">Final Computed Price ({calcResult.currency})</div>
+                      <div className="text-3xl font-bold text-amber-500">{calcResult.final_price?.toFixed(2)}</div>
+                      <div className="text-xs text-[var(--text-3)] mt-1">
+                        Unit Price: {(calcResult.final_price / (parseFloat(testQuantity) || 1)).toFixed(2)}
+                      </div>
+                    </div>
+                    <DataTable
+                      columns={[
+                        { key: 'sequence', header: 'SEQ', width: '60px' },
+                        { key: 'rule_name', header: 'RULE' },
+                        { key: 'amount', header: 'AMOUNT', render: (r) => r.amount.toFixed(2) },
+                        { key: 'subtotal', header: 'RUNNING TOTAL', render: (r) => <span className="font-bold">{r.subtotal.toFixed(2)}</span> }
+                      ]}
+                      rows={calcResult.steps || []}
+                    />
+                  </CardBody>
+                </Card>
+              )}
             </div>
           </div>
         )}

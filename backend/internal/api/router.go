@@ -36,7 +36,7 @@ type RouterDeps struct {
 	SupplyPactsHandler *handlers.SupplyPactsHandler
 	DeliveryHandler  *handlers.DeliveryHandler
 	UsersHandler     *handlers.UsersHandler
-	BuildHandler     *handlers.BuildHandler
+	BuildOrderHandler *handlers.BuildOrderHandler
 	QualityHandler   *handlers.QualityHandler
 	DealFlowHandler  *handlers.DealFlowHandler
 	RouteRunnerHandler *handlers.RouteRunnerHandler
@@ -333,16 +333,16 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		}
 
 		// Build Orders
-		if deps.BuildHandler != nil {
-			secured.GET ("/api/build-orders",                        deps.BuildHandler.ListBuildOrders)
-			secured.POST("/api/build-orders",                        deps.BuildHandler.CreateBuildOrder)
-			secured.GET ("/api/build-orders/:id",                    deps.BuildHandler.GetBuildOrder)
-			secured.PUT ("/api/build-orders/:id/components",         deps.BuildHandler.UpsertComponents)
-			secured.POST("/api/build-orders/:id/release",            deps.BuildHandler.ReleaseBuildOrder)
-			secured.POST("/api/build-orders/:id/issue-material",     deps.BuildHandler.IssueMaterial)
-			secured.POST("/api/build-orders/:id/confirm-output",     deps.BuildHandler.ConfirmOutput)
-			secured.POST("/api/build-orders/:id/cancel",             deps.BuildHandler.CancelBuildOrder)
-			secured.GET ("/api/build-orders/:id/material-status",    deps.BuildHandler.GetMaterialStatus)
+		if deps.BuildOrderHandler != nil {
+			secured.GET ("/api/build-orders",                        deps.BuildOrderHandler.ListBuildOrders)
+			secured.POST("/api/build-orders",                        deps.BuildOrderHandler.CreateBuildOrder)
+			secured.GET ("/api/build-orders/dashboard",              deps.BuildOrderHandler.GetDashboard)
+			secured.GET ("/api/build-orders/:id",                    deps.BuildOrderHandler.GetBuildOrder)
+			secured.POST("/api/build-orders/:id/release",            deps.BuildOrderHandler.ReleaseBuildOrder)
+			secured.POST("/api/build-orders/:id/start",              deps.BuildOrderHandler.StartBuildOrder)
+			secured.POST("/api/build-orders/:id/complete",           deps.BuildOrderHandler.CompleteBuildOrder)
+			secured.POST("/api/build-orders/:id/issue-components",    deps.BuildOrderHandler.IssueComponents)
+			secured.POST("/api/build-orders/:id/cancel",             deps.BuildOrderHandler.CancelBuildOrder)
 		}
 
 		// Quality Gate

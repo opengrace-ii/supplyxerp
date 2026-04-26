@@ -224,7 +224,7 @@ export default function SupplyPacts() {
               <div className="flex justify-between items-start">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
-                    <h1 className="text-3xl font-bold tracking-tight text-white/95">{selectedPact.pact_number}</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-[var(--accent)]">{selectedPact.pact_number}</h1>
                     <Badge variant="blue" className="px-3 py-1 text-xs">{selectedPact.pact_type}</Badge>
                     <Badge variant={getBadgeVariant(selectedPact.status)} className="px-3 py-1 text-xs">{selectedPact.status}</Badge>
                   </div>
