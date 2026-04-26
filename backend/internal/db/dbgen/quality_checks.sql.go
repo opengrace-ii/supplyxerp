@@ -454,56 +454,6 @@ func (q *Queries) RecordQCResult(ctx context.Context, arg RecordQCResultParams) 
 	return i, err
 }
 
-const recordScorecardEvent = `-- name: RecordScorecardEvent :one
-INSERT INTO vendor_scorecard_events (
-    tenant_id, supplier_id, event_type, reference_type,
-    reference_id, reference_code, score_impact, notes, recorded_by
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, public_id, tenant_id, supplier_id, event_type, reference_type, reference_id, reference_code, score_impact, notes, recorded_by, recorded_at
-`
-
-type RecordScorecardEventParams struct {
-	TenantID      int64          `json:"tenant_id"`
-	SupplierID    int64          `json:"supplier_id"`
-	EventType     string         `json:"event_type"`
-	ReferenceType pgtype.Text    `json:"reference_type"`
-	ReferenceID   pgtype.Int8    `json:"reference_id"`
-	ReferenceCode pgtype.Text    `json:"reference_code"`
-	ScoreImpact   pgtype.Numeric `json:"score_impact"`
-	Notes         pgtype.Text    `json:"notes"`
-	RecordedBy    pgtype.Int8    `json:"recorded_by"`
-}
-
-func (q *Queries) RecordScorecardEvent(ctx context.Context, arg RecordScorecardEventParams) (VendorScorecardEvent, error) {
-	row := q.db.QueryRow(ctx, recordScorecardEvent,
-		arg.TenantID,
-		arg.SupplierID,
-		arg.EventType,
-		arg.ReferenceType,
-		arg.ReferenceID,
-		arg.ReferenceCode,
-		arg.ScoreImpact,
-		arg.Notes,
-		arg.RecordedBy,
-	)
-	var i VendorScorecardEvent
-	err := row.Scan(
-		&i.ID,
-		&i.PublicID,
-		&i.TenantID,
-		&i.SupplierID,
-		&i.EventType,
-		&i.ReferenceType,
-		&i.ReferenceID,
-		&i.ReferenceCode,
-		&i.ScoreImpact,
-		&i.Notes,
-		&i.RecordedBy,
-		&i.RecordedAt,
-	)
-	return i, err
-}
-
 const startQualityCheck = `-- name: StartQualityCheck :one
 UPDATE quality_checks
 SET status       = 'IN_PROGRESS',

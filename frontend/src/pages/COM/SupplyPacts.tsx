@@ -54,11 +54,24 @@ interface PactRelease {
   created_by: string;
 }
 
+interface PactDelivery {
+  id: number;
+  public_id: string;
+  scheduled_date: string;
+  quantity: number;
+  unit: string;
+  status: string;
+  received_qty: number;
+  received_date: string | null;
+  notes: string;
+}
+
 export default function SupplyPacts() {
   const [pacts, setPacts] = useState<SupplyPact[]>([]);
   const [selectedPact, setSelectedPact] = useState<SupplyPact | null>(null);
   const [lines, setLines] = useState<PactLine[]>([]);
   const [releases, setReleases] = useState<PactRelease[]>([]);
+  const [deliveries, setDeliveries] = useState<PactDelivery[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("LINES"); // LINES, RELEASES, SCHEDULE
 
@@ -106,6 +119,12 @@ export default function SupplyPacts() {
       const relRes = await apiFetch(`/api/supply-pacts/${p.id}/releases`);
       const relD = await relRes.json();
       setReleases(relD.releases ?? []);
+
+      if (p.pact_type === 'SCHEDULE') {
+        const delRes = await apiFetch(`/api/supply-pacts/${p.id}/deliveries`);
+        const delD = await delRes.json();
+        setDeliveries(delD.deliveries ?? []);
+      }
     } finally { setLoading(false); }
   };
 
@@ -304,6 +323,24 @@ export default function SupplyPacts() {
                         { key: 'created_by', header: 'BY' },
                       ]}
                       rows={releases}
+                    />
+                  </CardBody>
+                </Card>
+              )}
+
+              {activeTab === "SCHEDULE" && (
+                <Card>
+                  <CardBody>
+                    <DataTable
+                      columns={[
+                        { key: 'scheduled_date', header: 'SCHEDULED DATE', render: (d) => new Date(d.scheduled_date).toLocaleDateString() },
+                        { key: 'quantity', header: 'QTY', render: (d) => `${d.quantity} ${d.unit}` },
+                        { key: 'status', header: 'STATUS', render: (d) => <Badge variant={d.status === 'RECEIVED' ? 'green' : d.status === 'MISSED' ? 'red' : 'amber'}>{d.status}</Badge> },
+                        { key: 'received_qty', header: 'RECEIVED' },
+                        { key: 'received_date', header: 'RECEIVED ON', render: (d) => d.received_date ? new Date(d.received_date).toLocaleDateString() : '-' },
+                        { key: 'notes', header: 'NOTES' },
+                      ]}
+                      rows={deliveries}
                     />
                   </CardBody>
                 </Card>

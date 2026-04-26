@@ -157,6 +157,21 @@ type CalendarException struct {
 	IsWorkingDay  bool        `json:"is_working_day"`
 }
 
+type Carrier struct {
+	ID           int64              `json:"id"`
+	PublicID     uuid.UUID          `json:"public_id"`
+	TenantID     int64              `json:"tenant_id"`
+	Code         string             `json:"code"`
+	Name         string             `json:"name"`
+	Mode         string             `json:"mode"`
+	TrackingUrl  pgtype.Text        `json:"tracking_url"`
+	ContactName  pgtype.Text        `json:"contact_name"`
+	ContactEmail pgtype.Text        `json:"contact_email"`
+	ContactPhone pgtype.Text        `json:"contact_phone"`
+	IsActive     pgtype.Bool        `json:"is_active"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
 type Company struct {
 	ID               int64              `json:"id"`
 	PublicID         uuid.UUID          `json:"public_id"`
@@ -1351,34 +1366,38 @@ type SalesOrderLine struct {
 }
 
 type Shipment struct {
-	ID                int64              `json:"id"`
-	TenantID          int64              `json:"tenant_id"`
-	ShipmentNumber    string             `json:"shipment_number"`
-	DealID            pgtype.Int8        `json:"deal_id"`
-	CustomerID        pgtype.Int8        `json:"customer_id"`
-	Status            pgtype.Text        `json:"status"`
-	Carrier           pgtype.Text        `json:"carrier"`
-	TrackingNumber    pgtype.Text        `json:"tracking_number"`
-	DispatchZone      pgtype.Text        `json:"dispatch_zone"`
-	ScheduledDispatch pgtype.Date        `json:"scheduled_dispatch"`
-	ActualDispatch    pgtype.Timestamptz `json:"actual_dispatch"`
-	DeliveryAddress   pgtype.Text        `json:"delivery_address"`
-	Notes             pgtype.Text        `json:"notes"`
-	CreatedBy         pgtype.Text        `json:"created_by"`
-	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	ID             int64              `json:"id"`
+	PublicID       uuid.UUID          `json:"public_id"`
+	TenantID       int64              `json:"tenant_id"`
+	ShipmentNumber string             `json:"shipment_number"`
+	SalesOrderID   pgtype.Int8        `json:"sales_order_id"`
+	CarrierID      pgtype.Int8        `json:"carrier_id"`
+	Status         string             `json:"status"`
+	ShipFromSite   pgtype.Int8        `json:"ship_from_site"`
+	ShipToAddress  pgtype.Text        `json:"ship_to_address"`
+	ShipToCity     pgtype.Text        `json:"ship_to_city"`
+	ShipToCountry  pgtype.Text        `json:"ship_to_country"`
+	TrackingRef    pgtype.Text        `json:"tracking_ref"`
+	PlannedDate    pgtype.Date        `json:"planned_date"`
+	DispatchedAt   pgtype.Timestamptz `json:"dispatched_at"`
+	DeliveredAt    pgtype.Timestamptz `json:"delivered_at"`
+	Notes          pgtype.Text        `json:"notes"`
+	CreatedBy      pgtype.Int8        `json:"created_by"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
 
 type ShipmentLine struct {
-	ID            int64          `json:"id"`
-	ShipmentID    int64          `json:"shipment_id"`
-	DealLineNo    pgtype.Int4    `json:"deal_line_no"`
-	MaterialID    pgtype.Int8    `json:"material_id"`
-	Description   pgtype.Text    `json:"description"`
-	PlannedQty    pgtype.Numeric `json:"planned_qty"`
-	PackedQty     pgtype.Numeric `json:"packed_qty"`
-	UnitOfMeasure pgtype.Text    `json:"unit_of_measure"`
-	HuCodes       []string       `json:"hu_codes"`
-	Status        pgtype.Text    `json:"status"`
+	ID               int64              `json:"id"`
+	PublicID         uuid.UUID          `json:"public_id"`
+	ShipmentID       int64              `json:"shipment_id"`
+	SalesOrderLineID pgtype.Int8        `json:"sales_order_line_id"`
+	LineNumber       int32              `json:"line_number"`
+	Description      string             `json:"description"`
+	Quantity         pgtype.Numeric     `json:"quantity"`
+	UnitOfMeasure    string             `json:"unit_of_measure"`
+	MaterialID       pgtype.Int8        `json:"material_id"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 }
 
 type Site struct {
@@ -1559,6 +1578,22 @@ type SupplyPact struct {
 	CreatedBy      pgtype.Text        `json:"created_by"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	TenantID       pgtype.Int8        `json:"tenant_id"`
+}
+
+type SupplyPactDelivery struct {
+	ID            int64              `json:"id"`
+	PublicID      uuid.UUID          `json:"public_id"`
+	SupplyPactID  int64              `json:"supply_pact_id"`
+	TenantID      int64              `json:"tenant_id"`
+	ScheduledDate pgtype.Date        `json:"scheduled_date"`
+	Quantity      pgtype.Numeric     `json:"quantity"`
+	UnitOfMeasure string             `json:"unit_of_measure"`
+	Status        string             `json:"status"`
+	ReceivedQty   pgtype.Numeric     `json:"received_qty"`
+	ReceivedDate  pgtype.Date        `json:"received_date"`
+	Notes         pgtype.Text        `json:"notes"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
 type SupplyPactLine struct {
@@ -1794,22 +1829,33 @@ type VZoneStock struct {
 }
 
 type VendorScorecard struct {
-	ID             int64              `json:"id"`
-	SupplierID     int64              `json:"supplier_id"`
-	PeriodStart    pgtype.Date        `json:"period_start"`
-	PeriodEnd      pgtype.Date        `json:"period_end"`
-	PriceScore     pgtype.Numeric     `json:"price_score"`
-	DeliveryScore  pgtype.Numeric     `json:"delivery_score"`
-	QualityScore   pgtype.Numeric     `json:"quality_score"`
-	ResponseScore  pgtype.Numeric     `json:"response_score"`
-	OverallScore   pgtype.Numeric     `json:"overall_score"`
-	PriceNotes     pgtype.Text        `json:"price_notes"`
-	DeliveryNotes  pgtype.Text        `json:"delivery_notes"`
-	QualityNotes   pgtype.Text        `json:"quality_notes"`
-	ResponseNotes  pgtype.Text        `json:"response_notes"`
-	EvaluatedBy    pgtype.Text        `json:"evaluated_by"`
-	AutoCalculated pgtype.Bool        `json:"auto_calculated"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	ID              int64              `json:"id"`
+	SupplierID      int64              `json:"supplier_id"`
+	PeriodStart     pgtype.Date        `json:"period_start"`
+	PeriodEnd       pgtype.Date        `json:"period_end"`
+	PriceScore      pgtype.Numeric     `json:"price_score"`
+	DeliveryScore   pgtype.Numeric     `json:"delivery_score"`
+	QualityScore    pgtype.Numeric     `json:"quality_score"`
+	ResponseScore   pgtype.Numeric     `json:"response_score"`
+	OverallScore    pgtype.Numeric     `json:"overall_score"`
+	PriceNotes      pgtype.Text        `json:"price_notes"`
+	DeliveryNotes   pgtype.Text        `json:"delivery_notes"`
+	QualityNotes    pgtype.Text        `json:"quality_notes"`
+	ResponseNotes   pgtype.Text        `json:"response_notes"`
+	EvaluatedBy     pgtype.Text        `json:"evaluated_by"`
+	AutoCalculated  pgtype.Bool        `json:"auto_calculated"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	AutoScore       pgtype.Numeric     `json:"auto_score"`
+	ComplianceScore pgtype.Numeric     `json:"compliance_score"`
+	TotalOrders     pgtype.Int4        `json:"total_orders"`
+	OnTimeCount     pgtype.Int4        `json:"on_time_count"`
+	LateCount       pgtype.Int4        `json:"late_count"`
+	QualityPass     pgtype.Int4        `json:"quality_pass"`
+	QualityFail     pgtype.Int4        `json:"quality_fail"`
+	LastCalculated  pgtype.Timestamptz `json:"last_calculated"`
+	CalculatedBy    pgtype.Text        `json:"calculated_by"`
+	TenantID        pgtype.Int8        `json:"tenant_id"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 }
 
 type VendorScorecardEvent struct {

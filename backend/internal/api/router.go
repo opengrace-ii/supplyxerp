@@ -40,6 +40,7 @@ type RouterDeps struct {
 	QualityHandler   *handlers.QualityHandler
 	DealFlowHandler  *handlers.DealFlowHandler
 	RouteRunnerHandler *handlers.RouteRunnerHandler
+	VendorScorecardHandler *handlers.VendorScorecardHandler
 }
 
 func NewRouter(deps RouterDeps) *gin.Engine {
@@ -276,15 +277,26 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 			pacts.PUT("/:id/lines", deps.SupplyPactsHandler.UpdateSupplyPactLines)
 			pacts.POST("/:id/releases", deps.SupplyPactsHandler.CreatePactRelease)
 			pacts.GET("/:id/releases", deps.SupplyPactsHandler.ListPactReleases)
+			pacts.GET("/:id/deliveries", deps.SupplyPactsHandler.ListPactDeliveries)
 		}
 
-		// Phase 4: Vendor Scorecards
-		vsc := secured.Group("/api/vendors")
+		// Phase 4: Vendor Scorecards (Scorecard Engine)
+		vsc := secured.Group("/api/com/vendor-scorecards")
 		{
-			vsc.GET("/:id/scorecard", deps.SupplyPactsHandler.GetVendorScorecards)
-			vsc.POST("/:id/scorecard", deps.SupplyPactsHandler.CreateVendorScorecard)
-			vsc.GET("/scorecard-summary", deps.SupplyPactsHandler.GetScorecardSummary)
+			vsc.GET("", deps.VendorScorecardHandler.ListScorecards)
+			vsc.GET("/summary", deps.VendorScorecardHandler.GetSummary)
+			vsc.GET("/:supplier_id", deps.VendorScorecardHandler.GetScorecard)
+			vsc.POST("/:supplier_id/recalculate", deps.VendorScorecardHandler.Recalculate)
+			vsc.POST("/:supplier_id/events", deps.VendorScorecardHandler.RecordEvent)
 		}
+
+		// Legacy Vendor Scorecard (keep for compatibility if needed, or redirect)
+		// vsc_legacy := secured.Group("/api/vendors")
+		// {
+		// 	vsc_legacy.GET("/:id/scorecard", deps.SupplyPactsHandler.GetVendorScorecards)
+		// 	vsc_legacy.POST("/:id/scorecard", deps.SupplyPactsHandler.CreateVendorScorecard)
+		// 	vsc_legacy.GET("/scorecard-summary", deps.SupplyPactsHandler.GetScorecardSummary)
+		// }
 
 		// Phase 4: Price Formulas
 		price := secured.Group("/api/price-formulas")
@@ -368,16 +380,15 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 			com.POST("/sales-orders/:id/cancel",  deps.DealFlowHandler.CancelSalesOrder)
 			
 			com.GET("/deal-flow/dashboard",       deps.DealFlowHandler.GetDashboard)
-		}
-
-		if deps.RouteRunnerHandler != nil {
-			secured.GET ("/api/shipments",                              deps.RouteRunnerHandler.ListShipments)
-			secured.POST("/api/shipments",                              deps.RouteRunnerHandler.CreateShipment)
-			secured.GET ("/api/shipments/:id",                          deps.RouteRunnerHandler.GetShipment)
-			secured.PUT ("/api/shipments/:id/lines/:line_id/assign-hu", deps.RouteRunnerHandler.AssignHU)
-			secured.POST("/api/shipments/:id/pack",                     deps.RouteRunnerHandler.PackShipment)
-			secured.POST("/api/shipments/:id/dispatch",                 deps.RouteRunnerHandler.DispatchShipment)
-			secured.POST("/api/shipments/:id/confirm-delivery",         deps.RouteRunnerHandler.ConfirmDelivery)
+			
+			com.GET("/carriers",                        deps.RouteRunnerHandler.ListCarriers)
+			com.GET("/shipments",                       deps.RouteRunnerHandler.ListShipments)
+			com.POST("/shipments",                      deps.RouteRunnerHandler.CreateShipment)
+			com.GET("/shipments/:id",                   deps.RouteRunnerHandler.GetShipment)
+			com.POST("/shipments/:id/assign-carrier",   deps.RouteRunnerHandler.AssignCarrier)
+			com.POST("/shipments/:id/dispatch",         deps.RouteRunnerHandler.DispatchShipment)
+			com.POST("/shipments/:id/deliver",          deps.RouteRunnerHandler.MarkDelivered)
+			com.GET("/route-runner/dashboard",          deps.RouteRunnerHandler.GetDashboard)
 		}
 	}
 

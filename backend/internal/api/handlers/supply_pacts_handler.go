@@ -1138,3 +1138,41 @@ func (h *SupplyPactsHandler) GetDispatchLog(c *gin.Context) {
 
 	c.JSON(http.StatusOK, results)
 }
+// GET /api/supply-pacts/:id/deliveries
+func (h *SupplyPactsHandler) ListPactDeliveries(c *gin.Context) {
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	rows, err := h.Pool.Query(c.Request.Context(), `
+		SELECT id, public_id, scheduled_date, quantity, unit_of_measure, status,
+		       COALESCE(received_qty, 0), received_date, notes
+		FROM supply_pact_deliveries
+		WHERE supply_pact_id = $1
+		ORDER BY scheduled_date ASC`, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list deliveries"})
+		return
+	}
+	defer rows.Close()
+
+	type Delivery struct {
+		ID            int64      `json:"id"`
+		PublicID      string     `json:"public_id"`
+		ScheduledDate time.Time  `json:"scheduled_date"`
+		Quantity      float64    `json:"quantity"`
+		Unit          string     `json:"unit"`
+		Status        string     `json:"status"`
+		ReceivedQty   float64    `json:"received_qty"`
+		ReceivedDate  *time.Time `json:"received_date"`
+		Notes         string     `json:"notes"`
+	}
+
+	results := []Delivery{}
+	for rows.Next() {
+		var d Delivery
+		rows.Scan(&d.ID, &d.PublicID, &d.ScheduledDate, &d.Quantity, &d.Unit, &d.Status,
+			&d.ReceivedQty, &d.ReceivedDate, &d.Notes)
+		results = append(results, d)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"deliveries": results})
+}

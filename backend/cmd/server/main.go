@@ -113,7 +113,8 @@ func main() {
 	buildOrderHandler := handlers.NewBuildOrderHandler(queries)
 	qualityHandler := handlers.NewQualityHandler(pool)
 	dealFlowHandler := handlers.NewDealFlowHandler(queries)
-	routeRunnerHandler := &handlers.RouteRunnerHandler{Pool: pool}
+	routeRunnerHandler := handlers.NewRouteRunnerHandler(queries)
+	vendorScorecardHandler := handlers.NewVendorScorecardHandler(queries)
 
 	routerDeps := api.RouterDeps{
 		JWTSecret:        cfg.JWTSecret,
@@ -145,6 +146,7 @@ func main() {
 		QualityHandler:   qualityHandler,
 		DealFlowHandler:  dealFlowHandler,
 		RouteRunnerHandler: routeRunnerHandler,
+		VendorScorecardHandler: vendorScorecardHandler,
 	}
 
 	r := api.NewRouter(routerDeps)

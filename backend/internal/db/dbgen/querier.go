@@ -13,6 +13,8 @@ import (
 type Querier interface {
 	AddQCFinding(ctx context.Context, arg AddQCFindingParams) (QualityCheckFinding, error)
 	AddSalesOrderLine(ctx context.Context, arg AddSalesOrderLineParams) (SalesOrderLine, error)
+	AddShipmentLine(ctx context.Context, arg AddShipmentLineParams) (ShipmentLine, error)
+	AssignCarrier(ctx context.Context, arg AssignCarrierParams) (Shipment, error)
 	CancelBuildOrder(ctx context.Context, arg CancelBuildOrderParams) (BuildOrder, error)
 	CancelSalesOrder(ctx context.Context, arg CancelSalesOrderParams) (SalesOrder, error)
 	CloseProductPriceHistory(ctx context.Context, arg CloseProductPriceHistoryParams) error
@@ -22,6 +24,7 @@ type Querier interface {
 	CreateBuildOrder(ctx context.Context, arg CreateBuildOrderParams) (BuildOrder, error)
 	CreateCalculationSchema(ctx context.Context, arg CreateCalculationSchemaParams) (int64, error)
 	CreateCalculationSchemaStep(ctx context.Context, arg CreateCalculationSchemaStepParams) error
+	CreateCarrier(ctx context.Context, arg CreateCarrierParams) (Carrier, error)
 	CreateConditionType(ctx context.Context, arg CreateConditionTypeParams) (int64, error)
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error)
 	CreateDeliverySchedule(ctx context.Context, arg CreateDeliveryScheduleParams) error
@@ -43,9 +46,11 @@ type Querier interface {
 	CreateRFQType(ctx context.Context, arg CreateRFQTypeParams) (RfqDocumentType, error)
 	CreateRFQVendor(ctx context.Context, arg CreateRFQVendorParams) error
 	CreateSalesOrder(ctx context.Context, arg CreateSalesOrderParams) (SalesOrder, error)
+	CreateShipment(ctx context.Context, arg CreateShipmentParams) (Shipment, error)
 	CreateSupplier(ctx context.Context, arg CreateSupplierParams) (Supplier, error)
 	DeactivateSupplier(ctx context.Context, arg DeactivateSupplierParams) error
 	DeleteDeliverySchedulesForLine(ctx context.Context, rfqLineID int64) error
+	DispatchShipment(ctx context.Context, arg DispatchShipmentParams) (Shipment, error)
 	FinaliseRFQStatus(ctx context.Context, arg FinaliseRFQStatusParams) error
 	GenerateNextInfoRecordSequence(ctx context.Context, tenantID int64) (int64, error)
 	GetAccessSequenceSteps(ctx context.Context, arg GetAccessSequenceStepsParams) ([]AccessSequenceStep, error)
@@ -83,17 +88,24 @@ type Querier interface {
 	GetRFQQuotations(ctx context.Context, arg GetRFQQuotationsParams) ([]GetRFQQuotationsRow, error)
 	GetRFQTypes(ctx context.Context, tenantID int64) ([]RfqDocumentType, error)
 	GetRFQVendors(ctx context.Context, arg GetRFQVendorsParams) ([]GetRFQVendorsRow, error)
+	GetRouteRunnerDashboard(ctx context.Context, tenantID int64) (GetRouteRunnerDashboardRow, error)
 	GetSalesOrderLines(ctx context.Context, salesOrderID int64) ([]GetSalesOrderLinesRow, error)
 	GetSalesOrderWithLines(ctx context.Context, arg GetSalesOrderWithLinesParams) (GetSalesOrderWithLinesRow, error)
+	GetScorecardEvents(ctx context.Context, arg GetScorecardEventsParams) ([]VendorScorecardEvent, error)
+	GetScorecardSummary(ctx context.Context, tenantID pgtype.Int8) (GetScorecardSummaryRow, error)
+	GetShipmentByPublicID(ctx context.Context, arg GetShipmentByPublicIDParams) (GetShipmentByPublicIDRow, error)
+	GetShipmentLines(ctx context.Context, shipmentID int64) ([]GetShipmentLinesRow, error)
 	GetSupplierByCode(ctx context.Context, arg GetSupplierByCodeParams) (Supplier, error)
 	GetTenantByID(ctx context.Context, id int64) (Tenant, error)
 	GetTenantBySlug(ctx context.Context, slug string) (Tenant, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	GetUserRoles(ctx context.Context, userID int64) ([]string, error)
 	GetValidConditionRecord(ctx context.Context, arg GetValidConditionRecordParams) (PricingConditionRecord, error)
+	GetVendorScorecardBySupplier(ctx context.Context, arg GetVendorScorecardBySupplierParams) (GetVendorScorecardBySupplierRow, error)
 	IssueComponentToBuildOrder(ctx context.Context, arg IssueComponentToBuildOrderParams) (BuildOrderIssue, error)
 	ListAllInfoRecords(ctx context.Context, arg ListAllInfoRecordsParams) ([]ListAllInfoRecordsRow, error)
 	ListBuildOrders(ctx context.Context, arg ListBuildOrdersParams) ([]ListBuildOrdersRow, error)
+	ListCarriers(ctx context.Context, tenantID int64) ([]Carrier, error)
 	ListConditionTypes(ctx context.Context, tenantID int64) ([]ConditionType, error)
 	ListCustomers(ctx context.Context, tenantID int64) ([]Customer, error)
 	ListLocations(ctx context.Context, tenantID pgtype.Int8) ([]Location, error)
@@ -105,9 +117,14 @@ type Querier interface {
 	ListRecentEvents(ctx context.Context, arg ListRecentEventsParams) ([]ListRecentEventsRow, error)
 	ListRecentHUs(ctx context.Context, arg ListRecentHUsParams) ([]ListRecentHUsRow, error)
 	ListSalesOrders(ctx context.Context, arg ListSalesOrdersParams) ([]ListSalesOrdersRow, error)
+	// worst performers first
+	ListScorecardEvents(ctx context.Context, arg ListScorecardEventsParams) ([]ListScorecardEventsRow, error)
+	ListShipments(ctx context.Context, arg ListShipmentsParams) ([]ListShipmentsRow, error)
 	ListSupplierInfoRecords(ctx context.Context, arg ListSupplierInfoRecordsParams) ([]ListSupplierInfoRecordsRow, error)
 	ListSuppliers(ctx context.Context, arg ListSuppliersParams) ([]Supplier, error)
+	ListVendorScorecards(ctx context.Context, tenantID pgtype.Int8) ([]ListVendorScorecardsRow, error)
 	MarkConditionTypesSeeded(ctx context.Context, tenantID int64) error
+	MarkDelivered(ctx context.Context, arg MarkDeliveredParams) (Shipment, error)
 	MarkRejectionSent(ctx context.Context, arg MarkRejectionSentParams) error
 	RecordQCResult(ctx context.Context, arg RecordQCResultParams) (QualityCheck, error)
 	RecordScorecardEvent(ctx context.Context, arg RecordScorecardEventParams) (VendorScorecardEvent, error)
@@ -132,7 +149,9 @@ type Querier interface {
 	UpdateRFQType(ctx context.Context, arg UpdateRFQTypeParams) (RfqDocumentType, error)
 	UpdateRFQWinnerVendor(ctx context.Context, arg UpdateRFQWinnerVendorParams) error
 	UpdateSalesOrderStatus(ctx context.Context, arg UpdateSalesOrderStatusParams) (SalesOrder, error)
+	UpdateShipmentStatus(ctx context.Context, arg UpdateShipmentStatusParams) (Shipment, error)
 	UpdateSupplier(ctx context.Context, arg UpdateSupplierParams) (Supplier, error)
+	UpdateVendorScorecardCalculated(ctx context.Context, arg UpdateVendorScorecardCalculatedParams) error
 }
 
 var _ Querier = (*Queries)(nil)

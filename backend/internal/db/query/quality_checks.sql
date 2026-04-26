@@ -94,10 +94,4 @@ FROM quality_checks
 WHERE tenant_id = $1
   AND created_at >= NOW() - INTERVAL '90 days';
 
--- name: RecordScorecardEvent :one
-INSERT INTO vendor_scorecard_events (
-    tenant_id, supplier_id, event_type, reference_type,
-    reference_id, reference_code, score_impact, notes, recorded_by
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING *;
 

@@ -418,6 +418,39 @@ export const api = {
   markRFQRejectionNoticesSent: async (id: number, vendorIds: number[]) => {
     const res = await apiClient.post(`/api/rfq/${id}/rejection-notices`, { vendor_ids: vendorIds });
     return res.data;
+  },
+  // Phase 4: RouteRunner
+  getRouteRunnerDashboard: async () => {
+    const res = await apiClient.get('/api/com/route-runner/dashboard');
+    return res.data;
+  },
+  listCarriers: async () => {
+    const res = await apiClient.get('/api/com/carriers');
+    return res.data;
+  },
+  listShipments: async (params: any = {}) => {
+    const res = await apiClient.get('/api/com/shipments', { params });
+    return res.data;
+  },
+  getShipment: async (id: string) => {
+    const res = await apiClient.get(`/api/com/shipments/${id}`);
+    return res.data;
+  },
+  createShipment: async (data: any) => {
+    const res = await apiClient.post('/api/com/shipments', data);
+    return res.data;
+  },
+  assignCarrier: async (id: string, data: { carrier_id: number, tracking_ref?: string, planned_date?: string }) => {
+    const res = await apiClient.post(`/api/com/shipments/${id}/assign-carrier`, data);
+    return res.data;
+  },
+  dispatchShipment: async (id: string) => {
+    const res = await apiClient.post(`/api/com/shipments/${id}/dispatch`);
+    return res.data;
+  },
+  markShipmentDelivered: async (id: string) => {
+    const res = await apiClient.post(`/api/com/shipments/${id}/deliver`);
+    return res.data;
   }
 };
 
