@@ -252,3 +252,27 @@ func (h *ConfigHandler) CreateOrderReason(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, res)
 }
+
+func (h *ConfigHandler) GetModules(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(int64)
+	modules, err := h.Repo.Config.GetModules(c.Request.Context(), tenantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch module config"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": modules})
+}
+
+func (h *ConfigHandler) UpdateModules(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(int64)
+	var req map[string]bool
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.Repo.Config.UpdateModules(c.Request.Context(), tenantID, req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save module config"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}

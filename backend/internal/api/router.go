@@ -41,6 +41,7 @@ type RouterDeps struct {
 	DealFlowHandler  *handlers.DealFlowHandler
 	RouteRunnerHandler *handlers.RouteRunnerHandler
 	VendorScorecardHandler *handlers.VendorScorecardHandler
+	DispatchHandler  *handlers.DispatchHandler
 }
 
 func NewRouter(deps RouterDeps) *gin.Engine {
@@ -156,6 +157,8 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		secured.GET("/api/config/domain-profiles", deps.ConfigHandler.ListProfiles)
 		secured.POST("/api/config/domain-profiles/apply", deps.ConfigHandler.ApplyProfile)
 		secured.POST("/api/config/sequences/apply", deps.ConfigHandler.ApplySequence)
+		secured.GET("/api/config/modules", deps.ConfigHandler.GetModules)
+		secured.POST("/api/config/modules", deps.ConfigHandler.UpdateModules)
 
 		// Data Migration
 		secured.GET("/api/migration/status", deps.MigrationHandler.GetStatus)
@@ -309,12 +312,16 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		}
 
 		// Phase 4: Document Dispatch
-		disp := secured.Group("/api/dispatch")
-		{
-			disp.GET("/rules", deps.SupplyPactsHandler.GetDispatchRules)
-			disp.PUT("/rules", deps.SupplyPactsHandler.UpdateDispatchRules)
-			disp.POST("/send", deps.SupplyPactsHandler.SendDocument)
-			disp.GET("/log", deps.SupplyPactsHandler.GetDispatchLog)
+		if deps.DispatchHandler != nil {
+			disp := secured.Group("/api/config/dispatch")
+			{
+				disp.GET("/summary", deps.DispatchHandler.GetSummary)
+				disp.GET("/rules", deps.DispatchHandler.ListRules)
+				disp.POST("/rules", deps.DispatchHandler.CreateRule)
+				disp.PATCH("/rules/:id/toggle", deps.DispatchHandler.ToggleRule)
+				disp.GET("/logs", deps.DispatchHandler.ListLogs)
+				disp.POST("/test", deps.DispatchHandler.TestDispatch)
+			}
 		}
 
 		// Delivery Confirmations

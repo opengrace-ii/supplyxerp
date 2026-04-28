@@ -73,6 +73,33 @@ func (r *ConfigRepository) Update(ctx context.Context, c TenantConfig) error {
 	return err
 }
 
+func (r *ConfigRepository) GetModules(ctx context.Context, tenantID int64) (map[string]bool, error) {
+	var raw []byte
+	err := r.db.QueryRow(ctx,
+		`SELECT enabled_modules FROM tenant_config WHERE tenant_id = $1`, tenantID,
+	).Scan(&raw)
+	if err != nil {
+		return nil, err
+	}
+	result := map[string]bool{}
+	if len(raw) > 0 {
+		_ = json.Unmarshal(raw, &result)
+	}
+	return result, nil
+}
+
+func (r *ConfigRepository) UpdateModules(ctx context.Context, tenantID int64, modules map[string]bool) error {
+	raw, err := json.Marshal(modules)
+	if err != nil {
+		return err
+	}
+	_, err = r.db.Exec(ctx,
+		`UPDATE tenant_config SET enabled_modules = $1, updated_at = now() WHERE tenant_id = $2`,
+		raw, tenantID,
+	)
+	return err
+}
+
 func (r *ConfigRepository) ReseedSequence(ctx context.Context, tenantID int64, seqType string, newValue int64) error {
 	_, err := r.db.Exec(ctx, `
 		INSERT INTO tenant_sequences (tenant_id, sequence_type, current_val)
