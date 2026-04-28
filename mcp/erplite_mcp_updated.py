@@ -379,10 +379,7 @@ CURRENT_STATUS = {
         "SystemLog": {"backend": "BUILT", "api_smoke": "200", "frontend": "LIVE", "verified": True},
         "UsersRoles": {"backend": "BUILT", "api_smoke": "200", "frontend": "LIVE", "verified": True},
     },
-    "blockers": [
-        "Session persistence logs user out on refresh (check useAppStore.ts checkSession)",
-        "IMPORTANT: IDE history lost on 2026-04-25 due to system freeze. MCP is the only session memory."
-    ],
+    "blockers": [],
     "tech_stack_actual": {
         "backend": "Go 1.22 + Gin + sqlc + PostgreSQL 16 + Redis 7",
         "frontend": "React 18.3.1 + TypeScript 5.9.3 + Vite 5 + Zustand",
