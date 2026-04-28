@@ -29,6 +29,7 @@ type Querier interface {
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error)
 	CreateDeliverySchedule(ctx context.Context, arg CreateDeliveryScheduleParams) error
 	CreateDispatchRule(ctx context.Context, arg CreateDispatchRuleParams) (DispatchRule, error)
+	CreateGRHold(ctx context.Context, arg CreateGRHoldParams) (GrOverdeliveryHold, error)
 	CreateInventoryEvent(ctx context.Context, arg CreateInventoryEventParams) (InventoryEvent, error)
 	CreateOrderReason(ctx context.Context, arg CreateOrderReasonParams) (RfqOrderReason, error)
 	CreateProductPriceHistory(ctx context.Context, arg CreateProductPriceHistoryParams) error
@@ -77,6 +78,8 @@ type Querier interface {
 	GetLocationByBarcode(ctx context.Context, arg GetLocationByBarcodeParams) (Location, error)
 	GetLocationStock(ctx context.Context, locationID pgtype.Int8) ([]GetLocationStockRow, error)
 	GetOrderReasons(ctx context.Context, tenantID int64) ([]RfqOrderReason, error)
+	GetPOLineForGR(ctx context.Context, arg GetPOLineForGRParams) (GetPOLineForGRRow, error)
+	GetPendingOverdeliveryHolds(ctx context.Context, tenantID int64) ([]GrOverdeliveryHold, error)
 	GetPricingConfig(ctx context.Context, tenantID int64) (GetPricingConfigRow, error)
 	GetProductPricing(ctx context.Context, arg GetProductPricingParams) (GetProductPricingRow, error)
 	GetPurchaseOrderWithLines(ctx context.Context, arg GetPurchaseOrderWithLinesParams) ([]GetPurchaseOrderWithLinesRow, error)
@@ -98,6 +101,7 @@ type Querier interface {
 	GetScorecardSummary(ctx context.Context, tenantID pgtype.Int8) (GetScorecardSummaryRow, error)
 	GetShipmentByPublicID(ctx context.Context, arg GetShipmentByPublicIDParams) (GetShipmentByPublicIDRow, error)
 	GetShipmentLines(ctx context.Context, shipmentID int64) ([]GetShipmentLinesRow, error)
+	GetStockByMaterialAndTenant(ctx context.Context, arg GetStockByMaterialAndTenantParams) ([]GetStockByMaterialAndTenantRow, error)
 	GetSupplierByCode(ctx context.Context, arg GetSupplierByCodeParams) (Supplier, error)
 	GetTenantByID(ctx context.Context, id int64) (Tenant, error)
 	GetTenantBySlug(ctx context.Context, slug string) (Tenant, error)
@@ -136,10 +140,12 @@ type Querier interface {
 	RecordScorecardEvent(ctx context.Context, arg RecordScorecardEventParams) (VendorScorecardEvent, error)
 	RejectQuotationLine(ctx context.Context, arg RejectQuotationLineParams) error
 	ReleaseBuildOrder(ctx context.Context, arg ReleaseBuildOrderParams) (BuildOrder, error)
+	ResolveOverdeliveryHold(ctx context.Context, arg ResolveOverdeliveryHoldParams) (GrOverdeliveryHold, error)
 	StartBuildOrder(ctx context.Context, arg StartBuildOrderParams) (BuildOrder, error)
 	StartQualityCheck(ctx context.Context, arg StartQualityCheckParams) (QualityCheck, error)
 	UninviteRFQVendor(ctx context.Context, arg UninviteRFQVendorParams) error
 	UpdateDispatchRule(ctx context.Context, arg UpdateDispatchRuleParams) (DispatchRule, error)
+	UpdateGRStatus(ctx context.Context, arg UpdateGRStatusParams) (GrDocument, error)
 	UpdateHULocation(ctx context.Context, arg UpdateHULocationParams) error
 	UpdateHUStatus(ctx context.Context, arg UpdateHUStatusParams) error
 	UpdateOrderReason(ctx context.Context, arg UpdateOrderReasonParams) (RfqOrderReason, error)

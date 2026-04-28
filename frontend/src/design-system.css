@@ -193,6 +193,7 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  color-scheme: dark;
 }
 
 body {
@@ -207,6 +208,40 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-4); }
+
+/* ── NATIVE SELECT DARK OVERRIDE ─────────────── */
+/* Forces dark background on OS-rendered dropdown lists */
+select {
+  background-color: var(--bg-surface2);
+  color: var(--text-1);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--r-md);
+  padding: 0 10px;
+  height: 36px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  cursor: pointer;
+  appearance: auto;
+  color-scheme: dark;
+  transition: border-color var(--t-base);
+}
+select option {
+  background-color: #1a1a24;
+  color: #f0f0f5;
+}
+select optgroup {
+  background-color: #1a1a24;
+  color: #60607a;
+}
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 /* ── SEARCH INPUT ────────────────────────────── */
 .sx-search {

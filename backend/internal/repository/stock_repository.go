@@ -179,9 +179,9 @@ func (r *StockRepository) GetProductDetail(ctx context.Context, tenantID int64, 
 		return nil, err
 	}
 
-	// 2. Get Zone Breakdown
+	// 2. Get Zone Breakdown (includes stock_type so UI is consistent with view)
 	rows, err := r.db.Query(ctx, `
-		SELECT zone_code, zone_name, zone_type, quantity_on_hand, hu_count
+		SELECT zone_id, zone_code, zone_name, zone_type, stock_type, quantity_on_hand, hu_count
 		FROM v_stock_on_hand
 		WHERE tenant_id = $1 AND product_id = $2
 	`, tenantID, productID)
@@ -192,30 +192,41 @@ func (r *StockRepository) GetProductDetail(ctx context.Context, tenantID int64, 
 
 	var zones []map[string]any
 	for rows.Next() {
-		var code, name, ztype string
+		var zID int64
+		var code, name, ztype, stockType string
 		var qty float64
 		var hus int64
-		if err := rows.Scan(&code, &name, &ztype, &qty, &hus); err == nil {
+		if err := rows.Scan(&zID, &code, &name, &ztype, &stockType, &qty, &hus); err == nil {
 			zones = append(zones, map[string]any{
-				"zone_code": code,
-				"zone_name": name,
-				"zone_type": ztype,
-				"quantity":  qty,
-				"hu_count":  hus,
+				"zone_id":    zID,
+				"zone_code":  code,
+				"zone_name":  name,
+				"zone_type":  ztype,
+				"stock_type": stockType,
+				"quantity":   qty,
+				"hu_count":   hus,
 			})
 		}
 	}
 
-	// 3. Get HU List (last movement per HU)
+	// 3. Get HU List — returns zone_id, zone_type, stock_type, serial_number
+	// These are needed by the Transfer modal to send from_zone_id and display zone_type.
 	huRows, err := r.db.Query(ctx, `
-		SELECT hu_id, hu_code, quantity, zone_code, event_type, created_at
-		FROM (
-			SELECT hu_id, hu_code, quantity, zone_code, event_type, created_at,
-			       ROW_NUMBER() OVER(PARTITION BY hu_id ORDER BY created_at DESC) as rn
-			FROM v_hu_movement_history
-			WHERE tenant_id = $1 AND hu_id IN (SELECT id FROM handling_units WHERE product_id = $2 AND status = 'IN_STOCK')
-		) t
-		WHERE rn = 1
+		SELECT hu.id, hu.code, hu.quantity, hu.unit,
+		       hu.zone_id, z.code AS zone_code, z.zone_type,
+		       hu.stock_type,
+		       ie_last.event_type, ie_last.created_at
+		FROM handling_units hu
+		JOIN zones z ON z.id = hu.zone_id
+		LEFT JOIN LATERAL (
+			SELECT event_type, created_at
+			FROM inventory_events
+			WHERE hu_id = hu.id
+			ORDER BY created_at DESC
+			LIMIT 1
+		) ie_last ON true
+		WHERE hu.tenant_id = $1 AND hu.product_id = $2 AND hu.status = 'IN_STOCK'
+		ORDER BY hu.id ASC
 	`, tenantID, productID)
 	if err != nil {
 		return nil, err
@@ -224,16 +235,21 @@ func (r *StockRepository) GetProductDetail(ctx context.Context, tenantID int64, 
 
 	var hus []map[string]any
 	for huRows.Next() {
-		var hID int64
-		var code, zcode, etype string
+		var hID, zoneID int64
+		var code, unit, zoneCode, zoneType, stockType string
 		var qty float64
+		var etype *string
 		var cat pgtype.Timestamptz
-		if err := huRows.Scan(&hID, &code, &qty, &zcode, &etype, &cat); err == nil {
+		if err := huRows.Scan(&hID, &code, &qty, &unit, &zoneID, &zoneCode, &zoneType, &stockType, &etype, &cat); err == nil {
 			hus = append(hus, map[string]any{
 				"hu_id":           hID,
 				"hu_code":         code,
 				"quantity":        qty,
-				"zone_code":       zcode,
+				"unit":            unit,
+				"zone_id":         zoneID,
+				"zone_code":       zoneCode,
+				"zone_type":       zoneType,
+				"stock_type":      stockType,
 				"last_event_type": etype,
 				"last_event_at":   cat,
 			})

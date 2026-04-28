@@ -42,6 +42,8 @@ type RouterDeps struct {
 	RouteRunnerHandler *handlers.RouteRunnerHandler
 	VendorScorecardHandler *handlers.VendorScorecardHandler
 	DispatchHandler  *handlers.DispatchHandler
+	StockTransferHandler *handlers.StockTransferHandler
+	RollsHandler         *handlers.RollsHandler
 }
 
 func NewRouter(deps RouterDeps) *gin.Engine {
@@ -150,6 +152,8 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		secured.GET("/api/gr/stats", deps.GRHandler.GetStats)
 		secured.GET("/api/warehouse-tasks", deps.GRHandler.ListPutawayTasks)
 		secured.POST("/api/warehouse-tasks/:id/complete", deps.GRHandler.CompletePutaway)
+		secured.GET("/api/gr/holds", deps.GRHandler.GetPendingHolds)
+		secured.POST("/api/gr/holds/:id/resolve", deps.GRHandler.ResolveHold)
 
 		// Tenant Config
 		secured.GET("/api/config/tenant", deps.ConfigHandler.GetTenantConfig)
@@ -179,6 +183,8 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		secured.GET("/api/stock/alerts", deps.StockHandler.GetAlerts)
 		secured.POST("/api/stock/adjust", deps.StockHandler.AdjustStock)
 		secured.GET("/api/stock/adjustments", deps.StockHandler.ListAdjustments)
+		secured.POST("/api/stock/transfer", deps.StockTransferHandler.TransferStock)
+		secured.GET("/api/stock/products/:id/rolls", deps.RollsHandler.GetProductRolls)
 
 		// Production Operations
 		secured.POST("/api/stock/move", deps.ProductionHandler.Move)

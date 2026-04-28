@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"supplyxerp/backend/internal/agent/material"
+	"supplyxerp/backend/internal/db/dbgen"
 	"supplyxerp/backend/internal/repository"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -91,16 +92,25 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	}
 
 	var req struct {
-		Name        string `json:"name" binding:"required"`
-		Description string `json:"description"`
+		Name               string `json:"name" binding:"required"`
+		Description        string `json:"description"`
+		QcOnGr             bool   `json:"qc_on_gr"`
+		QcOnOutput         bool   `json:"qc_on_output"`
+		GrDefaultStockType string `json:"gr_default_stock_type"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	tenantID := c.MustGet("tenant_id").(int64)
-	err := h.Repo.Products.Update(c.Request.Context(), tenantID, publicID, req.Name, req.Description)
+	tenantID := mustTenantID(c)
+	err := h.Repo.Products.Update(c.Request.Context(), tenantID, publicID, dbgen.Product{
+		Name:               req.Name,
+		Description:        stringToText(req.Description),
+		QcOnGr:             req.QcOnGr,
+		QcOnOutput:         req.QcOnOutput,
+		GrDefaultStockType: req.GrDefaultStockType,
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update product"})
 		return
@@ -136,7 +146,7 @@ func (h *ProductHandler) UpdateUOM(c *gin.Context) {
 }
 
 func (h *ProductHandler) GetStock(c *gin.Context) {
-	tenantID := c.MustGet("tenant_id").(int64)
+	tenantID := mustTenantID(c)
 	idStr := c.Param("public_id")
 
 	var productID int64
@@ -146,19 +156,23 @@ func (h *ProductHandler) GetStock(c *gin.Context) {
 		return
 	}
 
-	detail, err := h.Repo.Stock.GetProductDetail(c.Request.Context(), tenantID, productID)
+	queries := dbgen.New(h.Repo.Zones.GetDb())
+	breakdown, err := queries.GetStockByMaterialAndTenant(c.Request.Context(), dbgen.GetStockByMaterialAndTenantParams{
+		TenantID:  tenantID,
+		ProductID: productID,
+	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get stock detail"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get stock breakdown"})
 		return
 	}
 
-	// Transform to match old format for backward compatibility
-	summary := detail["product"].(repository.ProductStockSummary)
-	zones := detail["zone_breakdown"].([]map[string]any)
+	var total float64
+	for _, b := range breakdown {
+		total += float64(b.Quantity)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"total_quantity":     summary.TotalQuantity,
-		"unit":               summary.BaseUnit,
-		"location_breakdown": zones,
+		"total_quantity":     total,
+		"location_breakdown": breakdown,
 	})
 }

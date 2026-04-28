@@ -32,6 +32,21 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		"migrations/017_po_item_weights.sql",
 		"migrations/017_system_logs.sql",
 		"migrations/018_po_progress_tracking.sql",
+		"migrations/019_supply_pacts.sql",
+		"migrations/020_goods_receipt_invoice.sql",
+		"migrations/021_build_quality.sql",
+		"migrations/022_dealflow_routerunner.sql",
+		"migrations/023_dealflow_complete.sql",
+		"migrations/024_routerunner.sql",
+		"migrations/025_scorecard_automation.sql",
+		"migrations/026_build_orders_complete.sql",
+		"migrations/027_quality_gate.sql",
+		"migrations/029_document_dispatch.sql",
+		"migrations/030_currency_defaults_gbp.sql",
+		"migrations/031_module_config.sql",
+		"migrations/032_gr_stock_engine.sql",
+		"migrations/033_update_stock_views.sql",
+		"migrations/034_roll_tracking.sql",
 	}
 	for _, file := range files {
 		sql, err := migrationFS.ReadFile(file)

@@ -21,8 +21,12 @@ const StockFlowPanel: React.FC = () => {
     const [grForm, setGRForm] = useState({ 
         product_id: 0, quantity: 0, unit: '', zone_id: 0, 
         supplier_ref: '', batch_ref: '', notes: '',
-        po_id: 0, po_line_id: 0 
+        po_id: 0, po_line_id: 0,
+        roll_tracking: false,
+        roll_count: 1,
+        roll_prefix: ''
     });
+    const [pendingHolds, setPendingHolds] = useState<any[]>([]);
     const [showSplitModal, setShowSplitModal] = useState(false);
     const [splitQty, setSplitQty] = useState(0);
     const [huLineage, setHuLineage] = useState<any[]>([]);
@@ -53,16 +57,18 @@ const StockFlowPanel: React.FC = () => {
 
     const fetchGRData = async () => {
         try {
-            const [s, p, t, o] = await Promise.all([
+            const [s, p, t, o, h] = await Promise.all([
                 api.getGRStats(), 
                 api.getProducts(), 
                 api.listPutawayTasks(),
-                api.listPOs('APPROVED')
+                api.listPOs('APPROVED'),
+                api.getPendingGRHolds()
             ]);
             setGRStats(s);
             setProducts(p.products || []);
             setPutawayTasks(t || []);
             setPurchaseOrders(o.purchase_orders || []);
+            setPendingHolds(h || []);
         } catch (err) {
             console.error("Failed to fetch GR data", err);
         }
@@ -130,18 +136,44 @@ const StockFlowPanel: React.FC = () => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        const resetForm = () => setGRForm({ 
+            product_id: 0, quantity: 0, unit: '', zone_id: 0, 
+            supplier_ref: '', batch_ref: '', notes: '',
+            po_id: 0, po_line_id: 0,
+            roll_tracking: false, roll_count: 1, roll_prefix: ''
+        });
         try {
-            const res = await api.postGR(grForm);
-            if (res.success) {
-                setGRForm({ 
-                    product_id: 0, quantity: 0, unit: '', zone_id: 0, 
-                    supplier_ref: '', batch_ref: '', notes: '',
-                    po_id: 0, po_line_id: 0
-                });
+            const payload: any = { ...grForm };
+            if (grForm.roll_tracking && grForm.roll_count > 1) {
+                payload.roll_count = grForm.roll_count;
+                payload.roll_prefix = grForm.roll_prefix || undefined;
+            }
+            const res = await api.postGR(payload);
+            if (res.success || res.gr_id || res.roll_count) {
+                resetForm();
                 fetchGRData();
             }
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Failed to post GR');
+            if (err.response?.status === 202) {
+                // Hold created — still reset form
+                setError(null);
+                resetForm();
+                fetchGRData();
+            } else {
+                setError(err.response?.data?.error || 'Failed to post GR');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResolveHold = async (holdId: string, status: 'APPROVED' | 'REJECTED') => {
+        setLoading(true);
+        try {
+            await api.resolveGRHold(holdId, { status, note: 'Resolved from GR Screen' });
+            fetchGRData();
+        } catch (err: any) {
+            setError(err.response?.data?.error || 'Failed to resolve hold');
         } finally {
             setLoading(false);
         }
@@ -284,7 +316,35 @@ const StockFlowPanel: React.FC = () => {
             default:
                 return null;
         }
-    };
+    };    const renderHoldBanner = (hold: any) => (
+        <div key={hold.id} className="flex flex-col gap-2 p-4 mb-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <span className="text-lg">⏳</span>
+                    <div>
+                        <div className="text-xs font-bold text-amber-500 uppercase">GR ON HOLD — OVER-DELIVERY</div>
+                        <div className="text-[11px] text-[var(--text-3)]">{hold.hold_reason}</div>
+                    </div>
+                </div>
+                <div className="flex gap-2">
+                    <button 
+                        className="btn btn-secondary text-[10px] py-1 px-3 border-amber-500 text-amber-500"
+                        onClick={() => handleResolveHold(hold.id, 'APPROVED')}
+                        disabled={loading}
+                    >
+                        APPROVE
+                    </button>
+                    <button 
+                        className="btn btn-secondary text-[10px] py-1 px-3 border-red-500 text-red-500"
+                        onClick={() => handleResolveHold(hold.id, 'REJECTED')}
+                        disabled={loading}
+                    >
+                        REJECT
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
 
     const renderGRForm = () => {
         const receivingZones = orgTree.flatMap(o => o.sites || []).flatMap((s: any) => s.zones || []).filter((z: any) => z.zone_type === 'RECEIVING');
@@ -399,8 +459,60 @@ const StockFlowPanel: React.FC = () => {
                         </div>
                     </div>
 
+                    {/* Roll / Serial Tracking */}
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '14px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}>
+                            <input 
+                                type="checkbox" 
+                                checked={grForm.roll_tracking} 
+                                onChange={e => setGRForm({ ...grForm, roll_tracking: e.target.checked, roll_count: 1, roll_prefix: '' })} 
+                            />
+                            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                🎞️ Roll / Serial Tracking
+                            </span>
+                        </label>
+                        {grForm.roll_tracking && (
+                            <div style={{ marginTop: '12px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                                    <div>
+                                        <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Roll Count</label>
+                                        <Input 
+                                            type="number" 
+                                            min="1" 
+                                            max="500"
+                                            className="sx-input" 
+                                            style={{ width: '100%' }} 
+                                            value={grForm.roll_count} 
+                                            onChange={e => setGRForm({ ...grForm, roll_count: parseInt(e.target.value) || 1 })} 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Roll Prefix (optional)</label>
+                                        <Input 
+                                            type="text" 
+                                            className="sx-input" 
+                                            placeholder="e.g. 200-60" 
+                                            style={{ width: '100%' }} 
+                                            value={grForm.roll_prefix} 
+                                            onChange={e => setGRForm({ ...grForm, roll_prefix: e.target.value })} 
+                                        />
+                                    </div>
+                                </div>
+                                {grForm.roll_count > 0 && grForm.quantity > 0 && (
+                                    <div style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '6px', padding: '10px', fontSize: '10px', color: 'var(--text-3)' }}>
+                                        <div style={{ color: 'var(--c-amber)', fontWeight: '700', marginBottom: '4px' }}>PREVIEW</div>
+                                        <div>Will create <b style={{ color: 'var(--text-1)' }}>{grForm.roll_count}</b> HUs — each <b style={{ color: 'var(--text-1)' }}>{(grForm.quantity / grForm.roll_count).toFixed(2)} {grForm.unit}</b></div>
+                                        <div style={{ marginTop: '4px', fontFamily: 'monospace' }}>
+                                            {(grForm.roll_prefix || 'PREFIX') + '-001'} → {(grForm.roll_prefix || 'PREFIX') + '-' + String(grForm.roll_count).padStart(3, '0')}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
                     <button type="submit" className="btn btn-primary" style={{ marginTop: '12px', height: '40px' }} disabled={loading || !grForm.product_id || !grForm.zone_id || !grForm.quantity}>
-                        Post Goods Receipt
+                        {grForm.roll_tracking && grForm.roll_count > 1 ? `Post ${grForm.roll_count} Rolls` : 'Post Goods Receipt'}
                     </button>
                 </form>
 
@@ -528,6 +640,9 @@ const StockFlowPanel: React.FC = () => {
                 active={currentMode}
                 onChange={(key) => setMode(key as Mode)}
             />
+
+            {/* GR Holds Banner */}
+            {currentMode === 'Goods Receipt' && pendingHolds.map(renderHoldBanner)}
 
             {/* KPI Cards */}
             <div className="grid grid-cols-4 gap-3">

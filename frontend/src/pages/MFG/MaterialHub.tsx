@@ -28,7 +28,10 @@ export const MaterialHub: React.FC = () => {
     const [productStock, setProductStock] = useState<any | null>(null);
     const [error, setError] = useState<string | null>(null);
     
-    const [formData, setFormData] = useState({ code: '', name: '', base_unit: 'KG', description: '' });
+    const [formData, setFormData] = useState({ 
+        code: '', name: '', base_unit: 'KG', description: '',
+        qc_on_gr: false, default_stock_type: 'UNRESTRICTED', overdelivery_tolerance: 0.05
+    });
     const [stats, setStats] = useState({ total: 0, active: 0, no_barcode: 0, uom_count: 0 });
     const [suppliers, setSuppliers] = useState<any[]>([]);
 
@@ -76,11 +79,34 @@ export const MaterialHub: React.FC = () => {
             const res = await api.createProduct(formData);
             if (res.success) {
                 fetchProducts();
-                setFormData({ code: '', name: '', base_unit: 'KG', description: '' });
+                setFormData({ 
+                    code: '', name: '', base_unit: 'KG', description: '',
+                    qc_on_gr: false, default_stock_type: 'UNRESTRICTED', overdelivery_tolerance: 0.05
+                });
                 setShowAddForm(false);
             }
         } catch (err: any) {
             setError(err.response?.data?.error || "Failed to create product");
+        }
+    };
+
+    const handleUpdateProduct = async () => {
+        if (!selectedProduct) return;
+        setError(null);
+        try {
+            await api.updateProduct(selectedProduct.id, {
+                ...selectedProduct,
+                qc_on_gr: selectedProduct.qc_on_gr,
+                default_stock_type: selectedProduct.default_stock_type,
+                overdelivery_tolerance: selectedProduct.overdelivery_tolerance
+            });
+            fetchProducts();
+            // Refresh local selected product
+            const allProds = await api.getProducts(100, 0);
+            const updated = allProds.products.find((p: any) => p.id === selectedProduct.id);
+            setSelectedProduct(updated);
+        } catch (err: any) {
+            setError(err.response?.data?.error || "Failed to update product");
         }
     };
 
@@ -197,6 +223,46 @@ export const MaterialHub: React.FC = () => {
                                                             <div className="text-sm font-semibold text-[var(--text-1)]">{new Date(selectedProduct.created_at).toLocaleDateString()}</div>
                                                         </div>
                                                     </div>
+
+                                                    <div className="pt-4 border-t border-[var(--border)] space-y-4">
+                                                        <h4 className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">QC & DELIVERY POLICY</h4>
+                                                        
+                                                        <div className="flex items-center justify-between p-3 bg-white/[0.02] rounded-lg border border-[var(--border)]">
+                                                            <div className="text-xs">
+                                                                <div className="font-bold text-[var(--text-1)]">Mandatory QC on GR</div>
+                                                                <div className="text-[10px] text-[var(--text-3)]">Redirect to Inspection Zone</div>
+                                                            </div>
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={selectedProduct.qc_on_gr} 
+                                                                onChange={e => setSelectedProduct({...selectedProduct, qc_on_gr: e.target.checked})}
+                                                                className="accent-[var(--accent)]"
+                                                            />
+                                                        </div>
+
+                                                        <Field label="DEFAULT STOCK TYPE">
+                                                            <Select 
+                                                                value={selectedProduct.default_stock_type} 
+                                                                onChange={e => setSelectedProduct({...selectedProduct, default_stock_type: e.target.value})}
+                                                                className="text-xs"
+                                                            >
+                                                                <option value="UNRESTRICTED">UNRESTRICTED</option>
+                                                                <option value="QI_INSPECTION">QI_INSPECTION</option>
+                                                                <option value="BLOCKED">BLOCKED</option>
+                                                            </Select>
+                                                        </Field>
+
+                                                        <Field label="OVER-DELIVERY TOLERANCE (%)">
+                                                            <Input 
+                                                                type="number" 
+                                                                value={(selectedProduct.overdelivery_tolerance * 100).toFixed(0)} 
+                                                                onChange={e => setSelectedProduct({...selectedProduct, overdelivery_tolerance: parseFloat(e.target.value) / 100})}
+                                                                className="text-xs"
+                                                            />
+                                                        </Field>
+
+                                                        <Button variant="secondary" size="sm" className="w-full text-[10px]" onClick={handleUpdateProduct}>UPDATE POLICY</Button>
+                                                    </div>
                                                 </div>
                                             )}
                                             {detailTab === 'stock' && (
@@ -259,6 +325,28 @@ export const MaterialHub: React.FC = () => {
                         <Field label="DESCRIPTION">
                             <Textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="h-24" />
                         </Field>
+
+                        <div className="pt-4 border-t border-[var(--border)] space-y-4">
+                            <div className="flex items-center gap-3">
+                                <input 
+                                    type="checkbox" 
+                                    checked={formData.qc_on_gr} 
+                                    onChange={e => setFormData({...formData, qc_on_gr: e.target.checked})}
+                                />
+                                <span className="text-xs font-bold text-[var(--text-2)] uppercase">Enable QC on Receipt</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Field label="DEF. STOCK TYPE">
+                                    <Select value={formData.default_stock_type} onChange={e => setFormData({...formData, default_stock_type: e.target.value})}>
+                                        <option value="UNRESTRICTED">UNRESTRICTED</option>
+                                        <option value="QI_INSPECTION">QI_INSPECTION</option>
+                                    </Select>
+                                </Field>
+                                <Field label="TOLERANCE %">
+                                    <Input type="number" value={formData.overdelivery_tolerance * 100} onChange={e => setFormData({...formData, overdelivery_tolerance: parseFloat(e.target.value) / 100})} />
+                                </Field>
+                            </div>
+                        </div>
                     </div>
 
                     {traceSteps.length > 0 && (

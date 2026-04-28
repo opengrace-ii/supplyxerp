@@ -741,13 +741,6 @@ func (h *RFQHandler) calculateEffectivePrice(gross float64, discountPct float64,
 	data, _ := json.Marshal(steps)
 	return eff, data
 }
-func numericToFloat(n pgtype.Numeric) float64 {
-	if !n.Valid {
-		return 0
-	}
-	f, _ := n.Float64Value()
-	return f.Float64
-}
 
 func optDate(t *time.Time) pgtype.Date {
 	if t == nil {

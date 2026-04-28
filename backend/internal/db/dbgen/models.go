@@ -426,6 +426,24 @@ type GrLine struct {
 	LineNotes    pgtype.Text        `json:"line_notes"`
 }
 
+type GrOverdeliveryHold struct {
+	ID               int64              `json:"id"`
+	TenantID         int64              `json:"tenant_id"`
+	PublicID         uuid.UUID          `json:"public_id"`
+	GrID             int64              `json:"gr_id"`
+	PoLineID         int64              `json:"po_line_id"`
+	PoQuantity       pgtype.Numeric     `json:"po_quantity"`
+	ReceivedQuantity pgtype.Numeric     `json:"received_quantity"`
+	ExcessQuantity   pgtype.Numeric     `json:"excess_quantity"`
+	ExcessPct        pgtype.Numeric     `json:"excess_pct"`
+	Status           string             `json:"status"`
+	RequestedBy      int64              `json:"requested_by"`
+	ApprovedBy       pgtype.Int8        `json:"approved_by"`
+	ResolvedAt       pgtype.Timestamptz `json:"resolved_at"`
+	Notes            pgtype.Text        `json:"notes"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+}
+
 type HandlingUnit struct {
 	ID           int64              `json:"id"`
 	PublicID     pgtype.UUID        `json:"public_id"`
@@ -445,6 +463,7 @@ type HandlingUnit struct {
 	ZoneID       pgtype.Int8        `json:"zone_id"`
 	ConsumedAt   pgtype.Timestamptz `json:"consumed_at"`
 	ConsumedBy   pgtype.Int8        `json:"consumed_by"`
+	StockType    string             `json:"stock_type"`
 }
 
 type InspectionLot struct {
@@ -477,6 +496,7 @@ type InventoryEvent struct {
 	FromZoneID     pgtype.Int8        `json:"from_zone_id"`
 	ToZoneID       pgtype.Int8        `json:"to_zone_id"`
 	Notes          pgtype.Text        `json:"notes"`
+	StockType      string             `json:"stock_type"`
 }
 
 type InventoryEvents2025 struct {
@@ -930,6 +950,9 @@ type Product struct {
 	SafetyStock             pgtype.Numeric     `json:"safety_stock"`
 	MaxStockLevel           pgtype.Numeric     `json:"max_stock_level"`
 	ProcurementType         string             `json:"procurement_type"`
+	QcOnGr                  bool               `json:"qc_on_gr"`
+	QcOnOutput              bool               `json:"qc_on_output"`
+	GrDefaultStockType      string             `json:"gr_default_stock_type"`
 }
 
 type ProductPriceHistory struct {
@@ -1029,70 +1052,74 @@ type PurchaseOrder struct {
 }
 
 type PurchaseOrderLine struct {
-	ID                        int64              `json:"id"`
-	PublicID                  pgtype.UUID        `json:"public_id"`
-	TenantID                  int64              `json:"tenant_id"`
-	PoID                      int64              `json:"po_id"`
-	ProductID                 int64              `json:"product_id"`
-	Quantity                  pgtype.Numeric     `json:"quantity"`
-	Unit                      string             `json:"unit"`
-	UnitPrice                 pgtype.Numeric     `json:"unit_price"`
-	LineValue                 pgtype.Numeric     `json:"line_value"`
-	QtyReceived               pgtype.Numeric     `json:"qty_received"`
-	CreatedAt                 pgtype.Timestamptz `json:"created_at"`
-	LineNumber                int32              `json:"line_number"`
-	ShortText                 pgtype.Text        `json:"short_text"`
-	Currency                  pgtype.Text        `json:"currency"`
-	LineNetValue              pgtype.Numeric     `json:"line_net_value"`
-	TaxCode                   pgtype.Text        `json:"tax_code"`
-	TaxAmount                 pgtype.Numeric     `json:"tax_amount"`
-	LineGrossValue            pgtype.Numeric     `json:"line_gross_value"`
-	DeliveryDate              pgtype.Date        `json:"delivery_date"`
-	ReceivingZoneID           pgtype.Int8        `json:"receiving_zone_id"`
-	OverdeliveryTolerancePct  pgtype.Numeric     `json:"overdelivery_tolerance_pct"`
-	UnderdeliveryTolerancePct pgtype.Numeric     `json:"underdelivery_tolerance_pct"`
-	PriceLocked               bool               `json:"price_locked"`
-	AccountAssignmentType     pgtype.Text        `json:"account_assignment_type"`
-	CostCentre                pgtype.Text        `json:"cost_centre"`
-	QtyInvoiced               pgtype.Numeric     `json:"qty_invoiced"`
-	LineNotes                 pgtype.Text        `json:"line_notes"`
-	LineStatus                string             `json:"line_status"`
-	ItemNo                    pgtype.Int4        `json:"item_no"`
-	Blocked                   pgtype.Bool        `json:"blocked"`
-	BlockReasonCode           pgtype.Text        `json:"block_reason_code"`
-	BlockedAt                 pgtype.Timestamptz `json:"blocked_at"`
-	BlockedBy                 pgtype.Text        `json:"blocked_by"`
-	Deleted                   pgtype.Bool        `json:"deleted"`
-	DeletedAt                 pgtype.Timestamptz `json:"deleted_at"`
-	DeletedBy                 pgtype.Text        `json:"deleted_by"`
-	AcctAssgtCat              pgtype.Text        `json:"acct_assgt_cat"`
-	ItemCategory              pgtype.Text        `json:"item_category"`
-	SupplierBatch             pgtype.Text        `json:"supplier_batch"`
-	InternalBatch             pgtype.Text        `json:"internal_batch"`
-	SerialNoProfile           pgtype.Text        `json:"serial_no_profile"`
-	ItemText                  pgtype.Text        `json:"item_text"`
-	InfoRecordText            pgtype.Text        `json:"info_record_text"`
-	DeliveryText              pgtype.Text        `json:"delivery_text"`
-	DeliveryAddrDiff          pgtype.Bool        `json:"delivery_addr_diff"`
-	DeliveryAddrStreet        pgtype.Text        `json:"delivery_addr_street"`
-	DeliveryAddrCity          pgtype.Text        `json:"delivery_addr_city"`
-	DeliveryAddrZip           pgtype.Text        `json:"delivery_addr_zip"`
-	DeliveryAddrCountry       pgtype.Text        `json:"delivery_addr_country"`
-	BaseUom                   pgtype.Text        `json:"base_uom"`
-	OrderUom                  pgtype.Text        `json:"order_uom"`
-	UomConversionNum          pgtype.Numeric     `json:"uom_conversion_num"`
-	UomConversionDen          pgtype.Numeric     `json:"uom_conversion_den"`
-	NetPrice                  pgtype.Numeric     `json:"net_price"`
-	OrderUnit                 pgtype.Text        `json:"order_unit"`
-	MaterialID                pgtype.Int8        `json:"material_id"`
-	Plant                     pgtype.Text        `json:"plant"`
-	StorageLocation           pgtype.Text        `json:"storage_location"`
-	InfoRecord                pgtype.Text        `json:"info_record"`
-	GrossWeight               pgtype.Numeric     `json:"gross_weight"`
-	NetWeight                 pgtype.Numeric     `json:"net_weight"`
-	WeightUnit                pgtype.Text        `json:"weight_unit"`
-	Volume                    pgtype.Numeric     `json:"volume"`
-	VolumeUnit                pgtype.Text        `json:"volume_unit"`
+	ID                           int64              `json:"id"`
+	PublicID                     pgtype.UUID        `json:"public_id"`
+	TenantID                     int64              `json:"tenant_id"`
+	PoID                         int64              `json:"po_id"`
+	ProductID                    int64              `json:"product_id"`
+	Quantity                     pgtype.Numeric     `json:"quantity"`
+	Unit                         string             `json:"unit"`
+	UnitPrice                    pgtype.Numeric     `json:"unit_price"`
+	LineValue                    pgtype.Numeric     `json:"line_value"`
+	QtyReceived                  pgtype.Numeric     `json:"qty_received"`
+	CreatedAt                    pgtype.Timestamptz `json:"created_at"`
+	LineNumber                   int32              `json:"line_number"`
+	ShortText                    pgtype.Text        `json:"short_text"`
+	Currency                     pgtype.Text        `json:"currency"`
+	LineNetValue                 pgtype.Numeric     `json:"line_net_value"`
+	TaxCode                      pgtype.Text        `json:"tax_code"`
+	TaxAmount                    pgtype.Numeric     `json:"tax_amount"`
+	LineGrossValue               pgtype.Numeric     `json:"line_gross_value"`
+	DeliveryDate                 pgtype.Date        `json:"delivery_date"`
+	ReceivingZoneID              pgtype.Int8        `json:"receiving_zone_id"`
+	OverdeliveryTolerancePct     pgtype.Numeric     `json:"overdelivery_tolerance_pct"`
+	UnderdeliveryTolerancePct    pgtype.Numeric     `json:"underdelivery_tolerance_pct"`
+	PriceLocked                  bool               `json:"price_locked"`
+	AccountAssignmentType        pgtype.Text        `json:"account_assignment_type"`
+	CostCentre                   pgtype.Text        `json:"cost_centre"`
+	QtyInvoiced                  pgtype.Numeric     `json:"qty_invoiced"`
+	LineNotes                    pgtype.Text        `json:"line_notes"`
+	LineStatus                   string             `json:"line_status"`
+	ItemNo                       pgtype.Int4        `json:"item_no"`
+	Blocked                      pgtype.Bool        `json:"blocked"`
+	BlockReasonCode              pgtype.Text        `json:"block_reason_code"`
+	BlockedAt                    pgtype.Timestamptz `json:"blocked_at"`
+	BlockedBy                    pgtype.Text        `json:"blocked_by"`
+	Deleted                      pgtype.Bool        `json:"deleted"`
+	DeletedAt                    pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy                    pgtype.Text        `json:"deleted_by"`
+	AcctAssgtCat                 pgtype.Text        `json:"acct_assgt_cat"`
+	ItemCategory                 pgtype.Text        `json:"item_category"`
+	SupplierBatch                pgtype.Text        `json:"supplier_batch"`
+	InternalBatch                pgtype.Text        `json:"internal_batch"`
+	SerialNoProfile              pgtype.Text        `json:"serial_no_profile"`
+	ItemText                     pgtype.Text        `json:"item_text"`
+	InfoRecordText               pgtype.Text        `json:"info_record_text"`
+	DeliveryText                 pgtype.Text        `json:"delivery_text"`
+	DeliveryAddrDiff             pgtype.Bool        `json:"delivery_addr_diff"`
+	DeliveryAddrStreet           pgtype.Text        `json:"delivery_addr_street"`
+	DeliveryAddrCity             pgtype.Text        `json:"delivery_addr_city"`
+	DeliveryAddrZip              pgtype.Text        `json:"delivery_addr_zip"`
+	DeliveryAddrCountry          pgtype.Text        `json:"delivery_addr_country"`
+	BaseUom                      pgtype.Text        `json:"base_uom"`
+	OrderUom                     pgtype.Text        `json:"order_uom"`
+	UomConversionNum             pgtype.Numeric     `json:"uom_conversion_num"`
+	UomConversionDen             pgtype.Numeric     `json:"uom_conversion_den"`
+	NetPrice                     pgtype.Numeric     `json:"net_price"`
+	OrderUnit                    pgtype.Text        `json:"order_unit"`
+	MaterialID                   pgtype.Int8        `json:"material_id"`
+	Plant                        pgtype.Text        `json:"plant"`
+	StorageLocation              pgtype.Text        `json:"storage_location"`
+	InfoRecord                   pgtype.Text        `json:"info_record"`
+	GrossWeight                  pgtype.Numeric     `json:"gross_weight"`
+	NetWeight                    pgtype.Numeric     `json:"net_weight"`
+	WeightUnit                   pgtype.Text        `json:"weight_unit"`
+	Volume                       pgtype.Numeric     `json:"volume"`
+	VolumeUnit                   pgtype.Text        `json:"volume_unit"`
+	OverdeliveryRequiresApproval bool               `json:"overdelivery_requires_approval"`
+	OverdeliveryApprovedBy       pgtype.Int8        `json:"overdelivery_approved_by"`
+	OverdeliveryApprovedAt       pgtype.Timestamptz `json:"overdelivery_approved_at"`
+	OverdeliveryApprovalNote     pgtype.Text        `json:"overdelivery_approval_note"`
 }
 
 type PurchaseRequest struct {
@@ -1746,6 +1773,7 @@ type TenantConfig struct {
 	DefaultTolerancePct  pgtype.Numeric     `json:"default_tolerance_pct"`
 	ConditionTypesSeeded bool               `json:"condition_types_seeded"`
 	IrNumberFormat       string             `json:"ir_number_format"`
+	EnabledModules       []byte             `json:"enabled_modules"`
 }
 
 type TenantSequence struct {

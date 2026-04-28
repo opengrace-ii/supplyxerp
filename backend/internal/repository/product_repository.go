@@ -14,7 +14,7 @@ type ProductRepository struct {
 
 func (r *ProductRepository) List(ctx context.Context, tenantID int64, limit, offset int32) ([]dbgen.Product, error) {
 	rows, err := r.db.Query(ctx, 
-		"SELECT id, public_id, tenant_id, code, name, base_unit, description, attributes, created_at, uom_conversions FROM products WHERE tenant_id = $1 AND is_active = true ORDER BY created_at DESC LIMIT $2 OFFSET $3",
+		"SELECT id, public_id, tenant_id, code, name, base_unit, description, attributes, created_at, uom_conversions, qc_on_gr, qc_on_output, gr_default_stock_type FROM products WHERE tenant_id = $1 AND is_active = true ORDER BY created_at DESC LIMIT $2 OFFSET $3",
 		tenantID, limit, offset)
 	if err != nil {
 		return nil, err
@@ -27,6 +27,7 @@ func (r *ProductRepository) List(ctx context.Context, tenantID int64, limit, off
 		err := rows.Scan(
 			&p.ID, &p.PublicID, &p.TenantID, &p.Code, &p.Name, 
 			&p.BaseUnit, &p.Description, &p.Attributes, &p.CreatedAt, &p.UomConversions,
+			&p.QcOnGr, &p.QcOnOutput, &p.GrDefaultStockType,
 		)
 		if err != nil {
 			return nil, err
@@ -39,25 +40,26 @@ func (r *ProductRepository) List(ctx context.Context, tenantID int64, limit, off
 func (r *ProductRepository) GetByPublicID(ctx context.Context, tenantID int64, publicID pgtype.UUID) (dbgen.Product, error) {
 	var p dbgen.Product
 	err := r.db.QueryRow(ctx,
-		"SELECT id, public_id, tenant_id, code, name, base_unit, description, attributes, created_at, uom_conversions FROM products WHERE tenant_id = $1 AND public_id = $2",
+		"SELECT id, public_id, tenant_id, code, name, base_unit, description, attributes, created_at, uom_conversions, qc_on_gr, qc_on_output, gr_default_stock_type FROM products WHERE tenant_id = $1 AND public_id = $2",
 		tenantID, publicID).Scan(
 		&p.ID, &p.PublicID, &p.TenantID, &p.Code, &p.Name, 
 		&p.BaseUnit, &p.Description, &p.Attributes, &p.CreatedAt, &p.UomConversions,
+		&p.QcOnGr, &p.QcOnOutput, &p.GrDefaultStockType,
 	)
 	return p, err
 }
 
 func (r *ProductRepository) Create(ctx context.Context, p dbgen.Product) (dbgen.Product, error) {
 	err := r.db.QueryRow(ctx,
-		"INSERT INTO products (tenant_id, code, name, base_unit, description, attributes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, public_id, created_at",
-		p.TenantID, p.Code, p.Name, p.BaseUnit, p.Description, p.Attributes).Scan(&p.ID, &p.PublicID, &p.CreatedAt)
+		"INSERT INTO products (tenant_id, code, name, base_unit, description, attributes, qc_on_gr, qc_on_output, gr_default_stock_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, public_id, created_at",
+		p.TenantID, p.Code, p.Name, p.BaseUnit, p.Description, p.Attributes, p.QcOnGr, p.QcOnOutput, p.GrDefaultStockType).Scan(&p.ID, &p.PublicID, &p.CreatedAt)
 	return p, err
 }
 
-func (r *ProductRepository) Update(ctx context.Context, tenantID int64, publicID pgtype.UUID, name, description string) error {
+func (r *ProductRepository) Update(ctx context.Context, tenantID int64, publicID pgtype.UUID, p dbgen.Product) error {
 	_, err := r.db.Exec(ctx,
-		"UPDATE products SET name = $1, description = $2 WHERE tenant_id = $3 AND public_id = $4",
-		name, description, tenantID, publicID)
+		"UPDATE products SET name = $1, description = $2, qc_on_gr = $3, qc_on_output = $4, gr_default_stock_type = $5 WHERE tenant_id = $6 AND public_id = $7",
+		p.Name, p.Description, p.QcOnGr, p.QcOnOutput, p.GrDefaultStockType, tenantID, publicID)
 	return err
 }
 
@@ -77,10 +79,11 @@ func (r *ProductRepository) Count(ctx context.Context, tenantID int64) (int64, e
 func (r *ProductRepository) GetByCode(ctx context.Context, tenantID int64, code string) (dbgen.Product, error) {
 	var p dbgen.Product
 	err := r.db.QueryRow(ctx,
-		"SELECT id, public_id, tenant_id, code, name, base_unit, description, attributes, created_at, uom_conversions FROM products WHERE tenant_id = $1 AND code = $2",
+		"SELECT id, public_id, tenant_id, code, name, base_unit, description, attributes, created_at, uom_conversions, qc_on_gr, qc_on_output, gr_default_stock_type FROM products WHERE tenant_id = $1 AND code = $2",
 		tenantID, code).Scan(
 		&p.ID, &p.PublicID, &p.TenantID, &p.Code, &p.Name, 
 		&p.BaseUnit, &p.Description, &p.Attributes, &p.CreatedAt, &p.UomConversions,
+		&p.QcOnGr, &p.QcOnOutput, &p.GrDefaultStockType,
 	)
 	return p, err
 }

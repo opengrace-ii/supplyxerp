@@ -18,7 +18,7 @@ INSERT INTO inventory_events (
     actor_user_id, reference_doc, metadata
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
-) RETURNING id, tenant_id, event_type, hu_id, child_hu_id, product_id, from_location_id, to_location_id, quantity, unit, actor_user_id, reference_doc, metadata, created_at, site_id, zone_id, from_zone_id, to_zone_id, notes
+) RETURNING id, tenant_id, event_type, hu_id, child_hu_id, product_id, from_location_id, to_location_id, quantity, unit, actor_user_id, reference_doc, metadata, created_at, site_id, zone_id, from_zone_id, to_zone_id, notes, stock_type
 `
 
 type CreateInventoryEventParams struct {
@@ -70,6 +70,7 @@ func (q *Queries) CreateInventoryEvent(ctx context.Context, arg CreateInventoryE
 		&i.FromZoneID,
 		&i.ToZoneID,
 		&i.Notes,
+		&i.StockType,
 	)
 	return i, err
 }
@@ -100,7 +101,7 @@ func (q *Queries) GetBarcode(ctx context.Context, arg GetBarcodeParams) (Barcode
 }
 
 const getHUByBarcode = `-- name: GetHUByBarcode :one
-SELECT hu.id, hu.public_id, hu.tenant_id, hu.parent_hu_id, hu.product_id, hu.batch_id, hu.location_id, hu.code, hu.quantity, hu.unit, hu.status, hu.label_version, hu.created_at, hu.updated_at, hu.site_id, hu.zone_id, hu.consumed_at, hu.consumed_by
+SELECT hu.id, hu.public_id, hu.tenant_id, hu.parent_hu_id, hu.product_id, hu.batch_id, hu.location_id, hu.code, hu.quantity, hu.unit, hu.status, hu.label_version, hu.created_at, hu.updated_at, hu.site_id, hu.zone_id, hu.consumed_at, hu.consumed_by, hu.stock_type
 FROM handling_units hu
 JOIN barcodes b ON b.entity_id = hu.id AND b.entity_type = 'HU'
 WHERE b.tenant_id = $1 AND b.code = $2 AND b.is_active = true LIMIT 1
@@ -133,12 +134,13 @@ func (q *Queries) GetHUByBarcode(ctx context.Context, arg GetHUByBarcodeParams) 
 		&i.ZoneID,
 		&i.ConsumedAt,
 		&i.ConsumedBy,
+		&i.StockType,
 	)
 	return i, err
 }
 
 const getHUByID = `-- name: GetHUByID :one
-SELECT id, public_id, tenant_id, parent_hu_id, product_id, batch_id, location_id, code, quantity, unit, status, label_version, created_at, updated_at, site_id, zone_id, consumed_at, consumed_by FROM handling_units
+SELECT id, public_id, tenant_id, parent_hu_id, product_id, batch_id, location_id, code, quantity, unit, status, label_version, created_at, updated_at, site_id, zone_id, consumed_at, consumed_by, stock_type FROM handling_units
 WHERE id = $1 LIMIT 1
 `
 
@@ -164,13 +166,14 @@ func (q *Queries) GetHUByID(ctx context.Context, id int64) (HandlingUnit, error)
 		&i.ZoneID,
 		&i.ConsumedAt,
 		&i.ConsumedBy,
+		&i.StockType,
 	)
 	return i, err
 }
 
 const getHUWithDetails = `-- name: GetHUWithDetails :one
 SELECT 
-    hu.id, hu.public_id, hu.tenant_id, hu.parent_hu_id, hu.product_id, hu.batch_id, hu.location_id, hu.code, hu.quantity, hu.unit, hu.status, hu.label_version, hu.created_at, hu.updated_at, hu.site_id, hu.zone_id, hu.consumed_at, hu.consumed_by,
+    hu.id, hu.public_id, hu.tenant_id, hu.parent_hu_id, hu.product_id, hu.batch_id, hu.location_id, hu.code, hu.quantity, hu.unit, hu.status, hu.label_version, hu.created_at, hu.updated_at, hu.site_id, hu.zone_id, hu.consumed_at, hu.consumed_by, hu.stock_type,
     p.code as product_code,
     p.name as product_name,
     l.code as location_code
@@ -199,6 +202,7 @@ type GetHUWithDetailsRow struct {
 	ZoneID       pgtype.Int8        `json:"zone_id"`
 	ConsumedAt   pgtype.Timestamptz `json:"consumed_at"`
 	ConsumedBy   pgtype.Int8        `json:"consumed_by"`
+	StockType    string             `json:"stock_type"`
 	ProductCode  string             `json:"product_code"`
 	ProductName  string             `json:"product_name"`
 	LocationCode string             `json:"location_code"`
@@ -226,6 +230,7 @@ func (q *Queries) GetHUWithDetails(ctx context.Context, id int64) (GetHUWithDeta
 		&i.ZoneID,
 		&i.ConsumedAt,
 		&i.ConsumedBy,
+		&i.StockType,
 		&i.ProductCode,
 		&i.ProductName,
 		&i.LocationCode,
@@ -264,7 +269,7 @@ func (q *Queries) GetLocationByBarcode(ctx context.Context, arg GetLocationByBar
 
 const getLocationStock = `-- name: GetLocationStock :many
 SELECT 
-    hu.id, hu.public_id, hu.tenant_id, hu.parent_hu_id, hu.product_id, hu.batch_id, hu.location_id, hu.code, hu.quantity, hu.unit, hu.status, hu.label_version, hu.created_at, hu.updated_at, hu.site_id, hu.zone_id, hu.consumed_at, hu.consumed_by,
+    hu.id, hu.public_id, hu.tenant_id, hu.parent_hu_id, hu.product_id, hu.batch_id, hu.location_id, hu.code, hu.quantity, hu.unit, hu.status, hu.label_version, hu.created_at, hu.updated_at, hu.site_id, hu.zone_id, hu.consumed_at, hu.consumed_by, hu.stock_type,
     p.code as product_code,
     p.name as product_name
 FROM handling_units hu
@@ -291,6 +296,7 @@ type GetLocationStockRow struct {
 	ZoneID       pgtype.Int8        `json:"zone_id"`
 	ConsumedAt   pgtype.Timestamptz `json:"consumed_at"`
 	ConsumedBy   pgtype.Int8        `json:"consumed_by"`
+	StockType    string             `json:"stock_type"`
 	ProductCode  string             `json:"product_code"`
 	ProductName  string             `json:"product_name"`
 }
@@ -323,6 +329,7 @@ func (q *Queries) GetLocationStock(ctx context.Context, locationID pgtype.Int8) 
 			&i.ZoneID,
 			&i.ConsumedAt,
 			&i.ConsumedBy,
+			&i.StockType,
 			&i.ProductCode,
 			&i.ProductName,
 		); err != nil {
@@ -501,7 +508,7 @@ func (q *Queries) ListLocations(ctx context.Context, tenantID pgtype.Int8) ([]Lo
 
 const listRecentEvents = `-- name: ListRecentEvents :many
 SELECT 
-    e.id, e.tenant_id, e.event_type, e.hu_id, e.child_hu_id, e.product_id, e.from_location_id, e.to_location_id, e.quantity, e.unit, e.actor_user_id, e.reference_doc, e.metadata, e.created_at, e.site_id, e.zone_id, e.from_zone_id, e.to_zone_id, e.notes,
+    e.id, e.tenant_id, e.event_type, e.hu_id, e.child_hu_id, e.product_id, e.from_location_id, e.to_location_id, e.quantity, e.unit, e.actor_user_id, e.reference_doc, e.metadata, e.created_at, e.site_id, e.zone_id, e.from_zone_id, e.to_zone_id, e.notes, e.stock_type,
     u.username as actor_name,
     hu.public_id as hu_public_id
 FROM inventory_events e
@@ -537,6 +544,7 @@ type ListRecentEventsRow struct {
 	FromZoneID     pgtype.Int8        `json:"from_zone_id"`
 	ToZoneID       pgtype.Int8        `json:"to_zone_id"`
 	Notes          pgtype.Text        `json:"notes"`
+	StockType      string             `json:"stock_type"`
 	ActorName      pgtype.Text        `json:"actor_name"`
 	HuPublicID     pgtype.UUID        `json:"hu_public_id"`
 }
@@ -570,6 +578,7 @@ func (q *Queries) ListRecentEvents(ctx context.Context, arg ListRecentEventsPara
 			&i.FromZoneID,
 			&i.ToZoneID,
 			&i.Notes,
+			&i.StockType,
 			&i.ActorName,
 			&i.HuPublicID,
 		); err != nil {
@@ -585,7 +594,7 @@ func (q *Queries) ListRecentEvents(ctx context.Context, arg ListRecentEventsPara
 
 const listRecentHUs = `-- name: ListRecentHUs :many
 SELECT 
-    hu.id, hu.public_id, hu.tenant_id, hu.parent_hu_id, hu.product_id, hu.batch_id, hu.location_id, hu.code, hu.quantity, hu.unit, hu.status, hu.label_version, hu.created_at, hu.updated_at, hu.site_id, hu.zone_id, hu.consumed_at, hu.consumed_by,
+    hu.id, hu.public_id, hu.tenant_id, hu.parent_hu_id, hu.product_id, hu.batch_id, hu.location_id, hu.code, hu.quantity, hu.unit, hu.status, hu.label_version, hu.created_at, hu.updated_at, hu.site_id, hu.zone_id, hu.consumed_at, hu.consumed_by, hu.stock_type,
     p.code as product_code,
     l.code as location_code
 FROM handling_units hu
@@ -620,6 +629,7 @@ type ListRecentHUsRow struct {
 	ZoneID       pgtype.Int8        `json:"zone_id"`
 	ConsumedAt   pgtype.Timestamptz `json:"consumed_at"`
 	ConsumedBy   pgtype.Int8        `json:"consumed_by"`
+	StockType    string             `json:"stock_type"`
 	ProductCode  string             `json:"product_code"`
 	LocationCode string             `json:"location_code"`
 }
@@ -652,6 +662,7 @@ func (q *Queries) ListRecentHUs(ctx context.Context, arg ListRecentHUsParams) ([
 			&i.ZoneID,
 			&i.ConsumedAt,
 			&i.ConsumedBy,
+			&i.StockType,
 			&i.ProductCode,
 			&i.LocationCode,
 		); err != nil {

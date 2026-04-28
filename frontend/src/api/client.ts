@@ -451,6 +451,24 @@ export const api = {
   markShipmentDelivered: async (id: string) => {
     const res = await apiClient.post(`/api/com/shipments/${id}/deliver`);
     return res.data;
-  }
+  },
+
+  // Stock Type Engine & Over-Delivery Guard
+  transferStock: async (data: { hu_code: string, from_zone_id?: number, to_zone_id: number, quantity: number, to_stock_type: string, reason: string }) => {
+    const res = await apiClient.post('/api/stock/transfer', data);
+    return res.data;
+  },
+  getPendingGRHolds: async () => {
+    const res = await apiClient.get('/api/gr/holds?status=PENDING');
+    return res.data;
+  },
+  resolveGRHold: async (id: string, data: { status: string, note: string }) => {
+    const res = await apiClient.post(`/api/gr/holds/${id}/resolve`, data);
+    return res.data;
+  },
+  getProductRolls: async (productId: number) => {
+    const res = await apiClient.get(`/api/stock/products/${productId}/rolls`);
+    return res.data;
+  },
 };
 
