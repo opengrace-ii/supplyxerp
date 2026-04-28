@@ -30,6 +30,7 @@ import DealFlow from './COM/DealFlow';
 import RouteRunner from './COM/RouteRunner';
 import ModuleConfig from './Config/ModuleConfig';
 import Notifications from './Config/Notifications';
+import AIStudio from './SYSTEM/AIStudio';
 
 const AppPage: React.FC = () => {
   const { currentModule, currentTab, user, isAuthLoading, checkSession } = useAppStore();
@@ -124,6 +125,8 @@ const AppPage: React.FC = () => {
         return <ModuleConfig />;
       case 'Notifications':
         return <Notifications />;
+      case 'AI Studio':
+        return <AIStudio />;
       default:
         // Coming soon screen
         return (

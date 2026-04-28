@@ -41,6 +41,7 @@ const MODULES_BY_TAB: Record<Section, { label: string; items: any[] }> = {
     items: [
       { key: 'System Log',    label: 'System Log',    icon: 'L', isLive: true },
       { key: 'Audit log',     label: 'Audit Log',     icon: 'A', isLive: true },
+      { key: 'AI Studio',     label: 'AI Studio',     icon: '🧠', isLive: true },
       { key: 'Users & roles', label: 'Users & Roles', icon: 'U', isLive: true }
     ]
   },

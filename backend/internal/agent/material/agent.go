@@ -20,35 +20,40 @@ func New(hub *events.Hub) *Agent {
 }
 
 type CreateProductParams struct {
-	Code        string
-	Name        string
-	BaseUnit    string
-	Description string
-	ActorID     int64
-	TenantID    int64
+	Code             string
+	Name             string
+	BaseUnit         string
+	Description      string
+	MaterialCategory string
+	ProcurementType  string
+	PlanningMethod   string
+	BatchTracked     bool
+	ActorID          int64
+	TenantID         int64
 }
 
 func (a *Agent) CreateProduct(ctx context.Context, uow *repository.UnitOfWork, p CreateProductParams) (dbgen.Product, error) {
 	// 1. ErrorPreventionAgent → VALIDATE_INPUT
 	a.broadcast(ctx, "ErrorPreventionAgent", "VALIDATING_INPUT", "SUCCESS")
 	
-	// Check uniqueness
-	_, err := uow.Products.GetByCode(ctx, p.TenantID, p.Code) // I need to add this method or use a generic check
-	// For robustness, I'll just proceed and let DB UNIQUE constraint handle it if I haven't implemented GetByCode yet
-	
 	// 2. InventoryAgent → REGISTER_PRODUCT
 	product, err := uow.Products.Create(ctx, dbgen.Product{
-		TenantID:    pgtype.Int8{Int64: p.TenantID, Valid: true},
-		Code:        p.Code,
-		Name:        p.Name,
-		BaseUnit:    p.BaseUnit,
-		Description: pgtype.Text{String: p.Description, Valid: true},
+		TenantID:         pgtype.Int8{Int64: p.TenantID, Valid: true},
+		Code:             p.Code,
+		Name:             p.Name,
+		BaseUnit:         p.BaseUnit,
+		Description:      pgtype.Text{String: p.Description, Valid: true},
+		MaterialCategory: pgtype.Text{String: p.MaterialCategory, Valid: p.MaterialCategory != ""},
+		ProcurementType:  p.ProcurementType,
+		PlanningMethod:   pgtype.Text{String: p.PlanningMethod, Valid: p.PlanningMethod != ""},
+		BatchTracked:     pgtype.Bool{Bool: p.BatchTracked, Valid: true},
 	})
 	if err != nil {
 		a.broadcast(ctx, "InventoryAgent", "REGISTERING_PRODUCT", "FAILED")
 		return dbgen.Product{}, fmt.Errorf("failed to create product: %w", err)
 	}
 	a.broadcast(ctx, "InventoryAgent", "REGISTERING_PRODUCT", "SUCCESS")
+
 
 	// 3. BarcodeAgent → REGISTER_BARCODE
 	a.broadcast(ctx, "BarcodeAgent", "REGISTERING_BARCODE", "SUCCESS")

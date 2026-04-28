@@ -10,17 +10,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"supplyxerp/backend/internal/db/dbgen"
+	"supplyxerp/backend/internal/repository"
 )
 
 type QualityHandler struct {
 	pool    *pgxpool.Pool
 	queries *dbgen.Queries
+	Repo    *repository.UnitOfWork
 }
 
-func NewQualityHandler(pool *pgxpool.Pool) *QualityHandler {
+func NewQualityHandler(pool *pgxpool.Pool, repo *repository.UnitOfWork) *QualityHandler {
 	return &QualityHandler{
 		pool:    pool,
 		queries: dbgen.New(pool),
+		Repo:    repo,
 	}
 }
 
@@ -185,6 +188,9 @@ func (h *QualityHandler) RecordResult(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to commit transaction"})
 		return
 	}
+
+	// Audit
+	h.Repo.Audit.Log(c.Request.Context(), tenantID, userID, "QC_RESULT_RECORDED", "quality_check", strconv.FormatInt(check.ID, 10), nil, req)
 
 	c.JSON(http.StatusOK, check)
 }

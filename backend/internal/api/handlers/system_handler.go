@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -100,6 +101,89 @@ func (h *SystemHandler) GetLogs(c *gin.Context) {
 	}
 	c.JSON(200, gin.H{"logs": logs, "count": len(logs)})
 }
+
+func (h *SystemHandler) GetAuditLog(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(int64)
+	limit := 100
+	if l := c.Query("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n <= 1000 {
+			limit = n
+		}
+	}
+
+	period := c.DefaultQuery("period", "7")
+	days, _ := strconv.Atoi(period)
+	from := time.Now().Add(time.Duration(-days*24) * time.Hour)
+
+	query := `
+		SELECT a.id, a.created_at, a.action, a.entity_type, 
+		       COALESCE(a.entity_public_id::text, ''), 
+		       a.payload_after, u.username, u.email
+		FROM audit_log a
+		LEFT JOIN users u ON a.actor_id = u.id
+		WHERE a.tenant_id = $1 AND a.created_at >= $2
+	`
+	args := []interface{}{tenantID, from}
+	argN := 3
+
+	if module := c.Query("module"); module != "" {
+		query += fmt.Sprintf(" AND a.entity_type = $%d", argN)
+		args = append(args, module)
+		argN++
+	}
+	if action := c.Query("action"); action != "" {
+		query += fmt.Sprintf(" AND a.action ILIKE $%d", argN)
+		args = append(args, "%"+action+"%")
+		argN++
+	}
+	if user := c.Query("user"); user != "" {
+		query += fmt.Sprintf(" AND (u.username ILIKE $%d OR u.email ILIKE $%d)", argN, argN)
+		args = append(args, "%"+user+"%")
+		argN++
+	}
+
+	query += fmt.Sprintf(" ORDER BY a.created_at DESC LIMIT $%d", argN)
+	args = append(args, limit)
+
+	rows, err := h.Pool.Query(c.Request.Context(), query, args...)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	type AuditEntry struct {
+		ID             int64     `json:"id"`
+		Timestamp      time.Time `json:"timestamp"`
+		Action         string    `json:"action"`
+		Module         string    `json:"module"`
+		Reference      string    `json:"reference"`
+		Details        any       `json:"details"`
+		Username       string    `json:"username"`
+		UserEmail      string    `json:"user_email"`
+	}
+
+	var entries []AuditEntry
+	for rows.Next() {
+		var r AuditEntry
+		var ref string
+		var detailsJSON []byte
+		if err := rows.Scan(&r.ID, &r.Timestamp, &r.Action, &r.Module, &ref, &detailsJSON, &r.Username, &r.UserEmail); err != nil {
+			continue
+		}
+		r.Reference = ref
+		if detailsJSON != nil {
+			_ = json.Unmarshal(detailsJSON, &r.Details)
+		}
+		entries = append(entries, r)
+	}
+
+	if entries == nil {
+		entries = []AuditEntry{}
+	}
+	c.JSON(200, entries)
+}
+
 
 func (h *SystemHandler) GetLogsSummary(c *gin.Context) {
 	var summary struct {

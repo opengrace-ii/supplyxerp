@@ -24,8 +24,32 @@ interface TranslatedLog extends LogEntry {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const MODULES = ["All", "PO", "RFQ", "SUPPLY PACT", "VENDOR", "MATERIAL", "AUTH", "SYSTEM"];
-const ACTIONS = ["All", "Created", "Updated", "Deleted", "Approved", "Sent", "Auth"];
+const MODULES = ["All", "product", "purchase_order", "purchase_request", "rfq_document", "quality_check", "handling_unit", "gr_document"];
+const ACTIONS = ["All", "PRODUCT_CREATED", "PRODUCT_UPDATED", "PO_CREATED", "PO_APPROVED", "PR_CREATED", "STOCK_TRANSFERRED", "GR_POSTED", "QC_RESULT_RECORDED"];
+
+const ACTION_LABELS: Record<string, string> = {
+  PRODUCT_CREATED:         'Created Product',
+  PRODUCT_UPDATED:         'Updated Product',
+  PO_CREATED:              'Created Purchase Order',
+  PO_APPROVED:             'Approved Purchase Order',
+  PR_CREATED:              'Created Purchase Request',
+  STOCK_TRANSFERRED:       'Transferred Stock',
+  GR_POSTED:               'Posted Goods Receipt',
+  QC_RESULT_RECORDED:      'Recorded QC Result',
+  RFQ_CREATED:             'Created RFQ',
+  RFQ_FINALISED:           'Finalised RFQ',
+  USER_CREATED:            'Added User',
+};
+
+const MODULE_LABELS: Record<string, string> = {
+  product:          'Materials',
+  purchase_order:   'Purchasing',
+  purchase_request: 'Purchasing',
+  rfq_document:     'RFQ',
+  quality_check:    'Quality',
+  handling_unit:    'Warehouse',
+  gr_document:      'Goods Receipt',
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -44,65 +68,15 @@ function getTimeAgo(date: string) {
   return Math.floor(seconds) + " seconds ago";
 }
 
-function translateLog(log: LogEntry): TranslatedLog {
-  let action = "Interaction";
-  let module = "OTHER";
-  let reference = "—";
-  let businessDetail = `${log.method} ${log.path}`;
-
-  const { method, path } = log;
-
-  // Translation Logic
-  if (path.startsWith("/api/purchase-orders")) {
-    module = "PO";
-    if (method === "POST") action = "Created Purchase Order";
-    if (method === "PATCH" || method === "PUT") action = "Updated Purchase Order";
-  } else if (path.startsWith("/api/purchase-requests")) {
-    module = "PR";
-    if (method === "POST") action = "Created Purchase Request";
-  } else if (path.startsWith("/api/supply-pacts")) {
-    module = "SUPPLY PACT";
-    if (method === "POST") action = "Created Supply Pact";
-    if (path.includes("/activate")) action = "Activated Supply Pact";
-  } else if (path.startsWith("/api/vendors") || path.startsWith("/api/suppliers")) {
-    module = "VENDOR";
-    if (path.includes("/scorecard") && method === "POST") action = "Submitted Vendor Score";
-    if (method === "POST" && path.endsWith("/suppliers")) action = "Created Supplier";
-  } else if (path.startsWith("/api/po/") && path.includes("/items/")) {
-    module = "PO";
-    if (path.includes("/block") && method === "POST") action = "Blocked PO Line Item";
-    if (path.includes("/unblock") && method === "POST") action = "Released PO Line Item";
-    if (method === "DELETE") action = "Deleted PO Line Item";
-  } else if (path.startsWith("/api/dispatch/send")) {
-    module = "DISPATCH";
-    action = "Dispatched Document";
-  } else if (path.startsWith("/api/auth/login")) {
-    module = "AUTH";
-    action = "User Login";
-  } else if (path.startsWith("/api/po/") && path.includes("/progress/")) {
-    module = "PROGRESS";
-    if (path.includes("/initialize")) action = "Initialized Milestone Tracking";
-    else action = "Updated Milestone Event";
-  } else if (path.startsWith("/api/products")) {
-    module = "MATERIAL";
-    if (method === "POST") action = "Created Product";
-    if (method === "PUT") action = "Updated Product";
-  }
-
-  // Extract ID if possible for reference
-  const parts = path.split("/");
-  if (parts.length > 3 && !isNaN(Number(parts[3]))) {
-    reference = `#${parts[3]}`;
-  }
-
-  return {
-    ...log,
-    action,
-    module,
-    reference,
-    businessDetail,
-    timeAgo: getTimeAgo(log.timestamp),
-  };
+interface AuditEntry {
+  id: number;
+  timestamp: string;
+  action: string;
+  module: string;
+  reference: string;
+  details: any;
+  username: string;
+  user_email: string;
 }
 
 // ─── Components ───────────────────────────────────────────────────────────────
@@ -112,7 +86,7 @@ const Badge = ({ label, colorClass = "sx-badge--gray" }: { label: string; colorC
 );
 
 export default function AuditLog() {
-  const [logs, setLogs] = useState<TranslatedLog[]>([]);
+  const [logs, setLogs] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
     user: "All",
@@ -128,41 +102,36 @@ export default function AuditLog() {
   const loadLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiFetch("/api/system/logs?limit=500");
-      const d: LogEntry[] = await res.json();
-      
-      // Filter for audit-worthy logs: mutations (POST, PUT, PATCH, DELETE)
-      const filtered = d
-        .filter(l => ["POST", "PUT", "PATCH", "DELETE"].includes(l.method))
-        .map(translateLog);
-      
-      setLogs(filtered);
+      const res = await apiFetch(`/api/system/audit-log?period=${filters.days}`);
+      const data: AuditEntry[] = await res.json();
+      setLogs(data);
     } catch (err) { console.error("Logs load fail", err); }
     finally { setLoading(false); }
-  }, [apiFetch]);
+  }, [apiFetch, filters.days]);
 
   useEffect(() => { loadLogs(); }, [loadLogs]);
 
   const uniqueUsers = useMemo(() => {
     const users = new Set<string>();
-    logs.forEach(l => users.add(l.user_email));
+    logs.forEach(l => {
+        if (l.user_email) users.add(l.user_email);
+        else if (l.username) users.add(l.username);
+    });
     return ["All", ...Array.from(users)];
   }, [logs]);
 
   const filteredLogs = useMemo(() => {
     return logs.filter(l => {
-      if (filters.user !== "All" && l.user_email !== filters.user) return false;
-      if (filters.module !== "All" && l.module !== filters.module) return false;
-      if (filters.action !== "All" && !l.action.toLowerCase().includes(filters.action.toLowerCase())) return false;
+      const userMatch = filters.user === "All" || l.user_email === filters.user || l.username === filters.user;
+      if (!userMatch) return false;
       
-      const logDate = new Date(l.timestamp);
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - parseInt(filters.days));
-      if (logDate < cutoff) return false;
-
+      if (filters.module !== "All" && l.module !== filters.module) return false;
+      if (filters.action !== "All" && l.action !== filters.action) return false;
+      
       return true;
     });
   }, [logs, filters]);
+
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }} data-section="SYSTEM">
@@ -229,23 +198,25 @@ export default function AuditLog() {
             </thead>
             <tbody>
               {filteredLogs.map(l => (
-                <tr key={l.id} style={{ opacity: l.status_code >= 400 ? 0.7 : 1 }}>
+                <tr key={l.id}>
                   <td title={new Date(l.timestamp).toLocaleString()} style={{ color: "var(--text-secondary)" }}>
-                    {l.timeAgo}
+                    {getTimeAgo(l.timestamp)}
                   </td>
-                  <td style={{ fontWeight: 600, color: "var(--text-primary)" }}>{l.user_email}</td>
+                  <td style={{ fontWeight: 600, color: "var(--text-primary)" }}>{l.user_email || l.username}</td>
                   <td>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      {l.status_code >= 400 && <span title={`Error ${l.status_code}`}>⚠️</span>}
-                      <span style={{ fontWeight: 700, color: l.status_code >= 400 ? "var(--red)" : "var(--text-primary)" }}>{l.action}</span>
-                    </div>
+                    <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>
+                      {ACTION_LABELS[l.action] || l.action}
+                    </span>
                   </td>
                   <td>
-                    <Badge label={l.module} colorClass={getModuleColor(l.module)} />
+                    <Badge 
+                      label={MODULE_LABELS[l.module] || l.module} 
+                      colorClass={getModuleColor(MODULE_LABELS[l.module] || l.module)} 
+                    />
                   </td>
                   <td style={{ color: "var(--accent)", fontWeight: 700 }}>{l.reference}</td>
                   <td style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
-                    {l.businessDetail}
+                    {renderDetails(l)}
                   </td>
                 </tr>
               ))}
@@ -256,6 +227,27 @@ export default function AuditLog() {
     </div>
   );
 }
+
+function renderDetails(log: AuditEntry) {
+    if (!log.details) return "—";
+    
+    // Simple logic to extract a summary from details
+    const d = log.details;
+    if (typeof d === 'string') return d;
+    
+    if (log.action === "GR_POSTED") {
+        return `${d.quantity} ${d.unit} of product received`;
+    }
+    if (log.action === "STOCK_TRANSFERRED") {
+        return `Moved ${d.quantity} units to zone ${d.to_zone_id}`;
+    }
+    if (log.action === "PRODUCT_CREATED") {
+        return `Code: ${d.code}, Name: ${d.name}`;
+    }
+    
+    return JSON.stringify(d).substring(0, 80) + "...";
+}
+
 
 // ─── Styles & Subcomponents ───────────────────────────────────────────────────
 
@@ -270,11 +262,12 @@ function FilterGroup({ label, children }: { label: string, children: React.React
 
 function getModuleColor(m: string) {
   switch (m) {
-    case "PO": return "sx-badge--amber";
+    case "Purchasing": return "sx-badge--amber";
     case "RFQ": return "sx-badge--blue";
-    case "SUPPLY PACT": return "sx-badge--pink"; // assuming pink exists or use secondary
-    case "VENDOR": return "sx-badge--green";
-    case "AUTH": return "sx-badge--red";
-    default: return "sx-badge--purple"; // assuming purple exists
+    case "Goods Receipt": return "sx-badge--pink";
+    case "Warehouse": return "sx-badge--green";
+    case "Quality": return "sx-badge--red";
+    case "Materials": return "sx-badge--purple";
+    default: return "sx-badge--gray";
   }
 }

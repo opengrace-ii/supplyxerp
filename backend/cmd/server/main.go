@@ -111,7 +111,7 @@ func main() {
 	deliveryHandler := handlers.NewDeliveryHandler(pool)
 	usersHandler := handlers.NewUsersHandler(pool)
 	buildOrderHandler := handlers.NewBuildOrderHandler(queries)
-	qualityHandler := handlers.NewQualityHandler(pool)
+	qualityHandler := handlers.NewQualityHandler(pool, uow)
 	dealFlowHandler := handlers.NewDealFlowHandler(queries)
 	routeRunnerHandler := handlers.NewRouteRunnerHandler(queries)
 	vendorScorecardHandler := handlers.NewVendorScorecardHandler(queries)

@@ -165,6 +165,9 @@ func (h *StockTransferHandler) TransferStock(c *gin.Context) {
 		"is_split":     isSplit,
 	})
 
+	// Audit log
+	_ = uow.Audit.Log(c.Request.Context(), tenantID, userID, "STOCK_TRANSFERRED", "handling_unit", hu.PublicID, hu, req)
+
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Stock transferred successfully"})
 }
 

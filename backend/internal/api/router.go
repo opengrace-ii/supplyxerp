@@ -273,6 +273,7 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		// System Logs
 		{
 			secured.GET("/api/system/logs",         deps.SystemHandler.GetLogs)
+			secured.GET("/api/system/audit-log",    deps.SystemHandler.GetAuditLog)
 			secured.GET("/api/system/logs/summary", deps.SystemHandler.GetLogsSummary)
 		}
 

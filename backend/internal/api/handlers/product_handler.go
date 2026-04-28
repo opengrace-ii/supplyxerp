@@ -46,10 +46,14 @@ func (h *ProductHandler) ListProducts(c *gin.Context) {
 }
 
 type CreateProductRequest struct {
-	Code        string `json:"code" binding:"required"`
-	Name        string `json:"name" binding:"required"`
-	BaseUnit    string `json:"base_unit" binding:"required"`
-	Description string `json:"description"`
+	Code              string  `json:"code" binding:"required"`
+	Name              string  `json:"name" binding:"required"`
+	BaseUnit          string  `json:"base_unit" binding:"required"`
+	Description       string  `json:"description"`
+	MaterialCategory  string  `json:"material_category"`
+	ProcurementType   string  `json:"procurement_type"`
+	PlanningMethod    string  `json:"planning_method"`
+	BatchTracked      bool    `json:"batch_tracked"`
 }
 
 func (h *ProductHandler) CreateProduct(c *gin.Context) {
@@ -64,18 +68,25 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 
 	// Execute via Agent Pipeline
 	product, err := h.Agent.CreateProduct(c.Request.Context(), h.Repo, material.CreateProductParams{
-		Code:        req.Code,
-		Name:        req.Name,
-		BaseUnit:    req.BaseUnit,
-		Description: req.Description,
-		ActorID:     userID,
-		TenantID:    tenantID,
+		Code:             req.Code,
+		Name:             req.Name,
+		BaseUnit:         req.BaseUnit,
+		Description:      req.Description,
+		MaterialCategory: req.MaterialCategory,
+		ProcurementType:  req.ProcurementType,
+		PlanningMethod:   req.PlanningMethod,
+		BatchTracked:     req.BatchTracked,
+		ActorID:          userID,
+		TenantID:         tenantID,
 	})
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Audit
+	h.Repo.Audit.Log(c.Request.Context(), tenantID, userID, "PRODUCT_CREATED", "product", product.PublicID, nil, product)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
@@ -92,11 +103,32 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	}
 
 	var req struct {
-		Name               string `json:"name" binding:"required"`
-		Description        string `json:"description"`
-		QcOnGr             bool   `json:"qc_on_gr"`
-		QcOnOutput         bool   `json:"qc_on_output"`
-		GrDefaultStockType string `json:"gr_default_stock_type"`
+		Name              string  `json:"name" binding:"required"`
+		Description       string  `json:"description"`
+		QcOnGr            bool    `json:"qc_on_gr"`
+		QcOnOutput        bool    `json:"qc_on_output"`
+		GrDefaultStockType string  `json:"gr_default_stock_type"`
+		MaterialCategory  string  `json:"material_category"`
+		ProductGroup      string  `json:"product_group"`
+		ProcurementType   string  `json:"procurement_type"`
+		PlanningMethod    string  `json:"planning_method"`
+		ReorderPoint      float64 `json:"reorder_point"`
+		SafetyStock       float64 `json:"safety_stock"`
+		MinLotSize        float64 `json:"min_lot_size"`
+		MaxLotSize        float64 `json:"max_lot_size"`
+		PlannedDeliveryDays int   `json:"planned_delivery_days"`
+		InHouseLeadDays    int    `json:"in_house_lead_days"`
+		PurchaseUnit       string  `json:"purchase_unit"`
+		GrProcessingDays   int    `json:"gr_processing_days"`
+		BatchTracked       bool   `json:"batch_tracked"`
+		StorageConditions  string  `json:"storage_conditions"`
+		ShelfLifeDays      int    `json:"shelf_life_days"`
+		MinRemainingShelfLifeDays int `json:"min_remaining_shelf_life_days"`
+		PriceControl       string  `json:"price_control"`
+		StandardPrice      float64 `json:"standard_price"`
+		SalesUnit          string  `json:"sales_unit"`
+		MinOrderQuantity   float64 `json:"min_order_quantity"`
+		AvailabilityCheck  string  `json:"availability_check"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -104,17 +136,44 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	}
 
 	tenantID := mustTenantID(c)
+	userID := mustUserID(c)
+	
 	err := h.Repo.Products.Update(c.Request.Context(), tenantID, publicID, dbgen.Product{
 		Name:               req.Name,
 		Description:        stringToText(req.Description),
 		QcOnGr:             req.QcOnGr,
 		QcOnOutput:         req.QcOnOutput,
 		GrDefaultStockType: req.GrDefaultStockType,
+		MaterialCategory:   pgtype.Text{String: req.MaterialCategory, Valid: req.MaterialCategory != ""},
+		ProductGroup:       pgtype.Text{String: req.ProductGroup, Valid: req.ProductGroup != ""},
+		ProcurementType:    req.ProcurementType,
+		PlanningMethod:     pgtype.Text{String: req.PlanningMethod, Valid: req.PlanningMethod != ""},
+		ReorderPoint:       numericFromFloat(req.ReorderPoint),
+		SafetyStock:        numericFromFloat(req.SafetyStock),
+		MinLotSize:         numericFromFloat(req.MinLotSize),
+		MaxLotSize:         numericFromFloat(req.MaxLotSize),
+		PlannedDeliveryDays: pgtype.Int4{Int32: int32(req.PlannedDeliveryDays), Valid: true},
+		InHouseLeadDays:    pgtype.Int4{Int32: int32(req.InHouseLeadDays), Valid: true},
+		PurchaseUnit:       pgtype.Text{String: req.PurchaseUnit, Valid: req.PurchaseUnit != ""},
+		GrProcessingDays:   pgtype.Int4{Int32: int32(req.GrProcessingDays), Valid: true},
+		BatchTracked:       pgtype.Bool{Bool: req.BatchTracked, Valid: true},
+		StorageConditions:  pgtype.Text{String: req.StorageConditions, Valid: req.StorageConditions != ""},
+		ShelfLifeDays:      pgtype.Int4{Int32: int32(req.ShelfLifeDays), Valid: true},
+		MinRemainingShelfLifeDays: pgtype.Int4{Int32: int32(req.MinRemainingShelfLifeDays), Valid: true},
+		PriceControl:       req.PriceControl,
+		StandardPrice:      numericFromFloat(req.StandardPrice),
+		SalesUnit:          pgtype.Text{String: req.SalesUnit, Valid: req.SalesUnit != ""},
+		MinOrderQuantity:   numericFromFloat(req.MinOrderQuantity),
+		AvailabilityCheck:  pgtype.Text{String: req.AvailabilityCheck, Valid: req.AvailabilityCheck != ""},
 	})
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update product"})
 		return
 	}
+
+	// Audit
+	h.Repo.Audit.Log(c.Request.Context(), tenantID, userID, "PRODUCT_UPDATED", "product", publicID, nil, req)
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }

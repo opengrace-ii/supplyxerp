@@ -192,6 +192,9 @@ func (h *PurchasingHandler) CreatePR(c *gin.Context) {
 		return
 	}
 
+	// Audit
+	h.Repo.Audit.Log(c.Request.Context(), tenantID, actorID, "PR_CREATED", "purchase_request", strconv.FormatInt(pr.ID, 10), nil, pr)
+
 	logger.LogInfo("PURCHASING", "CreatePR", fmt.Sprintf("PR created: id=%d", pr.ID))
 	c.JSON(http.StatusCreated, pr)
 }
@@ -235,6 +238,9 @@ func (h *PurchasingHandler) SubmitPR(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to submit PR"})
 		return
 	}
+	// Audit
+	h.Repo.Audit.Log(c.Request.Context(), tenantID, c.MustGet("user_id").(int64), "PR_SUBMITTED", "purchase_request", strconv.FormatInt(prID, 10), nil, nil)
+
 	logger.LogInfo("PURCHASING", "SubmitPR", fmt.Sprintf("PR submitted: id=%d", prID))
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
@@ -251,6 +257,9 @@ func (h *PurchasingHandler) ApprovePR(c *gin.Context) {
 		return
 	}
 
+	// Audit
+	h.Repo.Audit.Log(c.Request.Context(), tenantID, actorID, "PR_APPROVED", "purchase_request", strconv.FormatInt(prID, 10), nil, nil)
+
 	logger.LogInfo("PURCHASING", "ApprovePR", fmt.Sprintf("PR approved: id=%d by user=%d", prID, actorID))
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
@@ -266,6 +275,9 @@ func (h *PurchasingHandler) RejectPR(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reject PR"})
 		return
 	}
+	// Audit
+	h.Repo.Audit.Log(c.Request.Context(), tenantID, actorID, "PR_REJECTED", "purchase_request", strconv.FormatInt(prID, 10), nil, nil)
+
 	logger.LogInfo("PURCHASING", "RejectPR", fmt.Sprintf("PR rejected: id=%d by user=%d", prID, actorID))
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
@@ -367,6 +379,9 @@ func (h *PurchasingHandler) ConvertToPO(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Audit
+	h.Repo.Audit.Log(c.Request.Context(), tenantID, actorID, "PO_CONVERTED", "purchase_order", strconv.FormatInt(po.ID, 10), map[string]any{"pr_id": prID}, po)
 
 	logger.LogInfo("PURCHASING", "ConvertToPO", fmt.Sprintf("PR %d converted to PO %d", prID, po.ID))
 	c.JSON(http.StatusCreated, po)
@@ -508,6 +523,9 @@ func (h *PurchasingHandler) CreatePO(c *gin.Context) {
 		return
 	}
 
+	// Audit
+	h.Repo.Audit.Log(c.Request.Context(), tenantID, actorID, "PO_CREATED", "purchase_order", strconv.FormatInt(po.ID, 10), nil, po)
+
 	logger.LogInfo("PURCHASING", "CreatePO", fmt.Sprintf("PO created: id=%d", po.ID))
 	c.JSON(http.StatusCreated, po)
 }
@@ -646,6 +664,9 @@ func (h *PurchasingHandler) SubmitPO(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to submit PO"})
 		return
 	}
+	// Audit
+	h.Repo.Audit.Log(c.Request.Context(), tenantID, c.MustGet("user_id").(int64), "PO_SUBMITTED", "purchase_order", strconv.FormatInt(poID, 10), nil, nil)
+
 	logger.LogInfo("PURCHASING", "SubmitPO", fmt.Sprintf("PO submitted: id=%d", poID))
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
@@ -661,6 +682,9 @@ func (h *PurchasingHandler) ApprovePO(c *gin.Context) {
 		return
 	}
 
+	// Audit
+	h.Repo.Audit.Log(c.Request.Context(), tenantID, mustUserID(c), "PO_APPROVED", "purchase_order", strconv.FormatInt(poID, 10), nil, nil)
+
 	logger.LogInfo("PURCHASING", "ApprovePO", fmt.Sprintf("PO approved: id=%d", poID))
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
@@ -675,6 +699,9 @@ func (h *PurchasingHandler) RejectPO(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reject PO"})
 		return
 	}
+	// Audit
+	h.Repo.Audit.Log(c.Request.Context(), tenantID, c.MustGet("user_id").(int64), "PO_REJECTED", "purchase_order", strconv.FormatInt(poID, 10), nil, nil)
+
 	logger.LogInfo("PURCHASING", "RejectPO", fmt.Sprintf("PO rejected: id=%d", poID))
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
