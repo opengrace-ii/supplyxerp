@@ -51,6 +51,11 @@ services:
       CORS_ALLOWED_HOST: http://localhost:5173
       ADMIN_USERNAME: admin
       ADMIN_PASSWORD: admin123
+      SMTP_HOST: mailhog
+      SMTP_PORT: '1025'
+      SMTP_USER: ''
+      SMTP_PASS: ''
+      SMTP_FROM: no-reply@supplyxerp.local
     ports:
       - '8080:8080'
     volumes:

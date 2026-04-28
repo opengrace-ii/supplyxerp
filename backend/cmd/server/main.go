@@ -147,6 +147,7 @@ func main() {
 		DealFlowHandler:  dealFlowHandler,
 		RouteRunnerHandler: routeRunnerHandler,
 		VendorScorecardHandler: vendorScorecardHandler,
+		DispatchHandler:  handlers.NewDispatchHandler(queries),
 	}
 
 	r := api.NewRouter(routerDeps)

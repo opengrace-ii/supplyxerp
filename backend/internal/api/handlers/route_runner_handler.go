@@ -259,6 +259,15 @@ func (h *RouteRunnerHandler) DispatchShipment(c *gin.Context) {
 		return
 	}
 
+	go TriggerDispatch(c, h.queries, tenantID, "SHIPMENT_DISPATCHED",
+		"SHIPMENT", dispatched.ID, dispatched.ShipmentNumber,
+		DispatchContext{
+			"shipment_number": dispatched.ShipmentNumber,
+			"carrier_name":    shipment.CarrierName.String,
+			"tracking_ref":    dispatched.TrackingRef.String,
+			"dispatch_date":   dispatched.DispatchedAt.Time.Format("2006-01-02"),
+		})
+
 	c.JSON(http.StatusOK, gin.H{
 		"data":    dispatched,
 		"message": dispatched.ShipmentNumber + " dispatched",

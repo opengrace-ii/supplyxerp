@@ -257,6 +257,15 @@ func (h *DealFlowHandler) ConfirmSalesOrder(c *gin.Context) {
 		return
 	}
 
+	go TriggerDispatch(c, h.queries, tenantID, "SO_CONFIRMED",
+		"SALES_ORDER", confirmed.ID, confirmed.SoNumber,
+		DispatchContext{
+			"so_number":     confirmed.SoNumber,
+			"customer_name": so.CustomerName,
+			"currency":      so.Currency.String,
+			"total_amount":  "0.00",
+		})
+
 	h.logEvent(c, tenantID, userID, "SO_CONFIRMED", confirmed.SoNumber)
 
 	c.JSON(200, gin.H{

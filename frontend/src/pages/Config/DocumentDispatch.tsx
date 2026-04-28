@@ -8,26 +8,22 @@ import { SectionTabs } from "@/components/ui/SectionTabs";
 // --- Types ---
 interface DispatchRule {
   id: number;
-  document_type: string;
+  rule_name: string;
   trigger_event: string;
-  dispatch_method: string;
-  supplier_id: number | null;
+  channel: string;
   is_active: boolean;
 }
 
 interface DispatchLog {
   id: number;
-  document_type: string;
-  document_id: number;
-  supplier_name: string | null;
-  dispatch_method: string;
+  reference_type: string;
+  reference_code: string;
+  channel: string;
   status: string;
   sent_at: string | null;
-  acknowledged_at: string | null;
   recipient: string;
   subject: string;
   error_message: string | null;
-  retry_count: number;
 }
 
 export default function DocumentDispatch() {
@@ -43,24 +39,24 @@ export default function DocumentDispatch() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const lRes = await apiFetch("/api/dispatch/log");
+      const lRes = await apiFetch("/api/config/dispatch/logs");
       if (lRes.ok) {
         const text = await lRes.text();
         try {
           const lD = JSON.parse(text);
-          setLogs(lD ?? []);
+          setLogs(lD.data ?? []);
         } catch(e) {
           console.error("Failed to parse logs JSON", text);
           setLogs([]);
         }
       }
 
-      const rRes = await apiFetch("/api/dispatch/rules");
+      const rRes = await apiFetch("/api/config/dispatch/rules");
       if (rRes.ok) {
         const text = await rRes.text();
         try {
           const rD = JSON.parse(text);
-          setRules(rD ?? []);
+          setRules(rD.data ?? []);
         } catch(e) {
           console.error("Failed to parse rules JSON", text);
           setRules([]);
@@ -111,16 +107,15 @@ export default function DocumentDispatch() {
                     header: 'DOCUMENT',
                     render: (l) => (
                       <div>
-                        <div className="font-bold text-[var(--text-1)]">{l.document_type}</div>
-                        <div className="text-[10px] opacity-40 font-mono">ID: {l.document_id}</div>
+                        <div className="font-bold text-[var(--text-1)]">{l.reference_type}</div>
+                        <div className="text-[10px] opacity-40 font-mono">REF: {l.reference_code}</div>
                       </div>
                     )
                   },
-                  { key: 'supplier_name', header: 'SUPPLIER', render: (l) => l.supplier_name || '—' },
                   { 
-                    key: 'dispatch_method', 
-                    header: 'METHOD',
-                    render: (l) => <Badge variant="blue">{l.dispatch_method}</Badge>
+                    key: 'channel', 
+                    header: 'CHANNEL',
+                    render: (l) => <Badge variant="blue">{l.channel}</Badge>
                   },
                   { 
                     key: 'recipient', 
@@ -143,8 +138,7 @@ export default function DocumentDispatch() {
                         {l.error_message && <div className="text-[9px] text-red-400 max-w-[120px] truncate">{l.error_message}</div>}
                       </div>
                     )
-                  },
-                  { key: 'retry_count', header: 'RETRY', className: 'text-center' }
+                  }
                 ]}
                 rows={logs}
               />
@@ -157,8 +151,8 @@ export default function DocumentDispatch() {
                 <CardBody className="p-6">
                   <div className="flex justify-between items-start mb-6">
                     <div>
-                      <div className="text-[10px] font-bold text-[var(--text-4)] uppercase tracking-widest mb-1">Rule Type</div>
-                      <div className="text-lg font-bold text-[var(--text-1)]">{r.document_type}</div>
+                      <div className="text-[10px] font-bold text-[var(--text-4)] uppercase tracking-widest mb-1">Rule Name</div>
+                      <div className="text-lg font-bold text-[var(--text-1)]">{r.rule_name}</div>
                     </div>
                     <Badge variant={r.is_active ? "green" : "gray"}>
                       {r.is_active ? 'ACTIVE' : 'DISABLED'}
@@ -171,9 +165,9 @@ export default function DocumentDispatch() {
                       <div className="text-xs font-semibold">{r.trigger_event.replace('_', ' ')}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] font-bold text-[var(--text-4)] uppercase mb-1">Method</div>
+                      <div className="text-[10px] font-bold text-[var(--text-4)] uppercase mb-1">Channel</div>
                       <div className="text-xs font-semibold">
-                        <Badge variant="blue" className="px-2 py-0.5">{r.dispatch_method}</Badge>
+                        <Badge variant="blue" className="px-2 py-0.5">{r.channel}</Badge>
                       </div>
                     </div>
                   </div>

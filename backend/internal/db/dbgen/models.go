@@ -307,14 +307,38 @@ type DeliveryConfirmationLine struct {
 	QcStatus      pgtype.Text    `json:"qc_status"`
 }
 
-type DispatchRule struct {
+type DispatchLog struct {
 	ID             int64              `json:"id"`
-	DocumentType   string             `json:"document_type"`
+	PublicID       uuid.UUID          `json:"public_id"`
+	TenantID       int64              `json:"tenant_id"`
+	DispatchRuleID pgtype.Int8        `json:"dispatch_rule_id"`
 	TriggerEvent   string             `json:"trigger_event"`
-	DispatchMethod string             `json:"dispatch_method"`
-	SupplierID     pgtype.Int8        `json:"supplier_id"`
-	IsActive       pgtype.Bool        `json:"is_active"`
+	ReferenceType  pgtype.Text        `json:"reference_type"`
+	ReferenceID    pgtype.Int8        `json:"reference_id"`
+	ReferenceCode  pgtype.Text        `json:"reference_code"`
+	Channel        string             `json:"channel"`
+	Recipient      string             `json:"recipient"`
+	Subject        pgtype.Text        `json:"subject"`
+	Status         string             `json:"status"`
+	ErrorMessage   pgtype.Text        `json:"error_message"`
+	SentAt         pgtype.Timestamptz `json:"sent_at"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type DispatchRule struct {
+	ID              int64              `json:"id"`
+	PublicID        uuid.UUID          `json:"public_id"`
+	TenantID        int64              `json:"tenant_id"`
+	RuleName        string             `json:"rule_name"`
+	TriggerEvent    string             `json:"trigger_event"`
+	Channel         string             `json:"channel"`
+	RecipientType   string             `json:"recipient_type"`
+	RecipientValue  string             `json:"recipient_value"`
+	SubjectTemplate pgtype.Text        `json:"subject_template"`
+	BodyTemplate    pgtype.Text        `json:"body_template"`
+	IsActive        pgtype.Bool        `json:"is_active"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 }
 
 type DocumentDispatch struct {

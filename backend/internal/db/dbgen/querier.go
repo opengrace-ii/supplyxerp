@@ -28,6 +28,7 @@ type Querier interface {
 	CreateConditionType(ctx context.Context, arg CreateConditionTypeParams) (int64, error)
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error)
 	CreateDeliverySchedule(ctx context.Context, arg CreateDeliveryScheduleParams) error
+	CreateDispatchRule(ctx context.Context, arg CreateDispatchRuleParams) (DispatchRule, error)
 	CreateInventoryEvent(ctx context.Context, arg CreateInventoryEventParams) (InventoryEvent, error)
 	CreateOrderReason(ctx context.Context, arg CreateOrderReasonParams) (RfqOrderReason, error)
 	CreateProductPriceHistory(ctx context.Context, arg CreateProductPriceHistoryParams) error
@@ -67,6 +68,8 @@ type Querier interface {
 	GetCustomerByID(ctx context.Context, arg GetCustomerByIDParams) (Customer, error)
 	GetDealFlowDashboard(ctx context.Context, tenantID int64) (GetDealFlowDashboardRow, error)
 	GetDeliverySchedules(ctx context.Context, rfqLineID int64) ([]RfqDeliverySchedule, error)
+	GetDispatchRulesByEvent(ctx context.Context, arg GetDispatchRulesByEventParams) ([]DispatchRule, error)
+	GetDispatchSummary(ctx context.Context, tenantID int64) (GetDispatchSummaryRow, error)
 	GetHUByBarcode(ctx context.Context, arg GetHUByBarcodeParams) (HandlingUnit, error)
 	GetHUByID(ctx context.Context, id int64) (HandlingUnit, error)
 	GetHUWithDetails(ctx context.Context, id int64) (GetHUWithDetailsRow, error)
@@ -108,6 +111,8 @@ type Querier interface {
 	ListCarriers(ctx context.Context, tenantID int64) ([]Carrier, error)
 	ListConditionTypes(ctx context.Context, tenantID int64) ([]ConditionType, error)
 	ListCustomers(ctx context.Context, tenantID int64) ([]Customer, error)
+	ListDispatchLogs(ctx context.Context, arg ListDispatchLogsParams) ([]ListDispatchLogsRow, error)
+	ListDispatchRules(ctx context.Context, tenantID int64) ([]DispatchRule, error)
 	ListLocations(ctx context.Context, tenantID pgtype.Int8) ([]Location, error)
 	ListProductPriceHistory(ctx context.Context, arg ListProductPriceHistoryParams) ([]ProductPriceHistory, error)
 	ListPurchaseOrders(ctx context.Context, arg ListPurchaseOrdersParams) ([]ListPurchaseOrdersRow, error)
@@ -123,6 +128,7 @@ type Querier interface {
 	ListSupplierInfoRecords(ctx context.Context, arg ListSupplierInfoRecordsParams) ([]ListSupplierInfoRecordsRow, error)
 	ListSuppliers(ctx context.Context, arg ListSuppliersParams) ([]Supplier, error)
 	ListVendorScorecards(ctx context.Context, tenantID pgtype.Int8) ([]ListVendorScorecardsRow, error)
+	LogDispatch(ctx context.Context, arg LogDispatchParams) (DispatchLog, error)
 	MarkConditionTypesSeeded(ctx context.Context, tenantID int64) error
 	MarkDelivered(ctx context.Context, arg MarkDeliveredParams) (Shipment, error)
 	MarkRejectionSent(ctx context.Context, arg MarkRejectionSentParams) error
@@ -133,6 +139,7 @@ type Querier interface {
 	StartBuildOrder(ctx context.Context, arg StartBuildOrderParams) (BuildOrder, error)
 	StartQualityCheck(ctx context.Context, arg StartQualityCheckParams) (QualityCheck, error)
 	UninviteRFQVendor(ctx context.Context, arg UninviteRFQVendorParams) error
+	UpdateDispatchRule(ctx context.Context, arg UpdateDispatchRuleParams) (DispatchRule, error)
 	UpdateHULocation(ctx context.Context, arg UpdateHULocationParams) error
 	UpdateHUStatus(ctx context.Context, arg UpdateHUStatusParams) error
 	UpdateOrderReason(ctx context.Context, arg UpdateOrderReasonParams) (RfqOrderReason, error)

@@ -170,6 +170,15 @@ func (h *QualityHandler) RecordResult(c *gin.Context) {
 			Notes:         pgtype.Text{String: "Automatic quality failure event", Valid: true},
 			RecordedBy:    pgtype.Int8{Int64: userID, Valid: true},
 		})
+
+		go TriggerDispatch(c, h.queries, tenantID, "QUALITY_FAILED",
+			"QUALITY_CHECK", check.ID, check.QcNumber,
+			DispatchContext{
+				"qc_number":     check.QcNumber,
+				"material_code": "MATERIAL",
+				"supplier_name": "SUPPLIER",
+				"failed_qty":    "Failed quantity",
+			})
 	}
 
 	if err := tx.Commit(c.Request.Context()); err != nil {
