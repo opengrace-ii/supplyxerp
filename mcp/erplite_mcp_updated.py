@@ -161,6 +161,17 @@ MODULE_MAP = {
         "core_concepts": ["Shipment → Pack → Dispatch → Confirm Delivery"],
         "build_order_priority": 9,
         "supplyx_tables": ["shipments", "shipment_lines"]
+    },
+    "DocumentDispatch": {
+        "sap_equivalent": "Output Management",
+        "supplyx_name": "DocumentDispatch",
+        "ribbon_section": "CFG",
+        "phase": 4,
+        "status": "BUILT & SMOKE TESTED: Real-time rules engine with PDF/Email triggers active.",
+        "description": "Rules-based document distribution (Email, PDF, Print)",
+        "core_concepts": ["Event Trigger → Condition Match → Dispatch Action"],
+        "build_order_priority": 10,
+        "supplyx_tables": ["dispatch_rules", "document_dispatches"]
     }
 }
 
@@ -288,7 +299,7 @@ MIGRATION_MODEL = {
 }
 
 CURRENT_STATUS = {
-    "last_updated": "2026-04-25",
+    "last_updated": "2026-04-28",
     "phase": "Phase 4 — Commerce & Integration",
     "backend": {
         "database_tables": [
@@ -363,14 +374,14 @@ CURRENT_STATUS = {
             "verified": True,
             "completed_date": "2026-04-26"
         },
-        "OrgStructure": {"backend": "BUILT", "api_smoke": "200", "frontend": "LIVE (Reported Blank)", "verified": False},
+        "OrgStructure": {"backend": "BUILT", "api_smoke": "200", "frontend": "LIVE", "verified": True},
+        "DocumentDispatch": {"backend": "BUILT", "api_smoke": "200", "frontend": "LIVE", "verified": True},
         "SystemLog": {"backend": "BUILT", "api_smoke": "200", "frontend": "LIVE", "verified": True},
         "UsersRoles": {"backend": "BUILT", "api_smoke": "200", "frontend": "LIVE", "verified": True},
     },
     "blockers": [
-        "Org Structure screen blank (Backend returns 200, frontend possibly failing to render data)",
         "Session persistence logs user out on refresh (check useAppStore.ts checkSession)",
-        "IMPORTANT: IDE history lost on 2026-04-25 due to system freeze. MCP is the only session memory. Always call get_session_context and get_current_status at the start of every session."
+        "IMPORTANT: IDE history lost on 2026-04-25 due to system freeze. MCP is the only session memory."
     ],
     "tech_stack_actual": {
         "backend": "Go 1.22 + Gin + sqlc + PostgreSQL 16 + Redis 7",
@@ -381,17 +392,17 @@ CURRENT_STATUS = {
         "infra": "Docker Compose",
     },
     "next_build_sequence": [
-        "1. Fix broken endpoints   → DONE",
-        "2. DealFlow end to end    → DONE (2026-04-25)",
-        "3. RouteRunner shipments  → NEXT",
-        "4. Supply Pacts           → NOT_STARTED"
+        "1. Fix Org Structure blank screen → DONE",
+        "2. Document Dispatch engine      → DONE",
+        "3. Multi-tenant RLS              → NEXT",
+        "4. Supply Pacts Real Engine      → NOT_STARTED"
     ],
 }
 
 BUILD_SEQUENCE = [
     {"step": 1, "name": "Bug Fixes: Org Structure & Session", "status": "DONE", "reason": "Basic UI stability required before further feature work."},
-    {"step": 2, "name": "DealFlow — Sales Orders end to end", "status": "DONE", "reason": "Money flow — clients judge by this first"},
-    {"step": 3, "name": "RouteRunner — Shipments end to end", "status": "NEXT", "reason": "Closes purchase-to-dispatch loop"},
+    {"step": 2, "name": "Document Dispatch Engine", "status": "DONE", "reason": "Automated output management for POs and Shipments."},
+    {"step": 3, "name": "DealFlow — Sales Orders end to end", "status": "DONE", "reason": "Money flow — clients judge by this first"},
     {"step": 4, "name": "Supply Pacts — Real calculations", "status": "NOT_STARTED", "reason": "Pact UI exists but engine needs wiring"},
     {"step": 5, "name": "Build Order — Integration test", "status": "PARTIAL", "reason": "BO functional but end-to-end material flow needs verification"},
     {"step": 6, "name": "Quality Gate — Integration test", "status": "PARTIAL", "reason": "Inspection results -> Vendor score update needs verification"},

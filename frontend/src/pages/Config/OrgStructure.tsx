@@ -11,13 +11,14 @@ import { cn } from '@/lib/cn';
 // ================================================================
 // TYPES
 // ================================================================
-interface Company { id: number; public_id: string; code: string; name: string; legal_name?: string; tax_id?: string; tax_regime?: string; country_code: string; currency_code: string; city?: string; is_active: boolean; site_count: number; }
-interface Site { id: number; public_id: string; code: string; name: string; is_active: boolean; site_type: string; site_purpose?: string; country_code?: string; city?: string; company_id?: number; company_name?: string; calendar_id?: number; calendar_name?: string; zone_count: number; }
+interface Company { id: number; public_id: string; code: string; name: string; legal_name?: string; tax_id?: string; tax_regime?: string; country_code: string; currency_code: string; city?: string; is_active: boolean; site_count: number; sites?: Site[]; }
+interface Site { id: number; public_id: string; code: string; name: string; is_active: boolean; site_type: string; site_purpose?: string; country_code?: string; city?: string; company_id?: number; company_name?: string; calendar_id?: number; calendar_name?: string; zone_count: number; zones?: Zone[]; }
+interface Zone { id: number; public_id: string; code: string; name: string; zone_type: string; is_active: boolean; is_quarantine?: boolean; is_inspection?: boolean; storage_area_id?: number; area_name?: string; }
 interface Calendar { id: number; public_id: string; code: string; name: string; country_code?: string; work_monday: boolean; work_tuesday: boolean; work_wednesday: boolean; work_thursday: boolean; work_friday: boolean; work_saturday: boolean; work_sunday: boolean; daily_work_hours: number; valid_from_year: number; valid_to_year: number; is_active: boolean; exception_count: number; }
 interface ProcurementUnit { id: number; public_id: string; code: string; name: string; scope_type: string; currency_code?: string; is_active: boolean; company_name?: string; site_count: number; }
 interface ProcurementTeam { id: number; public_id: string; code: string; name: string; description?: string; spending_limit?: number; spending_currency?: string; material_scope?: string[]; is_active: boolean; }
 
-type PanelType = 'tenant' | 'company' | 'site' | 'calendar' | 'procurement-unit' | 'procurement-team';
+type PanelType = 'tenant' | 'company' | 'site' | 'zone' | 'calendar' | 'procurement-unit' | 'procurement-team';
 interface SelectedNode { type: PanelType; id?: number; parentId?: number; }
 
 // ================================================================
@@ -89,24 +90,32 @@ const OrgStructure: React.FC = () => {
     setError(null);
     try {
       const results = await Promise.allSettled([
-        apiClient.get('/api/org/companies'),
-        apiClient.get('/api/org/sites'),
+        apiClient.get('/api/org-tree'),
         apiClient.get('/api/org/calendars'),
         apiClient.get('/api/org/procurement-units'),
         apiClient.get('/api/org/procurement-teams'),
+        apiClient.get('/api/org/companies'),
+        apiClient.get('/api/org/sites'),
       ]);
       
-      const res0 = results[0];
-      if (res0.status === 'fulfilled') {
-        setCompanies((res0.value as any).data?.companies || []);
+      if (results[0].status === 'fulfilled') {
+        const treeData = (results[0].value as any).data || [];
+        setCompanies(treeData);
       } else {
-        setError("Failed to load companies data.");
+        setError("Failed to load organisational tree.");
       }
 
-      if (results[1].status === 'fulfilled') setSites((results[1].value as any).data?.sites || []);
-      if (results[2].status === 'fulfilled') setCalendars((results[2].value as any).data?.calendars || []);
-      if (results[3].status === 'fulfilled') setProcUnits((results[3].value as any).data?.procurement_units || []);
-      if (results[4].status === 'fulfilled') setProcTeams((results[4].value as any).data?.procurement_teams || []);
+      if (results[1].status === 'fulfilled') setCalendars((results[1].value as any).data?.calendars || []);
+      if (results[2].status === 'fulfilled') setProcUnits((results[2].value as any).data?.procurement_units || []);
+      if (results[3].status === 'fulfilled') setProcTeams((results[3].value as any).data?.procurement_teams || []);
+      
+      // Keep flat lists for select boxes in panels
+      if (results[4].status === 'fulfilled') {
+        // Only set if not using the tree for these
+        // setCompanies((results[4].value as any).data?.companies || []);
+      }
+      if (results[5].status === 'fulfilled') setSites((results[5].value as any).data?.sites || []);
+
     } catch (err: any) {
       console.error("Refresh failed", err);
       setError("An unexpected error occurred while loading organisational data.");
@@ -171,9 +180,19 @@ const OrgStructure: React.FC = () => {
           </h2>
           <div className="space-y-1">
             {companies.map(co => (
-              <TreeItem key={co.id} label={`${co.code} — ${co.name}`} icon="🏗" type="company" id={co.id} selected={selected} onClick={setSelected} count={co.site_count}>
-                {sites.filter(s => s.company_id === co.id).map(s => (
-                  <TreeItem key={s.id} label={`${s.code} — ${s.name}`} icon="🏭" type="site" id={s.id} parentId={co.id} selected={selected} onClick={setSelected} count={s.zone_count} indent={1} />
+              <TreeItem key={co.id} label={co.name} icon="🏗" type="company" id={co.id} selected={selected} onClick={setSelected} count={co.sites?.length || 0}>
+                {co.sites?.map(s => (
+                  <TreeItem key={s.id} label={`${s.code} — ${s.name}`} icon="🏭" type="site" id={s.id} parentId={co.id} selected={selected} onClick={setSelected} count={s.zones?.length || 0} indent={1}>
+                    {s.zones?.map(z => (
+                      <TreeItem key={z.id} label={`${z.code} — ${z.name}`} icon="📍" type="zone" id={z.id} parentId={s.id} selected={selected} onClick={setSelected} indent={2} />
+                    ))}
+                    <button 
+                      onClick={() => setSelected({ type: 'zone', parentId: s.id })}
+                      className="w-full text-left py-1 pl-[72px] text-[10px] text-[var(--text-4)] hover:text-[var(--accent)] transition-colors"
+                    >
+                      + Add Zone
+                    </button>
+                  </TreeItem>
                 ))}
                 <button 
                   onClick={() => setSelected({ type: 'site', parentId: co.id })}
@@ -240,9 +259,10 @@ const OrgStructure: React.FC = () => {
         <div className="max-w-4xl mx-auto space-y-6">
           {toast && <InlineAlert type={toast.type} message={toast.message} className="mb-6 animate-in fade-in slide-in-from-top-2" />}
 
-          {selected.type === 'tenant' && <TenantPanel showToast={showToast} />}
+           {selected.type === 'tenant' && <TenantPanel showToast={showToast} />}
           {selected.type === 'company' && <CompanyPanel id={selected.id} companies={companies} onSave={() => { refresh(); showToast('Company saved'); }} />}
           {selected.type === 'site' && <SitePanel id={selected.id} parentCompanyId={selected.parentId} companies={companies} calendars={calendars} sites={sites} onSave={() => { refresh(); showToast('Site saved'); }} />}
+          {selected.type === 'zone' && <ZonePanel id={selected.id} parentSiteId={selected.parentId} sites={sites} onSave={() => { refresh(); showToast('Zone saved'); }} />}
           {selected.type === 'calendar' && <CalendarPanel id={selected.id} calendars={calendars} onSave={() => { refresh(); showToast('Calendar saved'); }} />}
           {selected.type === 'procurement-unit' && <ProcurementUnitPanel id={selected.id} procUnits={procUnits} companies={companies} onSave={() => { refresh(); showToast('Procurement Unit saved'); }} />}
           {selected.type === 'procurement-team' && <ProcurementTeamPanel id={selected.id} procTeams={procTeams} onSave={() => { refresh(); showToast('Procurement Team saved'); }} />}
@@ -465,7 +485,80 @@ const SitePanel: React.FC<{ id?: number; parentCompanyId?: number; companies: Co
   );
 };
 
-// ... Calendar, ProcurementUnit, ProcurementTeam panels would follow similar pattern ...
+const ZonePanel: React.FC<{ id?: number; parentSiteId?: number; sites: Site[]; onSave: () => void }> = ({ id, parentSiteId, sites, onSave }) => {
+  const [form, setForm] = useState({ code: '', name: '', zone_type: 'STORAGE', is_quarantine: false, is_inspection: false, barcode: '' });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      setLoading(true);
+      // Find zone in the tree
+      const s = sites.find(site => site.zones?.some(z => z.id === id));
+      const z = s?.zones?.find(z => z.id === id);
+      if (z) setForm({ code: z.code, name: z.name, zone_type: z.zone_type, is_quarantine: !!z.is_quarantine, is_inspection: !!z.is_inspection, barcode: '' });
+      setLoading(false);
+    } else {
+      setForm({ code: '', name: '', zone_type: 'STORAGE', is_quarantine: false, is_inspection: false, barcode: '' });
+    }
+  }, [id, sites]);
+
+  const f = (k: string) => (v: any) => setForm((prev: any) => ({ ...prev, [k]: v?.target?.value ?? v }));
+  const save = async () => {
+    if (id) {
+      await apiClient.patch(`/api/org/zones/${id}`, form);
+    } else if (parentSiteId) {
+      await apiClient.post(`/api/org/sites/${parentSiteId}/zones`, form);
+    }
+    onSave();
+  };
+
+  if (loading) return <div className="py-10 text-center text-[var(--text-4)]">Loading zone...</div>;
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div>
+        <h1 className="text-xl font-bold text-[var(--accent)] tracking-tight">{id ? 'Edit Zone' : 'New Zone'}</h1>
+        <p className="text-sm text-[var(--text-3)] mt-1">Specific logical area within a site</p>
+      </div>
+
+      <Card>
+        <CardBody className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Zone Code *"><Input value={form.code} onChange={f('code')} placeholder="STOR-01" readOnly={!!id} /></Field>
+            <Field label="Name *"><Input value={form.name} onChange={f('name')} /></Field>
+            <Field label="Zone Type">
+              <Select value={form.zone_type} onChange={f('zone_type')}>
+                {['RECEIVING','STORAGE','PRODUCTION','DISPATCH','QUARANTINE','INSPECTION','SCRAP'].map(v => <option key={v} value={v}>{v}</option>)}
+              </Select>
+            </Field>
+            <Field label="Barcode"><Input value={form.barcode} onChange={f('barcode')} placeholder="Optional" /></Field>
+          </div>
+
+          <div className="pt-6 border-t border-[var(--border)] space-y-4">
+            <div className="flex items-center justify-between p-3 bg-white/3 rounded-lg">
+              <div>
+                <span className="block text-sm text-[var(--text-2)] font-medium">Quarantine Zone</span>
+                <span className="text-[10px] text-[var(--text-4)]">Items here are blocked for all operations</span>
+              </div>
+              <Switch checked={form.is_quarantine} onCheckedChange={f('is_quarantine')} />
+            </div>
+            <div className="flex items-center justify-between p-3 bg-white/3 rounded-lg">
+              <div>
+                <span className="block text-sm text-[var(--text-2)] font-medium">Inspection Zone</span>
+                <span className="text-[10px] text-[var(--text-4)]">Used for Quality Management checks</span>
+              </div>
+              <Switch checked={form.is_inspection} onCheckedChange={f('is_inspection')} />
+            </div>
+          </div>
+
+          <div className="pt-4">
+            <Button variant="primary" onClick={save}>{id ? 'Update Zone' : 'Create Zone'}</Button>
+          </div>
+        </CardBody>
+      </Card>
+    </div>
+  );
+};
 // For brevity, I'll implement them concisely using the new components.
 
 const CalendarPanel: React.FC<{ id?: number; calendars: Calendar[]; onSave: () => void }> = ({ id, calendars, onSave }) => {
