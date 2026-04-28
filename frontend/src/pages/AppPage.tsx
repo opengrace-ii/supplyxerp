@@ -11,6 +11,8 @@ import OrgStructure from './Config/OrgStructure';
 import Setup from './Config/Setup';
 import PricingConfig from './Config/PricingConfig';
 import LedgerStock from './OPS/LedgerStock';
+import StockOverview from './OPS/StockOverview';
+import Reports from './OPS/Reports';
 import POManagement from './MFG/POManagement';
 import POBlockCancel from './MFG/POBlockCancel';
 import POAccountAssignment from './MFG/POAccountAssignment';
@@ -19,18 +21,18 @@ import SupplyPacts from './COM/SupplyPacts';
 import VendorScorecard from './COM/VendorScorecard';
 import PriceFormulas from './Config/PriceFormulas';
 import DocumentDispatch from './Config/DocumentDispatch';
-import SystemLog from './SYSTEM/SystemLog';
-import AuditLog from './SYSTEM/AuditLog';
+import SystemLog from './System/SystemLog';
+import AuditLog from './System/AuditLog';
 import DeliveryConfirmation from './MFG/DeliveryConfirmation';
 import InvoiceMatch from './MFG/InvoiceMatch';
-import UsersRoles from './SYSTEM/UsersRoles';
+import UsersRoles from './System/UsersRoles';
 import BuildOrder from './MFG/BuildOrder';
 import QualityGate from './MFG/QualityGate';
 import DealFlow from './COM/DealFlow';
 import RouteRunner from './COM/RouteRunner';
 import ModuleConfig from './Config/ModuleConfig';
 import Notifications from './Config/Notifications';
-import AIStudio from './SYSTEM/AIStudio';
+import AIStudio from './System/AIStudio';
 
 const AppPage: React.FC = () => {
   const { currentModule, currentTab, user, isAuthLoading, checkSession } = useAppStore();
@@ -73,8 +75,12 @@ const AppPage: React.FC = () => {
 
   const renderModule = () => {
     switch(currentModule) {
+      case 'StockOverview':
+        return <StockOverview />;
       case 'StockFlow':
         return <StockFlowPanel />;
+      case 'Reports':
+        return <Reports />;
       case 'Setup':
         return <Setup />;
       case 'Pricing Engine':

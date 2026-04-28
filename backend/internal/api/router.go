@@ -179,6 +179,7 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		secured.GET("/api/stock/products/:id", deps.StockHandler.GetProductDetail)
 		secured.GET("/api/stock/zones", deps.StockHandler.ListZones)
 		secured.GET("/api/stock/hu/:hu_code", deps.StockHandler.GetHUDetail)
+		secured.GET("/api/stock/hu/:hu_code/children", deps.StockHandler.GetHUChildren)
 		secured.GET("/api/stock/movements", deps.StockHandler.ListMovements)
 		secured.GET("/api/stock/alerts", deps.StockHandler.GetAlerts)
 		secured.POST("/api/stock/adjust", deps.StockHandler.AdjustStock)

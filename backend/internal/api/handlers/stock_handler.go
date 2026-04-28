@@ -145,6 +145,69 @@ func (h *StockHandler) GetHUDetail(c *gin.Context) {
 	})
 }
 
+func (h *StockHandler) GetHUChildren(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(int64)
+	huCode := c.Param("hu_code")
+
+	// 1. Get Parent HU
+	var parent struct {
+		ID            int64   `json:"id"`
+		HUCode        string  `json:"hu_code"`
+		HULevel       string  `json:"hu_level"`
+		ChildCount    int     `json:"child_count"`
+		ZoneCode      string  `json:"zone_code"`
+		TotalQuantity float64 `json:"total_quantity"`
+		Unit          string  `json:"unit"`
+	}
+
+	err := h.Repo.HU.GetDb().QueryRow(c.Request.Context(), `
+		SELECT hu.id, hu.code, hu.hu_level, hu.child_count, z.code, hu.quantity, p.base_unit
+		FROM handling_units hu
+		JOIN zones z ON z.id = hu.zone_id
+		JOIN products p ON p.id = hu.product_id
+		WHERE hu.code = $1 AND hu.tenant_id = $2
+	`, huCode, tenantID).Scan(&parent.ID, &parent.HUCode, &parent.HULevel, &parent.ChildCount, &parent.ZoneCode, &parent.TotalQuantity, &parent.Unit)
+
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Parent HU not found"})
+		return
+	}
+
+	// 2. Get Children
+	rows, err := h.Repo.HU.GetDb().Query(c.Request.Context(), `
+		SELECT hu.code, COALESCE(hu.serial_number, ''), hu.quantity, p.base_unit, hu.status
+		FROM handling_units hu
+		JOIN products p ON p.id = hu.product_id
+		WHERE hu.parent_hu_id = $1 AND hu.tenant_id = $2
+		ORDER BY hu.code
+	`, parent.ID, tenantID)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load children"})
+		return
+	}
+	defer rows.Close()
+
+	children := []any{}
+	for rows.Next() {
+		var child struct {
+			HUCode       string  `json:"hu_code"`
+			SerialNo     string  `json:"serial_number"`
+			Quantity     float64 `json:"quantity"`
+			Unit         string  `json:"unit"`
+			StockType    string  `json:"stock_type"`
+		}
+		if err := rows.Scan(&child.HUCode, &child.SerialNo, &child.Quantity, &child.Unit, &child.StockType); err == nil {
+			children = append(children, child)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"parent":   parent,
+		"children": children,
+	})
+}
+
 func (h *StockHandler) ListMovements(c *gin.Context) {
 	tenantID := c.MustGet("tenant_id").(int64)
 	

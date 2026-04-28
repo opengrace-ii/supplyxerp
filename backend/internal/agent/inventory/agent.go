@@ -30,6 +30,7 @@ type CreateHUInput struct {
 	ZoneID      int64
 	Status      string
 	ParentHUID  *int64
+	HULevel     string
 }
 
 func (a *Agent) CreateHU(ctx context.Context, uow *repository.UnitOfWork, in CreateHUInput) (int64, error) {
@@ -37,10 +38,10 @@ func (a *Agent) CreateHU(ctx context.Context, uow *repository.UnitOfWork, in Cre
 	
 	var huID int64
 	err := uow.Zones.GetDb().QueryRow(ctx, `
-		INSERT INTO handling_units (tenant_id, product_id, code, quantity, unit, site_id, zone_id, status, parent_hu_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO handling_units (tenant_id, product_id, code, quantity, unit, site_id, zone_id, status, parent_hu_id, hu_level)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id
-	`, in.TenantID, in.ProductID, in.Code, in.Quantity, in.Unit, in.SiteID, in.ZoneID, "IN_STOCK", in.ParentHUID).Scan(&huID)
+	`, in.TenantID, in.ProductID, in.Code, in.Quantity, in.Unit, in.SiteID, in.ZoneID, "IN_STOCK", in.ParentHUID, in.HULevel).Scan(&huID)
 	
 	if err != nil {
 		a.broadcast(ctx, "InventoryAgent", "CREATING_HU", "FAILED")

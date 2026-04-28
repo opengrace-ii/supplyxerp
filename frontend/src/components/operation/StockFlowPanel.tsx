@@ -27,6 +27,7 @@ const StockFlowPanel: React.FC = () => {
         roll_prefix: ''
     });
     const [pendingHolds, setPendingHolds] = useState<any[]>([]);
+    const [grSubMode, setGRSubMode] = useState<'Quick' | 'Bulk' | 'Scan'>('Quick');
     const [showSplitModal, setShowSplitModal] = useState(false);
     const [splitQty, setSplitQty] = useState(0);
     const [huLineage, setHuLineage] = useState<any[]>([]);
@@ -43,26 +44,28 @@ const StockFlowPanel: React.FC = () => {
             setStats(res);
         } catch (err) {
             console.error("Failed to fetch stats", err);
+            // Non-blocking
         }
     };
 
     const fetchOrgTree = async () => {
         try {
             const res = await api.getOrgTree();
-            setOrgTree(res);
+            setOrgTree(res || []);
         } catch (err) {
             console.error("Failed to fetch org tree", err);
+            setOrgTree([]);
         }
     };
 
     const fetchGRData = async () => {
         try {
             const [s, p, t, o, h] = await Promise.all([
-                api.getGRStats(), 
-                api.getProducts(), 
-                api.listPutawayTasks(),
-                api.listPOs('APPROVED'),
-                api.getPendingGRHolds()
+                api.getGRStats().catch(() => null), 
+                api.getProducts().catch(() => ({ products: [] })), 
+                api.listPutawayTasks().catch(() => []),
+                api.listPOs('APPROVED').catch(() => ({ purchase_orders: [] })),
+                api.getPendingGRHolds().catch(() => [])
             ]);
             setGRStats(s);
             setProducts(p.products || []);
@@ -350,197 +353,231 @@ const StockFlowPanel: React.FC = () => {
         const receivingZones = orgTree.flatMap(o => o.sites || []).flatMap((s: any) => s.zones || []).filter((z: any) => z.zone_type === 'RECEIVING');
 
         return (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '10px' }}>
-                <form onSubmit={handlePostGR} style={{ display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'var(--bg-input)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                    <h3 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--accent)', marginBottom: '8px' }}>POST GOODS RECEIPT</h3>
-                    
-                    <div className="form-group">
-                        <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Purchase Order (PO)</label>
-                        <Select 
-                            className="sx-select" 
-                            style={{ width: '100%' }}
-                            value={grForm.po_id}
-                            onChange={e => {
-                                const poID = parseInt(e.target.value);
-                                const po = purchaseOrders.find(p => p.id === poID);
-                                setGRForm({ ...grForm, po_id: poID, po_line_id: 0, supplier_ref: po?.po_number || '' });
-                            }}
+            <div className="flex flex-col gap-6 mt-4">
+                {/* GR Sub-Mode Selector */}
+                <div className="flex gap-1 p-1 bg-[var(--bg-surface2)] rounded-lg w-fit border border-[var(--border)]">
+                    {(['Quick', 'Bulk', 'Scan'] as const).map(m => (
+                        <button
+                            key={m}
+                            onClick={() => setGRSubMode(m)}
+                            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${
+                                grSubMode === m 
+                                ? 'bg-[var(--accent)] text-black shadow-lg shadow-[var(--accent)]/20' 
+                                : 'text-[var(--text-3)] hover:text-[var(--text-1)]'
+                            }`}
                         >
-                            <option value="0">Manual (No PO)</option>
-                            {purchaseOrders.map(po => <option key={po.id} value={po.id}>{po.po_number} - {po.supplier_name}</option>)}
-                        </Select>
-                    </div>
+                            {m === 'Quick' && '⚡ QUICK'}
+                            {m === 'Bulk' && '📦 BULK / PALLET'}
+                            {m === 'Scan' && '🔍 SCAN VENDOR'}
+                        </button>
+                    ))}
+                </div>
 
-                    {grForm.po_id !== 0 && (
-                        <div className="form-group">
-                            <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>PO Line Item</label>
-                            <Select 
-                                className="sx-select" 
-                                style={{ width: '100%' }}
-                                value={grForm.po_line_id}
-                                onChange={e => {
-                                    const lineID = parseInt(e.target.value);
-                                    const po = purchaseOrders.find(p => p.id === grForm.po_id);
-                                    const line = po?.lines?.find((l: any) => l.id === lineID);
-                                    if (line) {
-                                        setGRForm({ 
-                                            ...grForm, 
-                                            po_line_id: lineID, 
-                                            product_id: line.product_id, 
-                                            quantity: line.qty_ordered - line.qty_received,
-                                            unit: line.unit 
-                                        });
-                                    }
-                                }}
-                            >
-                                <option value="0">Select line...</option>
-                                {purchaseOrders.find(p => p.id === grForm.po_id)?.lines?.map((l: any) => (
-                                    <option key={l.id} value={l.id}>[{l.product_code}] {l.qty_ordered} {l.unit} (Left: {l.qty_ordered - l.qty_received})</option>
-                                ))}
-                            </Select>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <form onSubmit={handlePostGR} style={{ display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'var(--bg-input)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-bold text-[var(--accent)] uppercase tracking-wider">
+                                {grSubMode === 'Quick' && 'Quick Goods Receipt'}
+                                {grSubMode === 'Bulk' && 'Bulk / Pallet Receipt'}
+                                {grSubMode === 'Scan' && 'Scan Vendor Barcodes'}
+                            </h3>
+                            <span className="text-[10px] font-mono text-[var(--text-4)]">V4.0-GR</span>
                         </div>
-                    )}
-
-                    <div className="form-group">
-                        <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Product</label>
-                        <Select 
-                            className="sx-select" 
-                            style={{ width: '100%' }}
-                            value={grForm.product_id}
-                            disabled={grForm.po_line_id !== 0}
-                            onChange={e => {
-                                const p = products.find(p => p.id === parseInt(e.target.value));
-                                setGRForm({ ...grForm, product_id: p?.id || 0, unit: p?.base_unit || '' });
-                            }}
-                        >
-                            <option value="">Select Product...</option>
-                            {products.map(p => <option key={p.id} value={p.id}>[{p.code}] {p.name}</option>)}
-                        </Select>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                        <div className="form-group">
-                            <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Quantity</label>
-                            <Input 
-                                type="number" 
-                                className="sx-input" 
-                                style={{ width: '100%' }}
-                                value={grForm.quantity}
-                                onChange={e => setGRForm({ ...grForm, quantity: parseFloat(e.target.value) })}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Unit</label>
-                            <Input type="text" className="sx-input" style={{ width: '100%' }} value={grForm.unit} readOnly />
-                        </div>
-                    </div>
-
-                    <div className="form-group">
-                        <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Receiving Zone</label>
-                        <Select 
-                            className="sx-select" 
-                            style={{ width: '100%' }}
-                            value={grForm.zone_id}
-                            onChange={e => setGRForm({ ...grForm, zone_id: parseInt(e.target.value) })}
-                        >
-                            <option value="">Select Zone...</option>
-                            {receivingZones.map((z: any) => <option key={z.id} value={z.id}>{z.code} — {z.name}</option>)}
-                        </Select>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                        <div className="form-group">
-                            <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Supplier Ref</label>
-                            <Input type="text" className="sx-input" style={{ width: '100%' }} value={grForm.supplier_ref} onChange={e => setGRForm({ ...grForm, supplier_ref: e.target.value })} />
-                        </div>
-                        <div className="form-group">
-                            <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Batch Ref</label>
-                            <Input type="text" className="sx-input" style={{ width: '100%' }} value={grForm.batch_ref} onChange={e => setGRForm({ ...grForm, batch_ref: e.target.value })} />
-                        </div>
-                    </div>
-
-                    {/* Roll / Serial Tracking */}
-                    <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '14px' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}>
-                            <input 
-                                type="checkbox" 
-                                checked={grForm.roll_tracking} 
-                                onChange={e => setGRForm({ ...grForm, roll_tracking: e.target.checked, roll_count: 1, roll_prefix: '' })} 
-                            />
-                            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                                🎞️ Roll / Serial Tracking
-                            </span>
-                        </label>
-                        {grForm.roll_tracking && (
-                            <div style={{ marginTop: '12px' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-                                    <div>
-                                        <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Roll Count</label>
-                                        <Input 
-                                            type="number" 
-                                            min="1" 
-                                            max="500"
-                                            className="sx-input" 
-                                            style={{ width: '100%' }} 
-                                            value={grForm.roll_count} 
-                                            onChange={e => setGRForm({ ...grForm, roll_count: parseInt(e.target.value) || 1 })} 
-                                        />
-                                    </div>
-                                    <div>
-                                        <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Roll Prefix (optional)</label>
-                                        <Input 
-                                            type="text" 
-                                            className="sx-input" 
-                                            placeholder="e.g. 200-60" 
-                                            style={{ width: '100%' }} 
-                                            value={grForm.roll_prefix} 
-                                            onChange={e => setGRForm({ ...grForm, roll_prefix: e.target.value })} 
-                                        />
-                                    </div>
+                        
+                        {grSubMode === 'Scan' ? (
+                            <div className="flex flex-col gap-4 py-10 items-center justify-center border-2 border-dashed border-[var(--border)] rounded-xl bg-black/20">
+                                <span className="text-4xl opacity-50">📡</span>
+                                <div className="text-center">
+                                    <div className="text-xs font-bold text-[var(--text-2)]">AWAITING VENDOR BARCODE</div>
+                                    <div className="text-[10px] text-[var(--text-4)] mt-1">Scan Manufacturer QR or Pallet Tag</div>
                                 </div>
-                                {grForm.roll_count > 0 && grForm.quantity > 0 && (
-                                    <div style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '6px', padding: '10px', fontSize: '10px', color: 'var(--text-3)' }}>
-                                        <div style={{ color: 'var(--c-amber)', fontWeight: '700', marginBottom: '4px' }}>PREVIEW</div>
-                                        <div>Will create <b style={{ color: 'var(--text-1)' }}>{grForm.roll_count}</b> HUs — each <b style={{ color: 'var(--text-1)' }}>{(grForm.quantity / grForm.roll_count).toFixed(2)} {grForm.unit}</b></div>
-                                        <div style={{ marginTop: '4px', fontFamily: 'monospace' }}>
-                                            {(grForm.roll_prefix || 'PREFIX') + '-001'} → {(grForm.roll_prefix || 'PREFIX') + '-' + String(grForm.roll_count).padStart(3, '0')}
-                                        </div>
+                                <Input 
+                                    className="sx-input text-center max-w-[200px]" 
+                                    placeholder="Scan here..." 
+                                    autoFocus 
+                                />
+                            </div>
+                        ) : (
+                            <>
+                                <div className="form-group">
+                                    <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Purchase Order (PO)</label>
+                                    <Select 
+                                        className="sx-select" 
+                                        style={{ width: '100%' }}
+                                        value={grForm.po_id}
+                                        onChange={e => {
+                                            const poID = parseInt(e.target.value);
+                                            const po = purchaseOrders.find(p => p.id === poID);
+                                            setGRForm({ ...grForm, po_id: poID, po_line_id: 0, supplier_ref: po?.po_number || '' });
+                                        }}
+                                    >
+                                        <option value="0">Manual (No PO)</option>
+                                        {purchaseOrders.map(po => <option key={po.id} value={po.id}>{po.po_number} - {po.supplier_name}</option>)}
+                                    </Select>
+                                </div>
+
+                                {grForm.po_id !== 0 && (
+                                    <div className="form-group">
+                                        <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>PO Line Item</label>
+                                        <Select 
+                                            className="sx-select" 
+                                            style={{ width: '100%' }}
+                                            value={grForm.po_line_id}
+                                            onChange={e => {
+                                                const lineID = parseInt(e.target.value);
+                                                const po = purchaseOrders.find(p => p.id === grForm.po_id);
+                                                const line = po?.lines?.find((l: any) => l.id === lineID);
+                                                if (line) {
+                                                    setGRForm({ 
+                                                        ...grForm, 
+                                                        po_line_id: lineID, 
+                                                        product_id: line.product_id, 
+                                                        quantity: line.qty_ordered - line.qty_received,
+                                                        unit: line.unit 
+                                                    });
+                                                }
+                                            }}
+                                        >
+                                            <option value="0">Select line...</option>
+                                            {purchaseOrders.find(p => p.id === grForm.po_id)?.lines?.map((l: any) => (
+                                                <option key={l.id} value={l.id}>[{l.product_code}] {l.qty_ordered} {l.unit} (Left: {l.qty_ordered - l.qty_received})</option>
+                                            ))}
+                                        </Select>
                                     </div>
                                 )}
+
+                                <div className="form-group">
+                                    <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Product</label>
+                                    <Select 
+                                        className="sx-select" 
+                                        style={{ width: '100%' }}
+                                        value={grForm.product_id}
+                                        disabled={grForm.po_line_id !== 0}
+                                        onChange={e => {
+                                            const p = products.find(p => p.id === parseInt(e.target.value));
+                                            setGRForm({ ...grForm, product_id: p?.id || 0, unit: p?.base_unit || '' });
+                                        }}
+                                    >
+                                        <option value="">Select Product...</option>
+                                        {products.map(p => <option key={p.id} value={p.id}>[{p.code}] {p.name}</option>)}
+                                    </Select>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                    <div className="form-group">
+                                        <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Quantity</label>
+                                        <Input 
+                                            type="number" 
+                                            className="sx-input" 
+                                            style={{ width: '100%' }}
+                                            value={grForm.quantity}
+                                            onChange={e => setGRForm({ ...grForm, quantity: parseFloat(e.target.value) })}
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Unit</label>
+                                        <Input type="text" className="sx-input" style={{ width: '100%' }} value={grForm.unit} readOnly />
+                                    </div>
+                                </div>
+
+                                <div className="form-group">
+                                    <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Receiving Zone</label>
+                                    <Select 
+                                        className="sx-select" 
+                                        style={{ width: '100%' }}
+                                        value={grForm.zone_id}
+                                        onChange={e => setGRForm({ ...grForm, zone_id: parseInt(e.target.value) })}
+                                    >
+                                        <option value="">Select Zone...</option>
+                                        {receivingZones.map((z: any) => <option key={z.id} value={z.id}>{z.code} — {z.name}</option>)}
+                                    </Select>
+                                </div>
+
+                                {grSubMode === 'Bulk' && (
+                                    <div className="space-y-4 p-4 border border-[var(--accent)]/30 rounded-xl bg-[var(--accent)]/5">
+                                        <div className="flex items-center gap-2 text-[var(--accent)] mb-2">
+                                            <span className="text-sm">🏗️</span>
+                                            <span className="text-[10px] font-bold uppercase tracking-widest">Hierarchy Settings</span>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                            <div>
+                                                <label className="text-[9px] text-[var(--text-3)] uppercase block mb-1">Items Per Pallet (N)</label>
+                                                <Input 
+                                                    type="number" 
+                                                    className="sx-input" 
+                                                    value={grForm.roll_count} 
+                                                    onChange={e => setGRForm({ ...grForm, roll_count: parseInt(e.target.value) || 1, roll_tracking: true })} 
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] text-[var(--text-3)] uppercase block mb-1">Serial Prefix</label>
+                                                <Input 
+                                                    className="sx-input" 
+                                                    placeholder="P-2024" 
+                                                    value={grForm.roll_prefix} 
+                                                    onChange={e => setGRForm({ ...grForm, roll_prefix: e.target.value, roll_tracking: true })} 
+                                                />
+                                            </div>
+                                        </div>
+                                        {grForm.roll_count > 1 && (
+                                            <div className="text-[10px] text-[var(--text-3)] bg-black/30 p-2 rounded border border-white/5">
+                                                Will create <b className="text-[var(--accent)]">1 Parent HU</b> (Pallet) containing <b className="text-[var(--accent)]">{grForm.roll_count}</b> Child HUs.
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                    <div className="form-group">
+                                        <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Supplier Ref</label>
+                                        <Input type="text" className="sx-input" style={{ width: '100%' }} value={grForm.supplier_ref} onChange={e => setGRForm({ ...grForm, supplier_ref: e.target.value })} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Batch Ref</label>
+                                        <Input type="text" className="sx-input" style={{ width: '100%' }} value={grForm.batch_ref} onChange={e => setGRForm({ ...grForm, batch_ref: e.target.value })} />
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {grSubMode !== 'Scan' && (
+                            <button type="submit" className="btn btn-primary" style={{ marginTop: '12px', height: '48px', fontSize: '13px', fontWeight: '800' }} disabled={loading || !grForm.product_id || !grForm.zone_id || !grForm.quantity}>
+                                {grSubMode === 'Bulk' ? `Post Pallet + ${grForm.roll_count} Children` : 'Post Goods Receipt'}
+                            </button>
+                        )}
+                    </form>
+
+                    <div className="flex flex-col gap-3 bg-[var(--bg-surface2)] rounded-2xl border border-white/5 p-6 overflow-hidden relative">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-2 h-2 rounded-full ${loading ? 'bg-green-500 animate-pulse' : 'bg-white/20'}`}></div>
+                                <h3 className="text-xs font-bold text-[var(--text-1)] uppercase tracking-widest">Operational Trace</h3>
+                            </div>
+                            <div className="text-[9px] px-2 py-0.5 rounded bg-white/5 text-[var(--text-4)]">REALTIME</div>
+                        </div>
+                        
+                        {traceSteps && traceSteps.length > 0 ? (
+                            <div className="space-y-3">
+                                {traceSteps.map((step, idx) => (
+                                    <div key={idx} className={`flex flex-col gap-1 p-3 rounded-xl border-l-4 transition-all ${
+                                        step.status === 'SUCCESS' ? 'bg-green-500/5 border-green-500/30' : 'bg-red-500/5 border-red-500/30'
+                                    }`}>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-bold text-[var(--accent)]">[{step.agent}]</span>
+                                            {renderTraceStepStatus(step.status)}
+                                        </div>
+                                        <div className="text-[11px] text-[var(--text-2)]">{step.action}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center flex-1 opacity-20 py-20">
+                                <span className="text-5xl mb-4">🧊</span>
+                                <div className="text-xs font-bold">PIPELINE IDLE</div>
+                                <div className="text-[10px] mt-1">Pending transaction submission</div>
                             </div>
                         )}
                     </div>
-
-                    <button type="submit" className="btn btn-primary" style={{ marginTop: '12px', height: '40px' }} disabled={loading || !grForm.product_id || !grForm.zone_id || !grForm.quantity}>
-                        {grForm.roll_tracking && grForm.roll_count > 1 ? `Post ${grForm.roll_count} Rolls` : 'Post Goods Receipt'}
-                    </button>
-                </form>
-
-                <div style={{ backgroundColor: 'var(--bg-surface2)', borderRadius: '12px', border: '1px solid #222', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: loading ? '#22c55e' : '#444', boxShadow: loading ? '0 0 10px #22c55e' : 'none' }}></div>
-                        <h3 style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-1)' }}>GR AGENT PIPELINE</h3>
-                    </div>
-                    {traceSteps && traceSteps.length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {traceSteps.map((step, idx) => (
-                                <div key={idx} style={{
-                                    display: 'flex', flexDirection: 'column', gap: '4px',
-                                    borderLeft: `2px solid ${step.status === 'SUCCESS' ? '#22c55e' : '#ef4444'}`,
-                                    paddingLeft: '12px', paddingTop: '4px', paddingBottom: '4px',
-                                    backgroundColor: step.status === 'SUCCESS' ? 'rgba(34,197,94,0.03)' : 'rgba(239,68,68,0.03)'
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span style={{ color: '#22c55e', fontWeight: '700', fontSize: '10px' }}>[{step.agent}]</span>
-                                        {renderTraceStepStatus(step.status)}
-                                    </div>
-                                    <div style={{ fontSize: '11px', color: '#ddd' }}>{step.action}</div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div style={{ color: 'var(--text-4)', fontSize: '12px', textAlign: 'center', marginTop: '40px' }}>Ready for inbound processing...</div>
-                    )}
                 </div>
             </div>
         );

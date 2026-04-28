@@ -85,6 +85,7 @@ func (w *GRWorkflow) ProcessGR(ctx context.Context, uow *repository.UnitOfWork, 
 		SiteID:    p.SiteID,
 		ZoneID:    p.ZoneID,
 		Status:    "IN_STOCK",
+		HULevel:   "UNIT",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HU: %w", err)
@@ -177,24 +178,33 @@ func (w *GRWorkflow) ProcessGR(ctx context.Context, uow *repository.UnitOfWork, 
 	}, nil
 }
 
-// processGRRolls creates N individual HUs for roll-level tracking.
-// Each roll has: quantity = total / rollCount, serial_number = prefix-001..N
+// processGRRolls creates a hierarchy: 1 Parent HU (PALLET) and N Child HUs (ROLL).
+// Individual events are NOT created for children at GR time.
 func (w *GRWorkflow) processGRRolls(ctx context.Context, uow *repository.UnitOfWork, p GRParams, finalStockType string) (map[string]any, error) {
 	rollCount := *p.RollCount
 	qtyPerRoll := p.Quantity / float64(rollCount)
 
-	// Auto-generate prefix if not provided
-	prefix := ""
-	if p.RollPrefix != nil && *p.RollPrefix != "" {
-		prefix = *p.RollPrefix
-	} else {
-		// Derive from product code: sanitize to alphanumeric + dash
-		productCode := ""
-		_ = uow.Zones.GetDb().QueryRow(ctx, "SELECT code FROM products WHERE id = $1", p.ProductID).Scan(&productCode)
-		prefix = strings.ToUpper(strings.ReplaceAll(productCode, "-", "")) + "-" + time.Now().Format("0601")
+	// 1. Create Parent HU (PALLET)
+	parentHUCode, _ := uow.GR.GetNextHUCode(ctx, p.TenantID)
+	parentHUID, err := w.InventoryAgent.CreateHU(ctx, uow, CreateHUInput{
+		TenantID:  p.TenantID,
+		ProductID: p.ProductID,
+		Code:      parentHUCode,
+		Quantity:  p.Quantity,
+		Unit:      p.Unit,
+		SiteID:    p.SiteID,
+		ZoneID:    p.ZoneID,
+		Status:    "IN_STOCK",
+		HULevel:   "PALLET",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create parent HU: %w", err)
 	}
 
-	// Create GR document
+	// Set stock type for parent
+	_, _ = uow.HU.GetDb().Exec(ctx, "UPDATE handling_units SET stock_type = $1 WHERE id = $2", finalStockType, parentHUID)
+
+	// 2. Create GR document
 	status := p.Status
 	if status == "" {
 		status = "POSTED"
@@ -220,89 +230,89 @@ func (w *GRWorkflow) processGRRolls(ctx context.Context, uow *repository.UnitOfW
 		return nil, err
 	}
 
-	var createdHUs []map[string]any
+	// Add GR line for Parent
+	_ = uow.GR.AddLine(ctx, repository.GRLine{
+		LineNumber:   1,
+		ProductID:    p.ProductID,
+		Quantity:     p.Quantity,
+		Unit:         p.Unit,
+		BatchRef:     p.BatchRef,
+		StockType:    finalStockType,
+		MovementType: p.MovementType,
+		HUID:         &parentHUID,
+	}, grID, p.TenantID)
 
+	// Post inbound inventory event for Parent
+	_ = w.InventoryAgent.PostInboundEvent(ctx, uow, p.TenantID, parentHUID, p.ProductID, p.Quantity, p.Unit, p.SiteID, p.ZoneID, p.ActorUserID, "GR_DOCUMENT", grID)
+	_, _ = uow.HU.GetDb().Exec(ctx, "UPDATE inventory_events SET stock_type = $1 WHERE hu_id = $2 AND event_type = 'GR'", finalStockType, parentHUID)
+
+	// 3. Create children
+	prefix := ""
+	if p.RollPrefix != nil && *p.RollPrefix != "" {
+		prefix = *p.RollPrefix
+	} else {
+		productCode := ""
+		_ = uow.Zones.GetDb().QueryRow(ctx, "SELECT code FROM products WHERE id = $1", p.ProductID).Scan(&productCode)
+		prefix = strings.ToUpper(strings.ReplaceAll(productCode, "-", "")) + "-" + time.Now().Format("0601")
+	}
+
+	var createdHUs []map[string]any
 	for seq := 1; seq <= rollCount; seq++ {
 		huCode, _ := uow.GR.GetNextHUCode(ctx, p.TenantID)
 		serialNumber := fmt.Sprintf("%s-%03d", prefix, seq)
 
-		huID, err := w.InventoryAgent.CreateHU(ctx, uow, CreateHUInput{
-			TenantID:  p.TenantID,
-			ProductID: p.ProductID,
-			Code:      huCode,
-			Quantity:  qtyPerRoll,
-			Unit:      p.Unit,
-			SiteID:    p.SiteID,
-			ZoneID:    p.ZoneID,
-			Status:    "IN_STOCK",
+		childHUID, err := w.InventoryAgent.CreateHU(ctx, uow, CreateHUInput{
+			TenantID:   p.TenantID,
+			ProductID:  p.ProductID,
+			Code:       huCode,
+			Quantity:   qtyPerRoll,
+			Unit:       p.Unit,
+			SiteID:     p.SiteID,
+			ZoneID:     p.ZoneID,
+			Status:     "IN_STOCK",
+			ParentHUID: &parentHUID,
+			HULevel:    "ROLL",
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create roll HU %d: %w", seq, err)
 		}
 
-		// Set stock type + serial + roll metadata
+		// Set child metadata
 		_, _ = uow.HU.GetDb().Exec(ctx,
-			`UPDATE handling_units SET stock_type = $1, serial_number = $2, roll_prefix = $3, roll_sequence = $4 WHERE id = $5`,
-			finalStockType, serialNumber, prefix, seq, huID)
+			`UPDATE handling_units SET stock_type = $1, serial_number = $2 WHERE id = $3`,
+			finalStockType, serialNumber, childHUID)
 
-		// GR line per roll
-		_ = uow.GR.AddLine(ctx, repository.GRLine{
-			LineNumber:   seq,
-			ProductID:    p.ProductID,
-			Quantity:     qtyPerRoll,
-			Unit:         p.Unit,
-			BatchRef:     p.BatchRef,
-			StockType:    finalStockType,
-			MovementType: p.MovementType,
-			HUID:         &huID,
-		}, grID, p.TenantID)
-
-		// Inventory event
-		_ = w.InventoryAgent.PostInboundEvent(ctx, uow, p.TenantID, huID, p.ProductID, qtyPerRoll, p.Unit, p.SiteID, p.ZoneID, p.ActorUserID, "GR_DOCUMENT", grID)
-		_, _ = uow.HU.GetDb().Exec(ctx, "UPDATE inventory_events SET stock_type = $1 WHERE hu_id = $2 AND event_type = 'GR'", finalStockType, huID)
-
-		// Register barcode
-		_ = uow.Barcodes.Create(ctx, repository.CreateBarcodeParams{
-			TenantID:   p.TenantID,
-			Code:       huCode,
-			EntityType: "HU",
-			EntityID:   huID,
-		})
-
-		// Register barcode for serial number too
-		_ = uow.Barcodes.Create(ctx, repository.CreateBarcodeParams{
-			TenantID:   p.TenantID,
-			Code:       serialNumber,
-			EntityType: "HU",
-			EntityID:   huID,
-		})
-
-		// Putaway task per roll
-		_ = w.WarehouseAgent.CreatePutawayTask(ctx, uow, p.TenantID, huID, p.ZoneID)
+		// Register barcodes
+		_ = uow.Barcodes.Create(ctx, repository.CreateBarcodeParams{TenantID: p.TenantID, Code: huCode, EntityType: "HU", EntityID: childHUID})
+		_ = uow.Barcodes.Create(ctx, repository.CreateBarcodeParams{TenantID: p.TenantID, Code: serialNumber, EntityType: "HU", EntityID: childHUID})
 
 		createdHUs = append(createdHUs, map[string]any{
-			"hu_id":         huID,
+			"hu_id":         childHUID,
 			"hu_code":       huCode,
 			"serial_number": serialNumber,
 			"quantity":      qtyPerRoll,
-			"roll_sequence": seq,
 		})
 	}
 
-	// Update PO line if linked (total quantity)
+	// Register parent barcode
+	_ = uow.Barcodes.Create(ctx, repository.CreateBarcodeParams{TenantID: p.TenantID, Code: parentHUCode, EntityType: "HU", EntityID: parentHUID})
+
+	// Create putaway task for Parent ONLY
+	_ = w.WarehouseAgent.CreatePutawayTask(ctx, uow, p.TenantID, parentHUID, p.ZoneID)
+
+	// Update PO line if linked
 	if p.POLineID != 0 {
-		if err = uow.Purchasing.UpdatePOLineReceived(ctx, p.TenantID, p.POLineID, p.Quantity); err != nil {
-			return nil, fmt.Errorf("failed to update PO line: %w", err)
-		}
+		_ = uow.Purchasing.UpdatePOLineReceived(ctx, p.TenantID, p.POLineID, p.Quantity)
 		uow.Purchasing.UpdatePOStatus(ctx, p.TenantID, p.POID, "PARTIALLY_RECEIVED")
 	}
 
-	uow.Audit.Log(ctx, p.TenantID, p.ActorUserID, "GR_ROLL_POSTED", "GR_DOCUMENT", grID, nil, p)
+	uow.Audit.Log(ctx, p.TenantID, p.ActorUserID, "GR_HIERARCHY_POSTED", "GR_DOCUMENT", grID, nil, p)
 
 	return map[string]any{
-		"gr_id":     grID,
+		"gr_id":      grID,
+		"parent_hu":  parentHUCode,
 		"roll_count": rollCount,
-		"hu_list":   createdHUs,
+		"hu_list":    createdHUs,
 	}, nil
 }
 
