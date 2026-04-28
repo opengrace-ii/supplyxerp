@@ -13,7 +13,6 @@ const MODULES_BY_TAB = {
     label: 'MANUFACTURING',
     items: [
       { name: 'MaterialHub',   status: 'LIVE',    isLive: true  },
-      { name: 'RFQManagement', status: 'LIVE',    isLive: true  },
       { name: 'POManagement',  status: 'LIVE',    isLive: true  },
       { name: 'PO Block/Cancel', status: 'LIVE',   isLive: true  },
       { name: 'PO Account Assignment', status: 'LIVE', isLive: true },

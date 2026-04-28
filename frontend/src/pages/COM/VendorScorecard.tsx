@@ -18,6 +18,9 @@ interface Supplier {
 
 interface Scorecard {
   id: number;
+  supplier_id: number;
+  supplier_name: string;
+  supplier_code: string;
   period_start: string;
   period_end: string;
   price_score: number;
@@ -124,8 +127,8 @@ export default function VendorScorecard() {
         apiClient.get("/api/com/vendor-scorecards")
       ]);
       setSuppliers(sRes.data.suppliers ?? []);
-      setSummary(sumRes.data ?? null);
-      setScorecards(scRes.data ?? []);
+      setSummary(sumRes.data.data ?? null);
+      setScorecards(scRes.data.data ?? []);
     } catch (err) { console.error("Initial load fail", err); }
   }, []);
 
@@ -198,10 +201,10 @@ export default function VendorScorecard() {
 
               {summary && (
                 <div className="grid grid-cols-4 gap-6">
-                  <KpiCard label="EXCELLENT (>=90)" value={summary.excellent} color="green" />
-                  <KpiCard label="GOOD (70-89)" value={summary.good} color="amber" />
-                  <KpiCard label="NEEDS IMPROVEMENT" value={summary.needs_improvement} color="blue" />
-                  <KpiCard label="CRITICAL (<50)" value={summary.critical} color="red" />
+                  <KpiCard label="EXCELLENT (>=90)" value={summary.excellent} />
+                  <KpiCard label="GOOD (70-89)" value={summary.good} />
+                  <KpiCard label="NEEDS IMPROVEMENT" value={summary.needs_improvement} />
+                  <KpiCard label="CRITICAL (<50)" value={summary.critical} />
                 </div>
               )}
 

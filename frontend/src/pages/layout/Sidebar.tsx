@@ -17,7 +17,6 @@ const MODULES_BY_TAB: Record<Section, { label: string; items: any[] }> = {
     label: 'Manufacturing',
     items: [
       { key: 'MaterialHub',           label: 'Material Hub',          icon: 'M', isLive: true },
-      { key: 'RFQManagement',         label: 'RFQ Cycle',             icon: 'R', isLive: true },
       { key: 'POManagement',          label: 'PO Manage',             icon: 'P', isLive: true },
       { key: 'PO Block/Cancel',       label: 'PO Block/Cancel',       icon: 'B', isLive: true },
       { key: 'PO Account Assignment', label: 'PO Account Assignment', icon: 'A', isLive: true },

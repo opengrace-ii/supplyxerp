@@ -12,7 +12,6 @@ import Setup from './Config/Setup';
 import PricingConfig from './Config/PricingConfig';
 import LedgerStock from './OPS/LedgerStock';
 import POManagement from './MFG/POManagement';
-import RFQManagement from './MFG/RFQManagement';
 import POBlockCancel from './MFG/POBlockCancel';
 import POAccountAssignment from './MFG/POAccountAssignment';
 import POProgressTracking from './MFG/POProgressTracking';
@@ -87,8 +86,6 @@ const AppPage: React.FC = () => {
         return <MaterialHub />;
       case 'LedgerStock':
         return <LedgerStock />;
-      case 'RFQManagement':
-        return <RFQManagement />;
       case 'POManagement':
         return <POManagement />;
       case 'PO Block/Cancel':
