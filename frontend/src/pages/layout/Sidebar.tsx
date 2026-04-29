@@ -12,7 +12,9 @@ const MODULES_BY_TAB: Record<Section, { label: string; items: any[] }> = {
       { key: 'StockOverview', label: 'Stock Overview', icon: 'I', isLive: true },
       { key: 'StockFlow',   label: 'Stock Flow',   icon: 'S', isLive: true },
       { key: 'LedgerStock', label: 'Ledger Stock', icon: 'L', isLive: true },
+      { key: 'GoodsIssue',  label: 'Goods Issue',  icon: 'G', isLive: true },
       { key: 'Reports',     label: 'Reports',      icon: 'R', isLive: true }
+
     ]
   },
   mfg: {

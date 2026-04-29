@@ -24,8 +24,10 @@ const StockFlowPanel: React.FC = () => {
         po_id: 0, po_line_id: 0,
         roll_tracking: false,
         roll_count: 1,
-        roll_prefix: ''
+        roll_prefix: '',
+        reference_type: 'PO'
     });
+
     const [pendingHolds, setPendingHolds] = useState<any[]>([]);
     const [grSubMode, setGRSubMode] = useState<'Quick' | 'Bulk' | 'Scan'>('Quick');
     const [showSplitModal, setShowSplitModal] = useState(false);
@@ -65,13 +67,13 @@ const StockFlowPanel: React.FC = () => {
                 api.getProducts().catch(() => ({ products: [] })), 
                 api.listPutawayTasks().catch(() => []),
                 api.listPOs('APPROVED').catch(() => ({ purchase_orders: [] })),
-                api.getPendingGRHolds().catch(() => [])
+                api.getPendingGRHolds().catch(() => ({ holds: [] }))
             ]);
             setGRStats(s);
             setProducts(p.products || []);
             setPutawayTasks(t || []);
             setPurchaseOrders(o.purchase_orders || []);
-            setPendingHolds(h || []);
+            setPendingHolds(h.holds || []);
         } catch (err) {
             console.error("Failed to fetch GR data", err);
         }
@@ -143,7 +145,8 @@ const StockFlowPanel: React.FC = () => {
             product_id: 0, quantity: 0, unit: '', zone_id: 0, 
             supplier_ref: '', batch_ref: '', notes: '',
             po_id: 0, po_line_id: 0,
-            roll_tracking: false, roll_count: 1, roll_prefix: ''
+            roll_tracking: false, roll_count: 1, roll_prefix: '',
+            reference_type: 'PO'
         });
         try {
             const payload: any = { ...grForm };
@@ -400,21 +403,44 @@ const StockFlowPanel: React.FC = () => {
                         ) : (
                             <>
                                 <div className="form-group">
-                                    <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Purchase Order (PO)</label>
+                                    <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Reference Type</label>
                                     <Select 
                                         className="sx-select" 
                                         style={{ width: '100%' }}
-                                        value={grForm.po_id}
+                                        value={(grForm as any).reference_type || 'PO'}
                                         onChange={e => {
-                                            const poID = parseInt(e.target.value);
-                                            const po = purchaseOrders.find(p => p.id === poID);
-                                            setGRForm({ ...grForm, po_id: poID, po_line_id: 0, supplier_ref: po?.po_number || '' });
+                                            setGRForm({ 
+                                                ...grForm, 
+                                                reference_type: e.target.value,
+                                                po_id: e.target.value === 'NONE' ? 0 : grForm.po_id,
+                                                po_line_id: e.target.value === 'NONE' ? 0 : grForm.po_line_id
+                                            });
                                         }}
                                     >
-                                        <option value="0">Manual (No PO)</option>
-                                        {purchaseOrders.map(po => <option key={po.id} value={po.id}>{po.po_number} - {po.supplier_name}</option>)}
+                                        <option value="PO">Purchase Order</option>
+                                        <option value="NONE">No Purchase Order</option>
                                     </Select>
                                 </div>
+
+                                {(grForm as any).reference_type !== 'NONE' && (
+                                    <div className="form-group">
+                                        <label style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase' }}>Purchase Order (PO)</label>
+                                        <Select 
+                                            className="sx-select" 
+                                            style={{ width: '100%' }}
+                                            value={grForm.po_id}
+                                            onChange={e => {
+                                                const poID = parseInt(e.target.value);
+                                                const po = purchaseOrders.find(p => p.id === poID);
+                                                setGRForm({ ...grForm, po_id: poID, po_line_id: 0, supplier_ref: po?.po_number || '' });
+                                            }}
+                                        >
+                                            <option value="0">Manual (No PO)</option>
+                                            {purchaseOrders.map(po => <option key={po.id} value={po.id}>{po.po_number} - {po.supplier_name}</option>)}
+                                        </Select>
+                                    </div>
+                                )}
+
 
                                 {grForm.po_id !== 0 && (
                                     <div className="form-group">

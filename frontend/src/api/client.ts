@@ -143,6 +143,75 @@ export const api = {
     return res.data;
   },
 
+  // Goods Issue
+  getGIStats: async () => {
+    const res = await apiClient.get('/api/gi/stats');
+    return res.data;
+  },
+  postGI: async (data: {
+    product_id: number,
+    quantity: number,
+    unit: string,
+    zone_id: number,
+    movement_type: string,
+    document_date?: string,
+    posting_date?: string,
+    reason_code?: string,
+    reason_text?: string,
+    cost_centre?: string,
+    reference_type?: string,
+    reference_id?: number,
+    notes?: string,
+    hu_id?: number,
+    reservation_id?: number
+  }) => {
+    const res = await apiClient.post('/api/gi', data);
+    return res.data;
+  },
+  listGIs: async (movementType = 'ALL', limit = 20, offset = 0) => {
+    const res = await apiClient.get(`/api/gi?movement_type=${movementType}&limit=${limit}&offset=${offset}`);
+    return res.data;
+  },
+  getGI: async (id: number) => {
+    const res = await apiClient.get(`/api/gi/${id}`);
+    return res.data;
+  },
+
+  // Reservations
+  createReservation: async (data: {
+    product_id: number,
+    site_id: number,
+    zone_id?: number,
+    quantity: number,
+    unit: string,
+    movement_type?: string,
+    reserved_by_type?: string,
+    reserved_by_id?: number,
+    requirement_date?: string,
+    valid_until?: string,
+    notes?: string
+  }) => {
+    const res = await apiClient.post('/api/stock/reservations', data);
+    return res.data;
+  },
+  listReservations: async (status = 'ACTIVE', limit = 50, offset = 0) => {
+    const res = await apiClient.get(`/api/stock/reservations?status=${status}&limit=${limit}&offset=${offset}`);
+    return res.data;
+  },
+  cancelReservation: async (id: number) => {
+    const res = await apiClient.post(`/api/stock/reservations/${id}/cancel`);
+    return res.data;
+  },
+  getReservationSummary: async () => {
+    const res = await apiClient.get('/api/stock/reservations/summary');
+    return res.data;
+  },
+  getAvailableStock: async (productId: number, siteId: number) => {
+    const res = await apiClient.get(`/api/stock/reservations/available?product_id=${productId}&site_id=${siteId}`);
+    return res.data;
+  },
+
+
   // Setup & Config
   getTenantConfig: async () => {
     const res = await apiClient.get('/api/config/tenant');

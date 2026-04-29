@@ -27,6 +27,8 @@ type UnitOfWork struct {
 	Locations      *LocationRepository
 	Zones          *ZoneRepository
 	GR             *GRRepository
+	GI             *GIRepository
+	Reservations   *ReservationRepository
 	Config         *ConfigRepository
 	Migration      *MigrationRepository
 	Stock          *StockRepository
@@ -49,6 +51,8 @@ func NewUnitOfWork(db DBTX) *UnitOfWork {
 		Locations:      &LocationRepository{db: db},
 		Zones:          &ZoneRepository{db: db},
 		GR:             &GRRepository{db: db},
+		GI:             &GIRepository{db: db},
+		Reservations:   &ReservationRepository{db: db},
 		Config:         &ConfigRepository{db: db},
 		Migration:      &MigrationRepository{db: db},
 		Stock:          &StockRepository{db: db},

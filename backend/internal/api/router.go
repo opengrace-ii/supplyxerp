@@ -23,6 +23,9 @@ type RouterDeps struct {
 	ProductHandler   *handlers.ProductHandler
 	BarcodeHandler   *handlers.BarcodeHandler
 	GRHandler        *handlers.GRHandler
+
+	GIHandler        *handlers.GIHandler
+	ReservationHandler *handlers.ReservationHandler
 	ConfigHandler    *handlers.ConfigHandler
 	MigrationHandler *handlers.MigrationHandler
 	StockHandler     *handlers.StockHandler
@@ -152,8 +155,20 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		secured.GET("/api/gr/stats", deps.GRHandler.GetStats)
 		secured.GET("/api/warehouse-tasks", deps.GRHandler.ListPutawayTasks)
 		secured.POST("/api/warehouse-tasks/:id/complete", deps.GRHandler.CompletePutaway)
-		secured.GET("/api/gr/holds", deps.GRHandler.GetPendingHolds)
 		secured.POST("/api/gr/holds/:id/resolve", deps.GRHandler.ResolveHold)
+
+		// Goods Issue
+		secured.POST("/api/gi", deps.GIHandler.PostGI)
+		secured.GET("/api/gi", deps.GIHandler.ListGIs)
+		secured.GET("/api/gi/:id", deps.GIHandler.GetGI)
+		secured.GET("/api/gi/stats", deps.GIHandler.GetStats)
+
+		// Reservations
+		secured.POST("/api/stock/reservations", deps.ReservationHandler.CreateReservation)
+		secured.GET("/api/stock/reservations", deps.ReservationHandler.ListReservations)
+		secured.POST("/api/stock/reservations/:id/cancel", deps.ReservationHandler.CancelReservation)
+		secured.GET("/api/stock/reservations/summary", deps.ReservationHandler.GetSummary)
+		secured.GET("/api/stock/reservations/available", deps.ReservationHandler.GetAvailableStock)
 
 		// Tenant Config
 		secured.GET("/api/config/tenant", deps.ConfigHandler.GetTenantConfig)

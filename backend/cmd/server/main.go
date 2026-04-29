@@ -87,6 +87,14 @@ func main() {
 		WarehouseAgent: warehouseAgent,
 	}
 	grHandler := handlers.NewGRHandler(uow, grWorkflow, warehouseAgent)
+	
+	giWorkflow := &inventory.GIWorkflow{
+		Hub:            hub,
+		InventoryAgent: inventoryAgent,
+	}
+	giHandler := handlers.NewGIHandler(uow, giWorkflow)
+	reservationHandler := handlers.NewReservationHandler(uow)
+
 	configHandler := handlers.NewConfigHandler(uow, pool)
 	migrationHandler := handlers.NewMigrationHandler(uow, pool)
 	stockHandler := handlers.NewStockHandler(uow, inventoryAgent)
@@ -131,6 +139,8 @@ func main() {
 		ProductHandler:   productHandler,
 		BarcodeHandler:   barcodeHandler,
 		GRHandler:        grHandler,
+		GIHandler:        giHandler,
+		ReservationHandler: reservationHandler,
 		ConfigHandler:    configHandler,
 		MigrationHandler: migrationHandler,
 		StockHandler:     stockHandler,

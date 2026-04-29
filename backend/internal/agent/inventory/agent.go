@@ -75,6 +75,33 @@ func (a *Agent) PostInboundEvent(ctx context.Context, uow *repository.UnitOfWork
 	return err
 }
 
+func (a *Agent) PostOutboundEvent(ctx context.Context, uow *repository.UnitOfWork, tenantID int64, huID int64, productID int64, quantity float64, unit string, siteID int64, zoneID int64, actorID int64, refType string, refID int64) error {
+	a.broadcast(ctx, "InventoryAgent", "POSTING_OUTBOUND_EVENT", "SUCCESS")
+
+	// Create inventory event with NEGATIVE quantity (outbound = stock decrease)
+	_, err := uow.Events.CreateWithZone(ctx, repository.CreateEventZoneParams{
+		TenantID:    tenantID,
+		EventType:   "GI",
+		HuID:        huID,
+		ProductID:   &productID,
+		FromZoneID:  &zoneID,
+		ToZoneID:    nil,
+		FromSiteID:  &siteID,
+		ToSiteID:    nil,
+		Quantity:    -quantity, // Negative = outbound
+		Unit:        unit,
+		ActorUserID: actorID,
+		Metadata:    []byte(fmt.Sprintf(`{"reference_type": "%s", "reference_id": %d}`, refType, refID)),
+	})
+
+	if err == nil {
+		a.broadcastStockUpdate(ctx, tenantID, huID, productID, zoneID, "GI", -quantity)
+	} else {
+		a.broadcast(ctx, "InventoryAgent", "POSTING_OUTBOUND_EVENT", "FAILED")
+	}
+	return err
+}
+
 func (a *Agent) PostAdjustmentEvent(ctx context.Context, uow *repository.UnitOfWork, tenantID int64, userID int64, huID int64, physicalCount float64, reason string) error {
 	// 1. Get current
 	var currentQty float64

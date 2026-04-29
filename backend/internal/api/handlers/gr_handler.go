@@ -46,6 +46,7 @@ type PostGRRequest struct {
 	StockType          string     `json:"stock_type"`
 	POID               int64      `json:"po_id"`
 	POLineID           int64      `json:"po_line_id"`
+	ReferenceType      string     `json:"reference_type"`
 	// Roll / serial tracking
 	RollCount  *int    `json:"roll_count"`  // if set > 1, creates N HUs
 	RollPrefix *string `json:"roll_prefix"` // e.g. "200-60" → serials "200-60-001".."200-60-N"
@@ -62,7 +63,7 @@ func (h *GRHandler) PostGR(c *gin.Context) {
 	userID := mustUserID(c)
 
 	// 1. Over-delivery check
-	if req.POLineID != 0 {
+	if req.POLineID != 0 && req.ReferenceType != "NONE" {
 		poLine, err := h.Queries.GetPOLineForGR(c.Request.Context(), dbgen.GetPOLineForGRParams{
 			ID:       req.POLineID,
 			TenantID: tenantID,
@@ -177,7 +178,9 @@ func (h *GRHandler) PostGR(c *gin.Context) {
 		Status:             "POSTED",
 		RollCount:          req.RollCount,
 		RollPrefix:         req.RollPrefix,
+		ReferenceType:      req.ReferenceType,
 	})
+
 
 	if err != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})

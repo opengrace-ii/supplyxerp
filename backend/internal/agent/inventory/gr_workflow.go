@@ -42,6 +42,7 @@ type GRParams struct {
 	POID               int64
 	POLineID           int64
 	Status             string
+	ReferenceType      string
 	// Roll / serial tracking (optional)
 	RollCount  *int    // if set > 1, creates N HUs (one per roll)
 	RollPrefix *string // prefix for serial numbers e.g. "200-60" → "200-60-001"
@@ -146,7 +147,7 @@ func (w *GRWorkflow) ProcessGR(ctx context.Context, uow *repository.UnitOfWork, 
 	_, _ = uow.HU.GetDb().Exec(ctx, "UPDATE inventory_events SET stock_type = $1 WHERE hu_id = $2 AND event_type = 'GR'", finalStockType, huID)
 
 	// Update PO line if linked
-	if p.POLineID != 0 {
+	if p.POLineID != 0 && p.ReferenceType != "NONE" {
 		if err = uow.Purchasing.UpdatePOLineReceived(ctx, p.TenantID, p.POLineID, p.Quantity); err != nil {
 			return nil, fmt.Errorf("failed to update PO line: %w", err)
 		}
@@ -301,7 +302,7 @@ func (w *GRWorkflow) processGRRolls(ctx context.Context, uow *repository.UnitOfW
 	_ = w.WarehouseAgent.CreatePutawayTask(ctx, uow, p.TenantID, parentHUID, p.ZoneID)
 
 	// Update PO line if linked
-	if p.POLineID != 0 {
+	if p.POLineID != 0 && p.ReferenceType != "NONE" {
 		_ = uow.Purchasing.UpdatePOLineReceived(ctx, p.TenantID, p.POLineID, p.Quantity)
 		uow.Purchasing.UpdatePOStatus(ctx, p.TenantID, p.POID, "PARTIALLY_RECEIVED")
 	}

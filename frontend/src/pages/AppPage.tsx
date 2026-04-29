@@ -13,6 +13,8 @@ import PricingConfig from './Config/PricingConfig';
 import LedgerStock from './OPS/LedgerStock';
 import StockOverview from './OPS/StockOverview';
 import Reports from './OPS/Reports';
+import GoodsIssue from './OPS/GoodsIssue';
+
 import POManagement from './MFG/POManagement';
 import POBlockCancel from './MFG/POBlockCancel';
 import POAccountAssignment from './MFG/POAccountAssignment';
@@ -79,8 +81,11 @@ const AppPage: React.FC = () => {
         return <StockOverview />;
       case 'StockFlow':
         return <StockFlowPanel />;
+      case 'GoodsIssue':
+        return <GoodsIssue />;
       case 'Reports':
         return <Reports />;
+
       case 'Setup':
         return <Setup />;
       case 'Pricing Engine':
