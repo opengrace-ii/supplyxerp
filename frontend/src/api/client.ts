@@ -70,6 +70,12 @@ export const api = {
     const res = await apiClient.get(`/api/products?limit=${limit}&offset=${offset}`);
     return res.data;
   },
+  listProducts: async (params?: { limit?: number, offset?: number }) => {
+    const limit = params?.limit || 20;
+    const offset = params?.offset || 0;
+    const res = await apiClient.get(`/api/products?limit=${limit}&offset=${offset}`);
+    return res.data;
+  },
   createProduct: async (data: any) => {
     const res = await apiClient.post('/api/products', data);
     return res.data;
@@ -149,10 +155,10 @@ export const api = {
     return res.data;
   },
   postGI: async (data: {
-    product_id: number,
-    quantity: number,
-    unit: string,
-    zone_id: number,
+    product_id?: number,
+    quantity?: number,
+    unit?: string,
+    zone_id?: number,
     movement_type: string,
     document_date?: string,
     posting_date?: string,
@@ -163,7 +169,8 @@ export const api = {
     reference_id?: number,
     notes?: string,
     hu_id?: number,
-    reservation_id?: number
+    reservation_id?: number,
+    hu_ids?: number[]
   }) => {
     const res = await apiClient.post('/api/gi', data);
     return res.data;
@@ -281,6 +288,10 @@ export const api = {
   // Stock Intelligence
   getStockOverview: async () => {
     const res = await apiClient.get('/api/stock/overview');
+    return res.data;
+  },
+  getAvailableHUs: async (params: { product_id: number, zone_id?: number }) => {
+    const res = await apiClient.get('/api/stock/available-hus', { params });
     return res.data;
   },
   listStockProducts: async (params: { search?: string, limit?: number, offset?: number }) => {

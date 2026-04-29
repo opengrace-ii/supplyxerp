@@ -25,6 +25,11 @@ export default function GoodsIssue() {
   const [unrestrictedQty, setUnrestrictedQty] = useState<number | null>(null);
   const [reservedQty, setReservedQty] = useState<number | null>(null);
 
+  // Roll-Based Issue State
+  const [selectByRoll, setSelectByRoll] = useState<boolean>(false);
+  const [availableHUs, setAvailableHUs] = useState<any[]>([]);
+  const [selectedHUIDs, setSelectedHUIDs] = useState<number[]>([]);
+
   // Reservation State
   const [reservations, setReservations] = useState<any[]>([]);
   const [sites, setSites] = useState<any[]>([]);
@@ -50,17 +55,31 @@ export default function GoodsIssue() {
       if (zone && zone.site_id) {
         checkAvailableStock(selectedProduct, zone.site_id);
       }
+      if (selectByRoll) {
+        fetchAvailableHUs();
+      }
     } else {
       setAvailableQty(null);
       setUnrestrictedQty(null);
       setReservedQty(null);
+      setAvailableHUs([]);
     }
-  }, [selectedProduct, selectedZone]);
+  }, [selectedProduct, selectedZone, selectByRoll]);
+
+  const fetchAvailableHUs = async () => {
+    try {
+      const res = await api.getAvailableHUs({
+        product_id: Number(selectedProduct),
+        zone_id: Number(selectedZone) || undefined
+      });
+      setAvailableHUs(res.hus || []);
+    } catch (e) {}
+  };
 
   const fetchProducts = async () => {
     try {
-      const res = await api.listStockProducts({ limit: 100 });
-      setProducts(res.products || []);
+      const response = await api.listProducts({ limit: 100 });
+      setProducts(response?.products || response?.data || (Array.isArray(response) ? response : []));
     } catch (e) {}
   };
 
@@ -123,29 +142,46 @@ export default function GoodsIssue() {
     setError(null);
     setSuccess(null);
 
+    if (selectByRoll && selectedHUIDs.length === 0) {
+      setError('Please select at least one roll to issue.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await api.postGI({
-        product_id: Number(selectedProduct),
-        quantity: qty,
-        unit,
-        zone_id: Number(selectedZone),
+      const payload: any = {
         movement_type: mType,
         reason_code: reasonCode,
         reason_text: reasonText,
         cost_centre: costCentre,
         notes
-      });
+      };
+
+      if (selectByRoll) {
+        payload.hu_ids = selectedHUIDs;
+      } else {
+        payload.product_id = Number(selectedProduct);
+        payload.quantity = qty;
+        payload.unit = unit;
+        payload.zone_id = Number(selectedZone);
+      }
+
+      await api.postGI(payload);
 
       setSuccess(`GI Document Created Successfully! Type: ${mType}`);
       setQty(1);
+      setSelectedHUIDs([]);
       fetchGIHistory();
-      // Refresh available stock
-      const zone = zones.find(z => z.id === Number(selectedZone));
+      
+      const zone = zones.find((z: any) => z.id === Number(selectedZone));
       if (zone && zone.site_id) {
         checkAvailableStock(selectedProduct, zone.site_id);
       }
+      if (selectByRoll) {
+        fetchAvailableHUs();
+      }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to process Goods Issue');
+      setError(err.response?.data?.error || 'Failed to post Goods Issue');
     } finally {
       setLoading(false);
     }
@@ -313,7 +349,12 @@ export default function GoodsIssue() {
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-2)', marginBottom: '6px' }}>Product</label>
                   <select
                     value={selectedProduct}
-                    onChange={e => setSelectedProduct(Number(e.target.value))}
+                    onChange={e => {
+                      const prodId = Number(e.target.value);
+                      setSelectedProduct(prodId);
+                      const prod = products.find((p: any) => p.id === prodId);
+                      if (prod) setUnit(prod.base_unit || 'EA');
+                    }}
                     style={{ width: '100%', padding: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-1)', borderRadius: '6px' }}
                     required
                   >
@@ -340,7 +381,23 @@ export default function GoodsIssue() {
                 </div>
               </div>
 
-              {availableQty !== null && (
+              {selectedProduct > 0 && selectedZone > 0 && (
+                <div style={{ margin: '12px 0' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={selectByRoll}
+                      onChange={e => {
+                        setSelectByRoll(e.target.checked);
+                        setSelectedHUIDs([]);
+                      }} 
+                    />
+                    Select specific rolls / handling units
+                  </label>
+                </div>
+              )}
+
+              {!selectByRoll && availableQty !== null && (
                 <div style={{
                   padding: '12px',
                   background: 'rgba(255,255,255,0.03)',
@@ -348,7 +405,8 @@ export default function GoodsIssue() {
                   fontSize: '13px',
                   border: '1px solid var(--border)',
                   display: 'flex',
-                  justifyContent: 'space-between'
+                  justifyContent: 'space-between',
+                  marginBottom: '12px'
                 }}>
                   <span>Available: <strong style={{ color: 'var(--text-1)' }}>{unrestrictedQty}</strong></span>
                   <span>Reserved: <strong style={{ color: '#eab308' }}>{reservedQty}</strong></span>
@@ -356,30 +414,97 @@ export default function GoodsIssue() {
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-2)', marginBottom: '6px' }}>Quantity</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={qty}
-                    onChange={e => setQty(Number(e.target.value))}
-                    style={{ width: '100%', padding: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-1)', borderRadius: '6px' }}
-                    min={0.0001}
-                    required
-                  />
+              {!selectByRoll ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-2)', marginBottom: '6px' }}>Quantity</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={qty}
+                      onChange={e => setQty(Number(e.target.value))}
+                      style={{ width: '100%', padding: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-1)', borderRadius: '6px' }}
+                      min={0.0001}
+                      required={!selectByRoll}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-2)', marginBottom: '6px' }}>Unit</label>
+                    <input
+                      type="text"
+                      value={unit}
+                      onChange={e => setUnit(e.target.value)}
+                      style={{ width: '100%', padding: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-1)', borderRadius: '6px' }}
+                      required={!selectByRoll}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-2)', marginBottom: '6px' }}>Unit</label>
-                  <input
-                    type="text"
-                    value={unit}
-                    onChange={e => setUnit(e.target.value)}
-                    style={{ width: '100%', padding: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-1)', borderRadius: '6px' }}
-                    required
-                  />
+              ) : (
+                <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '12px', background: 'rgba(255,255,255,0.02)', margin: '12px 0' }}>
+                  <h4 style={{ fontSize: '13px', margin: '0 0 10px 0', color: 'var(--text-1)' }}>Select Available Rolls</h4>
+                  {availableHUs.length === 0 ? (
+                    <div style={{ fontSize: '13px', color: 'var(--text-3)', padding: '12px', textAlign: 'center' }}>No unrestricted rolls available in this zone.</div>
+                  ) : (
+                    <>
+                      <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                          <thead style={{ background: 'var(--border)', color: 'var(--text-2)', textAlign: 'left' }}>
+                            <tr>
+                              <th style={{ padding: '8px' }}>
+                                <input 
+                                  type="checkbox"
+                                  checked={selectedHUIDs.length === availableHUs.length && availableHUs.length > 0}
+                                  onChange={e => {
+                                    if (e.target.checked) {
+                                      setSelectedHUIDs(availableHUs.map(hu => hu.hu_id));
+                                    } else {
+                                      setSelectedHUIDs([]);
+                                    }
+                                  }}
+                                />
+                              </th>
+                              <th style={{ padding: '8px' }}>Roll Serial</th>
+                              <th style={{ padding: '8px' }}>HU Code</th>
+                              <th style={{ padding: '8px' }}>Qty</th>
+                              <th style={{ padding: '8px' }}>Unit</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {availableHUs.map(hu => (
+                              <tr key={hu.hu_id} style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-1)' }}>
+                                <td style={{ padding: '8px' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedHUIDs.includes(hu.hu_id)}
+                                    onChange={e => {
+                                      if (e.target.checked) {
+                                        setSelectedHUIDs([...selectedHUIDs, hu.hu_id]);
+                                      } else {
+                                        setSelectedHUIDs(selectedHUIDs.filter(id => id !== hu.hu_id));
+                                      }
+                                    }}
+                                  />
+                                </td>
+                                <td style={{ padding: '8px' }}>{hu.serial_number}</td>
+                                <td style={{ padding: '8px' }}>{hu.hu_code}</td>
+                                <td style={{ padding: '8px' }}>{hu.quantity}</td>
+                                <td style={{ padding: '8px' }}>{hu.unit}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div style={{ marginTop: '10px', fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', borderTop: '1px solid var(--border)', paddingTop: '8px' }}>
+                        Selected: {selectedHUIDs.length} rolls — {
+                          availableHUs
+                            .filter(hu => selectedHUIDs.includes(hu.hu_id))
+                            .reduce((sum, hu) => sum + hu.quantity, 0)
+                        } {unit || 'MTR'} total
+                      </div>
+                    </>
+                  )}
                 </div>
-              </div>
+              )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>

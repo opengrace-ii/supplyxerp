@@ -133,6 +133,15 @@ Break any of these and the change must be reverted immediately.
 9. **Never duplicate existing functionality** — grep before building. If it exists, extend it.
 10. **Never claim a feature is done without a curl test** — browser screenshots do not count.
 
+### 🟡 UI LANGUAGE RULES (PERMANENT):
+1. **No SAP transaction codes in UI** (MIGO, MB1A, MMBE, etc.)
+2. **No SAP movement type numbers in UI** (261, 551, 601, 101, etc.)
+3. **No German-origin abbreviations as labels** (PIR, COGI, WERKS, MATNR, etc.)
+4. **No "SAP compliance", "SAP standard", or "SAP" in any user-visible text**
+5. **Internal codes (GI_PRODUCTION, UNRESTRICTED) are for developers only**
+6. **Every operator-facing label must pass this test:**
+   - "Would a warehouse worker with no SAP training understand this immediately?" If no → rewrite it.
+
 ### 🟢 ALWAYS DO THESE:
 1. **Always run the compile gate after every Go file change**
 2. **Always run the TypeScript compile gate after every .tsx change**

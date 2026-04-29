@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -23,10 +24,10 @@ func NewGIHandler(repo *repository.UnitOfWork, workflow *inventory.GIWorkflow) *
 }
 
 type PostGIRequest struct {
-	ProductID     int64   `json:"product_id" binding:"required"`
-	Quantity      float64 `json:"quantity" binding:"required"`
-	Unit          string  `json:"unit" binding:"required"`
-	ZoneID        int64   `json:"zone_id" binding:"required"`
+	ProductID     int64   `json:"product_id"`
+	Quantity      float64 `json:"quantity"`
+	Unit          string  `json:"unit"`
+	ZoneID        int64   `json:"zone_id"`
 	MovementType  string  `json:"movement_type" binding:"required"` // 261, 551, 601
 	DocumentDate  string  `json:"document_date"`
 	PostingDate   string  `json:"posting_date"`
@@ -38,6 +39,7 @@ type PostGIRequest struct {
 	Notes         string  `json:"notes"`
 	HUID          int64   `json:"hu_id"`
 	ReservationID int64   `json:"reservation_id"`
+	HUIDs         []int64 `json:"hu_ids"`
 }
 
 func (h *GIHandler) PostGI(c *gin.Context) {
@@ -49,6 +51,102 @@ func (h *GIHandler) PostGI(c *gin.Context) {
 
 	tenantID := mustTenantID(c)
 	userID := mustUserID(c)
+
+	if len(req.HUIDs) > 0 {
+		var totalQty float64
+		var prodID int64
+		var zoneID int64
+		var unit string
+		var siteID int64
+		var orgID int64
+
+		// 1. Resolve first HU
+		err := h.Repo.Zones.GetDb().QueryRow(c.Request.Context(), `
+			SELECT hu.product_id, hu.zone_id, p.base_unit, hu.site_id, s.organisation_id
+			FROM handling_units hu
+			JOIN products p ON p.id = hu.product_id
+			JOIN sites s ON s.id = hu.site_id
+			WHERE hu.id = $1 AND hu.tenant_id = $2
+		`, req.HUIDs[0], tenantID).Scan(&prodID, &zoneID, &unit, &siteID, &orgID)
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid initial HU ID"})
+			return
+		}
+
+		docDate, _ := time.Parse("2006-01-02", req.DocumentDate)
+		postDate, _ := time.Parse("2006-01-02", req.PostingDate)
+		if docDate.IsZero() { docDate = time.Now() }
+		if postDate.IsZero() { postDate = time.Now() }
+
+		giID, err := h.Repo.GI.Create(c.Request.Context(), repository.GIDocument{
+			TenantID:       tenantID,
+			OrganisationID: orgID,
+			SiteID:         siteID,
+			ZoneID:         zoneID,
+			Status:         "POSTED",
+			DocumentDate:   docDate,
+			PostingDate:    postDate,
+			MovementType:   req.MovementType,
+			ReasonCode:     req.ReasonCode,
+			ReasonText:     req.ReasonText,
+			CostCentre:     req.CostCentre,
+			ReferenceType:  req.ReferenceType,
+			Notes:          req.Notes,
+			PostedBy:       &userID,
+			CreatedBy:      &userID,
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create GI document"})
+			return
+		}
+
+		for _, hid := range req.HUIDs {
+			var hQty float64
+			err := h.Repo.Zones.GetDb().QueryRow(c.Request.Context(), 
+				"SELECT quantity FROM handling_units WHERE id = $1 AND tenant_id = $2", hid, tenantID).Scan(&hQty)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid HU ID %d", hid)})
+				return
+			}
+			totalQty += hQty
+
+			_ = h.Repo.GI.AddLine(c.Request.Context(), repository.GILine{
+				LineNumber:   1,
+				ProductID:    prodID,
+				Quantity:     hQty,
+				Unit:         unit,
+				StockType:    "UNRESTRICTED",
+				MovementType: req.MovementType,
+				HUID:         &hid,
+			}, giID, tenantID)
+
+			if req.MovementType == "261" || req.MovementType == "GI_PRODUCTION" {
+				_, _ = h.Repo.Zones.GetDb().Exec(c.Request.Context(), 
+					"UPDATE handling_units SET stock_type = 'IN_PROCESS', updated_at = NOW() WHERE id = $1", hid)
+
+				_, _ = h.Repo.Zones.GetDb().Exec(c.Request.Context(), `
+					INSERT INTO inventory_events (tenant_id, event_type, hu_id, product_id, from_zone_id, site_id, zone_id, quantity, unit, actor_user_id, stock_type, metadata)
+					VALUES ($1, 'GI', $2, $3, $4, $5, $6, 0, $7, $8, 'IN_PROCESS', $9)
+				`, tenantID, hid, prodID, zoneID, siteID, zoneID, unit, userID, []byte(fmt.Sprintf(`{"reference_type": "GI_DOCUMENT", "reference_id": %d}`, giID)))
+			} else {
+				_, _ = h.Repo.Zones.GetDb().Exec(c.Request.Context(), 
+					"UPDATE handling_units SET status = 'CONSUMED', updated_at = NOW() WHERE id = $1", hid)
+
+				_ = h.Workflow.InventoryAgent.PostOutboundEvent(c.Request.Context(), h.Repo, tenantID, hid, prodID, hQty, unit, siteID, zoneID, userID, "GI_DOCUMENT", giID)
+			}
+		}
+
+		c.JSON(http.StatusCreated, gin.H{
+			"success": true,
+			"data": map[string]any{
+				"gi_id":         giID,
+				"total_qty":     totalQty,
+				"movement_type": req.MovementType,
+			},
+		})
+		return
+	}
 
 	var siteID, orgID int64
 	err := h.Repo.Zones.GetDb().QueryRow(c.Request.Context(), "SELECT site_id FROM zones WHERE id = $1", req.ZoneID).Scan(&siteID)

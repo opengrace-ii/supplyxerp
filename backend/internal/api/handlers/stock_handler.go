@@ -270,3 +270,67 @@ func (h *StockHandler) ListAdjustments(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"adjustments": adjustments})
 }
+
+func (h *StockHandler) GetAvailableHUs(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(int64)
+	
+	prodID, _ := strconv.ParseInt(c.Query("product_id"), 10, 64)
+	zoneID, _ := strconv.ParseInt(c.Query("zone_id"), 10, 64)
+
+	if prodID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "product_id is required"})
+		return
+	}
+
+	queryStr := `
+		SELECT hu.id, hu.code, COALESCE(hu.serial_number, ''), hu.quantity, p.base_unit, z.code
+		FROM handling_units hu
+		JOIN products p ON p.id = hu.product_id
+		JOIN zones z ON z.id = hu.zone_id
+		WHERE hu.product_id = $1 
+		  AND hu.tenant_id = $2
+		  AND hu.stock_type = 'UNRESTRICTED'
+		  AND hu.status = 'IN_STOCK'
+		  AND hu.quantity > 0
+	`
+	
+	var rows any
+	var err error
+	
+	if zoneID > 0 {
+		queryStr += " AND hu.zone_id = $3"
+		rows, err = h.Repo.HU.GetDb().Query(c.Request.Context(), queryStr, prodID, tenantID, zoneID)
+	} else {
+		rows, err = h.Repo.HU.GetDb().Query(c.Request.Context(), queryStr, prodID, tenantID)
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load available HUs"})
+		return
+	}
+	
+	type closer interface {
+		Close()
+		Next() bool
+		Scan(dest ...any) error
+	}
+	rowCloser := rows.(closer)
+	defer rowCloser.Close()
+
+	hus := []any{}
+	for rowCloser.Next() {
+		var item struct {
+			HUID         int64   `json:"hu_id"`
+			HUCode       string  `json:"hu_code"`
+			SerialNo     string  `json:"serial_number"`
+			Quantity     float64 `json:"quantity"`
+			Unit         string  `json:"unit"`
+			ZoneCode     string  `json:"zone_code"`
+		}
+		if err := rowCloser.Scan(&item.HUID, &item.HUCode, &item.SerialNo, &item.Quantity, &item.Unit, &item.ZoneCode); err == nil {
+			hus = append(hus, item)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"hus": hus})
+}

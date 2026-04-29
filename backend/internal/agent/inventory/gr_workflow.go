@@ -3,8 +3,10 @@ package inventory
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"time"
+
 
 	"supplyxerp/backend/internal/agent/barcode"
 	"supplyxerp/backend/internal/agent/warehouse"
@@ -183,7 +185,9 @@ func (w *GRWorkflow) ProcessGR(ctx context.Context, uow *repository.UnitOfWork, 
 // Individual events are NOT created for children at GR time.
 func (w *GRWorkflow) processGRRolls(ctx context.Context, uow *repository.UnitOfWork, p GRParams, finalStockType string) (map[string]any, error) {
 	rollCount := *p.RollCount
-	qtyPerRoll := p.Quantity / float64(rollCount)
+	totalQty := p.Quantity
+	perRoll := math.Round((totalQty/float64(rollCount))*1000) / 1000
+
 
 	// 1. Create Parent HU (PALLET)
 	parentHUCode, _ := uow.GR.GetNextHUCode(ctx, p.TenantID)
@@ -254,7 +258,11 @@ func (w *GRWorkflow) processGRRolls(ctx context.Context, uow *repository.UnitOfW
 	} else {
 		productCode := ""
 		_ = uow.Zones.GetDb().QueryRow(ctx, "SELECT code FROM products WHERE id = $1", p.ProductID).Scan(&productCode)
-		prefix = strings.ToUpper(strings.ReplaceAll(productCode, "-", "")) + "-" + time.Now().Format("0601")
+		clean := strings.ToUpper(strings.ReplaceAll(productCode, "-", ""))
+		if len(clean) > 5 {
+			clean = clean[:5]
+		}
+		prefix = clean + "-" + time.Now().Format("0601")
 	}
 
 	var createdHUs []map[string]any
@@ -262,12 +270,18 @@ func (w *GRWorkflow) processGRRolls(ctx context.Context, uow *repository.UnitOfW
 		huCode, _ := uow.GR.GetNextHUCode(ctx, p.TenantID)
 		serialNumber := fmt.Sprintf("%s-%03d", prefix, seq)
 
+		qty := perRoll
+		if seq == rollCount {
+			qty = math.Round((totalQty-(perRoll*float64(rollCount-1)))*1000) / 1000
+		}
+
 		childHUID, err := w.InventoryAgent.CreateHU(ctx, uow, CreateHUInput{
 			TenantID:   p.TenantID,
 			ProductID:  p.ProductID,
 			Code:       huCode,
-			Quantity:   qtyPerRoll,
+			Quantity:   qty,
 			Unit:       p.Unit,
+
 			SiteID:     p.SiteID,
 			ZoneID:     p.ZoneID,
 			Status:     "IN_STOCK",
@@ -291,7 +305,7 @@ func (w *GRWorkflow) processGRRolls(ctx context.Context, uow *repository.UnitOfW
 			"hu_id":         childHUID,
 			"hu_code":       huCode,
 			"serial_number": serialNumber,
-			"quantity":      qtyPerRoll,
+			"quantity":      qty,
 		})
 	}
 
